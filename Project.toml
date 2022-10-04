@@ -1,0 +1,7 @@
+name = "GCPDecompositions"
+uuid = "f59fb95b-1bc8-443b-b347-5e445a549f37"
+authors = ["David Hong <dahong67@wharton.upenn.edu> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
