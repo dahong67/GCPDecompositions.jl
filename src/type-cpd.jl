@@ -16,7 +16,7 @@ struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     U::NTuple{N,TU}
     function CPD{T,N,Tλ,TU}(λ, U) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
         require_one_based_indexing(λ, U...)
-        for i in 1:N
+        for i in Base.OneTo(N)
             size(U[i], 2) == length(λ) || throw(
                 DimensionMismatch("U[$i] has dimensions $(size(U[i])) but λ has length $(length(λ))")
             )
@@ -44,7 +44,7 @@ function show(io::IO, mime::MIME{Symbol("text/plain")}, X::CPD{T,N}) where {T,N}
     println(io)
     println(io, "λ weights:")
     show(io_field, mime, X.λ)
-    for i in 1:N
+    for i in Base.OneTo(N)
         println(io, "\nU[$i] factor matrix:")
         show(io_field, mime, X.U[i])
     end
