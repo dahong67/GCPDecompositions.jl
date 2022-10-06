@@ -65,20 +65,20 @@ end
     @test size(CPD(λ, (U1, U2))) == (size(U1, 1), size(U2, 1))
     @test size(CPD(λ, (U1, U2, U3))) == (size(U1, 1), size(U2, 1), size(U3, 1))
 
-    X = CPD(λ, (U1, U2, U3))
-    @test size(X, 1) == 2
-    @test size(X, 2) == 1
-    @test size(X, 3) == 3
-    @test size(X, 4) == 1
+    M = CPD(λ, (U1, U2, U3))
+    @test size(M, 1) == 2
+    @test size(M, 2) == 1
+    @test size(M, 3) == 3
+    @test size(M, 4) == 1
 end
 
 @testset "show / summary" begin
-    X = CPD(rand.(2), rand.((3, 4, 5), 2))
-    Xstring = sprint((t, s) -> show(t, "text/plain", s), X)
-    λstring = sprint((t, s) -> show(t, "text/plain", s), X.λ)
-    Ustrings = sprint.((t, s) -> show(t, "text/plain", s), X.U)
-    @test Xstring == string(
-        "$(summary(X))\nλ weights:\n$λstring",
+    M = CPD(rand.(2), rand.((3, 4, 5), 2))
+    Mstring = sprint((t, s) -> show(t, "text/plain", s), M)
+    λstring = sprint((t, s) -> show(t, "text/plain", s), M.λ)
+    Ustrings = sprint.((t, s) -> show(t, "text/plain", s), M.U)
+    @test Mstring == string(
+        "$(summary(M))\nλ weights:\n$λstring",
         ["\nU[$i] factor matrix:\n$Ustring" for (i, Ustring) in enumerate(Ustrings)]...,
     )
 end

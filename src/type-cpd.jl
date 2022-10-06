@@ -27,33 +27,33 @@ end
 CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} =
     CPD{T,N,Tλ,TU}(λ, U)
 
-ncomponents(X::CPD) = length(X.λ)
+ncomponents(M::CPD) = length(M.λ)
 ndims(::CPD{T,N}) where {T,N} = N
 
-size(X::CPD{T,N}, dim::Integer) where {T,N} = dim <= N ? size(X.U[dim], 1) : 1
-size(X::CPD{T,N}) where {T,N} = ntuple(d -> size(X, d), N)
+size(M::CPD{T,N}, dim::Integer) where {T,N} = dim <= N ? size(M.U[dim], 1) : 1
+size(M::CPD{T,N}) where {T,N} = ntuple(d -> size(M, d), N)
 
-function show(io::IO, mime::MIME{Symbol("text/plain")}, X::CPD{T,N}) where {T,N}
+function show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
     # Compute displaysize for showing fields
     LINES, COLUMNS = displaysize(io)
     LINES_FIELD = max(LINES - 2 - N, 0) ÷ (1 + N)
     io_field = IOContext(io, :displaysize => (LINES_FIELD, COLUMNS))
 
     # Show summary and fields
-    summary(io, X)
+    summary(io, M)
     println(io)
     println(io, "λ weights:")
-    show(io_field, mime, X.λ)
+    show(io_field, mime, M.λ)
     for i in Base.OneTo(N)
         println(io, "\nU[$i] factor matrix:")
-        show(io_field, mime, X.U[i])
+        show(io_field, mime, M.U[i])
     end
 end
 
-function summary(io::IO, X::CPD)
-    dimstring = ndims(X) == 0 ? "0-dimensional" :
-                ndims(X) == 1 ? "$(size(X,1))-element" : join(map(string, size(X)), '×')
-    ncomps = ncomponents(X)
-    print(io, dimstring, " ", typeof(X),
+function summary(io::IO, M::CPD)
+    dimstring = ndims(M) == 0 ? "0-dimensional" :
+                ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
+    ncomps = ncomponents(M)
+    print(io, dimstring, " ", typeof(M),
         " with ", ncomps, ncomps == 1 ? " component" : " components")
 end
