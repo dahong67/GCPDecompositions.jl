@@ -4,12 +4,12 @@
     CPD
 
 Tensor decomposition type for the canonical polyadic decompositions (CPD)
-of a tensor (i.e., a multi-dimensional array) `T`.
+of a tensor (i.e., a multi-dimensional array) `A`.
 
 If `F::CPD` is the decomposition object,
 the weights `λ` and factor matrices `U = (U[1],...,U[N])`
 can be obtained via `F.λ` and `F.U`,
-such that `T = Σ_k λ[k] U[1][:,k] ∘ ⋯ ∘ U[N][:,k]`.
+such that `A = Σ_k λ[k] U[1][:,k] ∘ ⋯ ∘ U[N][:,k]`.
 """
 struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     λ::Tλ
