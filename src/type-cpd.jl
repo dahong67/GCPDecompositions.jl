@@ -9,16 +9,16 @@ of a tensor (i.e., a multi-dimensional array) `A`.
 If `F::CPD` is the decomposition object,
 the weights `λ` and factor matrices `U = (U[1],...,U[N])`
 can be obtained via `F.λ` and `F.U`,
-such that `A = Σ_k λ[k] U[1][:,k] ∘ ⋯ ∘ U[N][:,k]`.
+such that `A = Σ_j λ[j] U[1][:,j] ∘ ⋯ ∘ U[N][:,j]`.
 """
 struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     λ::Tλ
     U::NTuple{N,TU}
     function CPD{T,N,Tλ,TU}(λ, U) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
         require_one_based_indexing(λ, U...)
-        for i in Base.OneTo(N)
-            size(U[i], 2) == length(λ) || throw(
-                DimensionMismatch("U[$i] has dimensions $(size(U[i])) but λ has length $(length(λ))")
+        for k in Base.OneTo(N)
+            size(U[k], 2) == length(λ) || throw(
+                DimensionMismatch("U[$k] has dimensions $(size(U[k])) but λ has length $(length(λ))")
             )
         end
         new{T,N,Tλ,TU}(λ, U)
@@ -44,9 +44,9 @@ function show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
     println(io)
     println(io, "λ weights:")
     show(io_field, mime, M.λ)
-    for i in Base.OneTo(N)
-        println(io, "\nU[$i] factor matrix:")
-        show(io_field, mime, M.U[i])
+    for k in Base.OneTo(N)
+        println(io, "\nU[$k] factor matrix:")
+        show(io_field, mime, M.U[k])
     end
 end
 

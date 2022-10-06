@@ -79,6 +79,6 @@ end
     Ustrings = sprint.((t, s) -> show(t, "text/plain", s), M.U)
     @test Mstring == string(
         "$(summary(M))\nλ weights:\n$λstring",
-        ["\nU[$i] factor matrix:\n$Ustring" for (i, Ustring) in enumerate(Ustrings)]...,
+        ["\nU[$k] factor matrix:\n$Ustring" for (k, Ustring) in enumerate(Ustrings)]...,
     )
 end
