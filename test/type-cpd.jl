@@ -1,4 +1,4 @@
-## Types
+## CP decomposition type
 
 @testset "constructors" begin
     @testset "T=$T, K=$K" for T in [Float64, Float16], K in 0:2
