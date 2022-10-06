@@ -1,6 +1,11 @@
 using GCPDecompositions
 using Test
+using OffsetArrays
 
-@testset "GCPDecompositions.jl" begin
-    # Write your tests here.
+TESTLIST = [
+    "CPD type" => "type-cpd.jl",
+]
+
+@testset verbose = true "$name" for (name, path) in TESTLIST
+    include(path)
 end
