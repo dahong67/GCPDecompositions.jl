@@ -10,11 +10,12 @@ with respect to a general loss and return a `CPD` object.
 # Inputs
 + `X` : multi-dimensional tensor/array to approximate/decompose
 + `r` : number of components for the CPD
-+ `func` : objective function (x,m) -> ...
-+ `grad` : derivative function (x,m) -> ...
-+ `lower` : lower bound for factor matrix entries (default=-Inf)
++ `func` : loss function, `default = (x, m) -> (m - x)^2`
++ `grad` : loss function derivative, `default = (x, m) -> 2 * (m - x)`
++ `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
-gcp(X::Array, r, func, grad, lower=-Inf) = _gcp(X, r, func, grad, lower, (;))
+gcp(X::Array, r, func=(x, m) -> (m - x)^2, grad=(x, m) -> 2 * (m - x), lower=-Inf) =
+    _gcp(X, r, func, grad, lower, (;))
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     T = nonmissingtype(TX)
