@@ -11,4 +11,5 @@ Documentation for [GCPDecompositions](https://github.com/dahong67/GCPDecompositi
 
 ```@autodocs
 Modules = [GCPDecompositions]
+Filter = t -> t !== ncomponents
 ```
