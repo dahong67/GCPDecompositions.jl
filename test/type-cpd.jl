@@ -5,7 +5,7 @@
         λfull = T[1, 100, 10000]
         U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
         λ = λfull[1:K]
-        U1, U2, U3 = U1full[:,1:K], U2full[:,1:K], U3full[:,1:K]
+        U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
 
         # Check type for various orders
         @test CPD{T,0,Vector{T},Matrix{T}}(λ, ()) isa CPD{T,0,Vector{T},Matrix{T}}
