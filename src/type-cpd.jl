@@ -32,7 +32,7 @@ CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatr
 
 Return the number of components in `M`.
 
-See also: [`ndims`](@ref), [`size`](@ref).
+See also: `ndims`, `size`.
 """
 ncomponents(M::CPD) = length(M.λ)
 ndims(::CPD{T,N}) where {T,N} = N
