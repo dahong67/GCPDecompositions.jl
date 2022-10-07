@@ -82,3 +82,40 @@ end
         ["\nU[$k] factor matrix:\n$Ustring" for (k, Ustring) in enumerate(Ustrings)]...,
     )
 end
+
+@testset "getindex" begin
+    @testset "K=$K" for K in 0:2
+        T = Float64
+        λfull = T[1, 100, 10000]
+        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
+        λ = λfull[1:K]
+        U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
+
+        M = CPD(λ, (U1, U2, U3))
+        for i1 in axes(U1, 1), i2 in axes(U2, 1), i3 in axes(U3, 1)
+            Mi = sum(λ .* U1[i1, :] .* U2[i2, :] .* U3[i3, :])
+            @test Mi == M[i1, i2, i3]
+            @test Mi == M[CartesianIndex((i1, i2, i3))]
+        end
+        @test_throws BoundsError M[size(U1, 1)+1, 1, 1]
+        @test_throws BoundsError M[1, size(U2, 1)+1, 1]
+        @test_throws BoundsError M[1, 1, size(U3, 1)+1]
+
+        M = CPD(λ, (U1, U2))
+        for i1 in axes(U1, 1), i2 in axes(U2, 1)
+            Mi = sum(λ .* U1[i1, :] .* U2[i2, :])
+            @test Mi == M[i1, i2]
+            @test Mi == M[CartesianIndex((i1, i2))]
+        end
+        @test_throws BoundsError M[size(U1, 1)+1, 1]
+        @test_throws BoundsError M[1, size(U2, 1)+1]
+
+        M = CPD(λ, (U1,))
+        for i1 in axes(U1, 1)
+            Mi = sum(λ .* U1[i1, :])
+            @test Mi == M[i1]
+            @test Mi == M[CartesianIndex((i1,))]
+        end
+        @test_throws BoundsError M[size(U1, 1)+1]
+    end
+end

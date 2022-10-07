@@ -57,3 +57,15 @@ function summary(io::IO, M::CPD)
     print(io, dimstring, " ", typeof(M),
         " with ", ncomps, ncomps == 1 ? " component" : " components")
 end
+
+function _checkbounds(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
+    @inline
+    Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
+    nothing
+end
+function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
+    @boundscheck _checkbounds(M, I...)
+    return sum(M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M)))
+               for j in Base.OneTo(ncomponents(M)); init=zero(eltype(T)))
+end
+getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
