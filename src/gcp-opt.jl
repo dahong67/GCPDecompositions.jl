@@ -2,7 +2,7 @@
 
 # Main fitting function
 """
-    gcp(X::Array, r, func, grad, lower=-Inf) -> CPD
+    gcp(X::Array, r[, func, grad, lower]) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to a general loss and return a `CPD` object.
