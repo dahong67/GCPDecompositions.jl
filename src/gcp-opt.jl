@@ -1,6 +1,19 @@
 ## GCP decomposition - full optimization
 
 # Main fitting function
+"""
+    gcp(X::Array, r, func, grad, lower=-Inf) -> CPD
+
+Compute an approximate rank-`r` CP decomposition of the tensor `X`
+with respect to a general loss and return a `CPD` object.
+
+# Inputs
++ `X` : multi-dimensional tensor/array to approximate/decompose
++ `r` : number of components for the CPD
++ `func` : objective function (x,m) -> ...
++ `grad` : derivative function (x,m) -> ...
++ `lower` : lower bound for factor matrix entries (default=-Inf)
+"""
 gcp(X::Array, r, func, grad, lower=-Inf) = _gcp(X, r, func, grad, lower, (;))
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
