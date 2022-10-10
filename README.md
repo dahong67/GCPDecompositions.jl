@@ -7,7 +7,7 @@
 [![Build Status](https://github.com/dahong67/GCPDecompositions.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/dahong67/GCPDecompositions.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/dahong67/GCPDecompositions.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/dahong67/GCPDecompositions.jl)
 
-> :wave: *This package provides research code and work is ongoing.
+> 👋 *This package provides research code and work is ongoing.
 > If you are interested in using it in your own research,
 > **I'd love to hear from you and collaborate!**
 > Feel free to write: dahong67@wharton.upenn.edu*
