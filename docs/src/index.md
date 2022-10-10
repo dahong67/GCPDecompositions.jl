@@ -9,21 +9,21 @@ Documentation for [GCPDecompositions](https://github.com/dahong67/GCPDecompositi
 > 👋 *This package provides research code and work is ongoing.
 > If you are interested in using it in your own research,
 > **I'd love to hear from you and collaborate!**
-> Feel free to write: dahong67@wharton.upenn.edu*
+> Feel free to write: [dahong67@wharton.upenn.edu](mailto:dahong67@wharton.upenn.edu)*
 
 Please cite the following papers for this technique:
 
 > David Hong, Tamara G. Kolda, Jed A. Duersch.
 > "Generalized Canonical Polyadic Tensor Decomposition",
 > *SIAM Review* 62:133-163, 2020.
-> https://doi.org/10.1137/18M1203626
-> https://arxiv.org/abs/1808.07452
+> [https://doi.org/10.1137/18M1203626](https://doi.org/10.1137/18M1203626)
+> [https://arxiv.org/abs/1808.07452](https://arxiv.org/abs/1808.07452)
 >
 > Tamara G. Kolda, David Hong.
 > "Stochastic Gradients for Large-Scale Tensor Decomposition",
 > *SIAM Journal on Mathematics of Data Science* 2:1066-1095, 2020.
-> https://doi.org/10.1137/19M1266265
-> https://arxiv.org/abs/1906.01687
+> [https://doi.org/10.1137/19M1266265](https://doi.org/10.1137/19M1266265)
+> [https://arxiv.org/abs/1906.01687](https://arxiv.org/abs/1906.01687)
 
 In BibTeX form:
 ```bibtex
