@@ -1,6 +1,8 @@
 ## GCP decomposition - full optimization
 
-@testset "least squares" begin
+@testitem "least squares" begin
+    using Random
+
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))

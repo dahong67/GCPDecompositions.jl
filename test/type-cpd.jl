@@ -1,6 +1,8 @@
 ## CP decomposition type
 
-@testset "constructors" begin
+@testitem "constructors" begin
+    using OffsetArrays
+
     @testset "T=$T, K=$K" for T in [Float64, Float16], K in 0:2
         λfull = T[1, 100, 10000]
         U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
@@ -25,7 +27,7 @@
     end
 end
 
-@testset "ncomponents" begin
+@testitem "ncomponents" begin
     λ = [1, 100, 10000]
     U1, U2, U3 = [1 2 3; 4 5 6], [-1 0 1], [1 2 3; 4 5 6; 7 8 9]
 
@@ -47,7 +49,7 @@ end
           0
 end
 
-@testset "ndims" begin
+@testitem "ndims" begin
     λ = [1, 100, 10000]
     U1, U2, U3 = [1 2 3; 4 5 6], [-1 0 1], [1 2 3; 4 5 6; 7 8 9]
 
@@ -57,7 +59,7 @@ end
     @test ndims(CPD(λ, (U1, U2, U3))) == 3
 end
 
-@testset "size" begin
+@testitem "size" begin
     λ = [1, 100, 10000]
     U1, U2, U3 = [1 2 3; 4 5 6], [-1 0 1], [1 2 3; 4 5 6; 7 8 9]
 
@@ -72,7 +74,7 @@ end
     @test size(M, 4) == 1
 end
 
-@testset "show / summary" begin
+@testitem "show / summary" begin
     M = CPD(rand.(2), rand.((3, 4, 5), 2))
     Mstring = sprint((t, s) -> show(t, "text/plain", s), M)
     λstring = sprint((t, s) -> show(t, "text/plain", s), M.λ)
@@ -83,7 +85,7 @@ end
     )
 end
 
-@testset "getindex" begin
+@testitem "getindex" begin
     @testset "K=$K" for K in 0:2
         T = Float64
         λfull = T[1, 100, 10000]
