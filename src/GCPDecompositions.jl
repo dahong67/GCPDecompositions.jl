@@ -5,6 +5,7 @@ module GCPDecompositions
 import Base: require_one_based_indexing
 import Base: ndims, size, show, summary
 import Base: getindex
+using ForwardDiff: gradient
 using LinearAlgebra: mul!, rmul!, Diagonal
 using LBFGSB: lbfgsb
 
