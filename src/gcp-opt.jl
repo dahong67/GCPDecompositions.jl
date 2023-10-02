@@ -11,10 +11,10 @@ with respect to a general loss and return a `CPD` object.
 + `X` : multi-dimensional tensor/array to approximate/decompose
 + `r` : number of components for the CPD
 + `func` : loss function, `default = (x, m) -> (m - x)^2`
-+ `grad` : loss function derivative, `default = (x, m) -> 2 * (m - x)`
++ `grad` : loss function derivative, default uses `ForwardDiff.jl`
 + `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
-gcp(X::Array, r, func=(x, m) -> (m - x)^2, grad=(x, m) -> 2 * (m - x), lower=-Inf) =
+gcp(X::Array, r, func=(x, m) -> (m - x)^2, grad=(x, m) -> ForwardDiff.derivative(m -> func(x, m), m), lower=-Inf) =
     _gcp(X, r, func, grad, lower, (;))
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
