@@ -12,5 +12,5 @@ LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
 [compat]
 ForwardDiff = "0.10.36"
 LBFGSB = "0.4.1"
-LossFunctions = "0.11.1"
+LossFunctions = "0.10.1"
 julia = "1.6"
