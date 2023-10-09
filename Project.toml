@@ -20,6 +20,3 @@ julia = "1.6"
 
 [extensions]
 LossFunctionsExt = "LossFunctions"
-
-[extras] 
-LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
