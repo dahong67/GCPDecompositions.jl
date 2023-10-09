@@ -1,7 +1,6 @@
 module LossFunctionsExt
 
-using GCPDecompositions
-using LossFunctions
+using GCPDecompositions, LossFunctions
 
 """
     gcp(X::Array, r, loss::LossFunctions.SupervisedLoss, lower]) -> CPD
