@@ -6,7 +6,6 @@ import Base: require_one_based_indexing
 import Base: ndims, size, show, summary
 import Base: getindex
 import ForwardDiff
-import LossFunctions
 using LinearAlgebra: mul!, rmul!, Diagonal
 using LBFGSB: lbfgsb
 
@@ -17,5 +16,9 @@ export gcp
 
 include("type-cpd.jl")
 include("gcp-opt.jl")
+
+if !isdefined(Base, :get_extension)
+    include("ext/LossFunctinonsExt.jl")
+  end
 
 end

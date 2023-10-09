@@ -29,8 +29,8 @@ with respect to the loss function `loss` and return a `CPD` object.
 + `loss` : loss function from LossFunctions.jl
 + `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
-gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower=-Inf) =
-    _gcp(X, r, (x, m) -> loss(x, m), (x, m) -> LossFunctions.deriv(loss, m, x), lower, (;))
+#gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower=-Inf) =
+#    _gcp(X, r, (x, m) -> loss(x, m), (x, m) -> LossFunctions.deriv(loss, m, x), lower, (;))
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     T = nonmissingtype(TX)
