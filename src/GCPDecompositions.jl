@@ -18,7 +18,7 @@ include("type-cpd.jl")
 include("gcp-opt.jl")
 
 if !isdefined(Base, :get_extension)
-    include("../ext/LossFunctionsExt.jl")
-  end
+  include("../ext/LossFunctionsExt.jl")
+end
 
 end
