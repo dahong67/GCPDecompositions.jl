@@ -16,6 +16,6 @@ with respect to the loss function `loss` and return a `CPD` object.
 + `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
 GCPDecompositions.gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower=-Inf) =
-    GCPDecompositions._gcp(X, r, (x, m) -> loss(x, m), (x, m) -> LossFunctions.deriv(loss, m, x), lower, (;))
+    GCPDecompositions._gcp(X, r, (x, m) -> loss(m, x), (x, m) -> LossFunctions.deriv(loss, m, x), lower, (;))
 
 end
