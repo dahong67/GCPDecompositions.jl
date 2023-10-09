@@ -3,7 +3,7 @@ module LossFunctionsExt
 using GCPDecompositions, LossFunctions
 
 """
-    gcp(X::Array, r, loss::LossFunctions.SupervisedLoss, lower]) -> CPD
+    gcp(X::Array, r, loss::LossFunctions.SupervisedLoss[, lower]) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
