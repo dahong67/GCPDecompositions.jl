@@ -4,7 +4,7 @@ using GCPDecompositions
 using LossFunctions
 
 """
-    gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower]) -> CPD
+    gcp(X::Array, r, loss::LossFunctions.SupervisedLoss, lower]) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
@@ -15,7 +15,7 @@ with respect to the loss function `loss` and return a `CPD` object.
 + `loss` : loss function from LossFunctions.jl
 + `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
-GCPDecompositions.gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower=-Inf) =
+GCPDecompositions.gcp(X::Array, r, loss::LossFunctions.SupervisedLoss, lower=-Inf) =
     GCPDecompositions._gcp(X, r, (x, m) -> loss(m, x), (x, m) -> LossFunctions.deriv(loss, m, x), lower, (;))
 
 end
