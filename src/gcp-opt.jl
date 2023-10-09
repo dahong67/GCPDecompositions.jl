@@ -17,21 +17,6 @@ with respect to a general loss and return a `CPD` object.
 gcp(X::Array, r, func=(x, m) -> (m - x)^2, grad=(x, m) -> ForwardDiff.derivative(m -> func(x, m), m), lower=-Inf) =
     _gcp(X, r, func, grad, lower, (;))
 
-"""
-    gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower]) -> CPD
-
-Compute an approximate rank-`r` CP decomposition of the tensor `X`
-with respect to the loss function `loss` and return a `CPD` object.
-
-# Inputs
-+ `X` : multi-dimensional tensor/array to approximate/decompose
-+ `r` : number of components for the CPD
-+ `loss` : loss function from LossFunctions.jl
-+ `lower` : lower bound for factor matrix entries, `default = -Inf`
-"""
-#gcp(X::Array, r, loss::LossFunctions.DistanceLoss, lower=-Inf) =
-#    _gcp(X, r, (x, m) -> loss(x, m), (x, m) -> LossFunctions.deriv(loss, m, x), lower, (;))
-
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     T = nonmissingtype(TX)
 
