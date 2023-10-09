@@ -2,6 +2,7 @@
 
 @testitem "least squares" begin
     using Random
+    using LossFunctions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
         Random.seed!(0)
@@ -16,6 +17,9 @@
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
+        @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
+
+        Mh = gcp(X, r, L2DistLoss()) # test with loss function from LossFunctions.jl (least squares)
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
