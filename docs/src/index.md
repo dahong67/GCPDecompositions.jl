@@ -49,13 +49,3 @@ In BibTeX form:
   DOI =          "10.1137/19M1266265",
 }
 ```
-
-## Docstrings
-
-```@index
-```
-
-```@autodocs
-Modules = [GCPDecompositions]
-Filter = t -> t !== ncomponents
-```
