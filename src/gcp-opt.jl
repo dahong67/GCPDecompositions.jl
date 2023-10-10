@@ -8,6 +8,11 @@ Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
 Conventional CP corresponds to the default `LeastSquaresLoss()`.
 
+If the LossFunctions.jl package is also loaded,
+`loss` can also be a loss function from that package.
+Check `GCPDecompositions.LossFunctionsExt.SupportedLosses`
+to see what losses are supported.
+
 See also: `CPD`, `AbstractLoss`.
 """
 gcp(X::Array, r, loss::AbstractLoss = LeastSquaresLoss()) = _gcp(
