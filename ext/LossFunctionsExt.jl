@@ -2,6 +2,8 @@ module LossFunctionsExt
 
 using GCPDecompositions, LossFunctions
 
+const SupportedLosses = Union{LossFunctions.DistanceLoss,LossFunctions.MarginLoss}
+
 """
     gcp(X::Array, r, loss::LossFunctions.SupervisedLoss[, lower]) -> CPD
 
@@ -15,7 +17,7 @@ with respect to the loss function `loss` and return a `CPD` object.
   - `loss` : loss function from LossFunctions.jl
   - `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
-GCPDecompositions.gcp(X::Array, r, loss::LossFunctions.SupervisedLoss, lower = -Inf) =
+GCPDecompositions.gcp(X::Array, r, loss::SupportedLosses, lower = -Inf) =
     GCPDecompositions._gcp(
         X,
         r,
