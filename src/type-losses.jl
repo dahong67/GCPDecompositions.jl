@@ -50,7 +50,7 @@ struct PoissonLoss{T<:Real} <: AbstractLoss
     eps::T
     PoissonLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
-        throw(DomainError(eps, "Poisson loss requires nonnegative `eps`."))
+        throw(DomainError(eps, "Poisson loss requires nonnegative `eps`"))
 end
 PoissonLoss(eps::T = 1e-10) where {T<:Real} = PoissonLoss{T}(eps)
 value(loss::PoissonLoss, x, m) = m - x * log(m + loss.eps)
