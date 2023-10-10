@@ -10,7 +10,7 @@ DocMeta.setdocmeta!(
 
 makedocs(;
     modules = [GCPDecompositions],
-    authors = "David Hong <dahong67@wharton.upenn.edu> and contributors",
+    authors = "David Hong <hong@udel.edu> and contributors",
     repo = "https://github.com/dahong67/GCPDecompositions.jl/blob/{commit}{path}#{line}",
     sitename = "GCPDecompositions.jl",
     format = Documenter.HTML(;
