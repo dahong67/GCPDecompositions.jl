@@ -88,7 +88,7 @@ version = "0.10.36"
 deps = ["ForwardDiff", "LBFGSB", "LinearAlgebra", "LossFunctions"]
 path = ".."
 uuid = "f59fb95b-1bc8-443b-b347-5e445a549f37"
-version = "0.1.0"
+version = "0.1.1"
 
 [[deps.IOCapture]]
 deps = ["Logging", "Random"]
