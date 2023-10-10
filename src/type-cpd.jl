@@ -18,10 +18,12 @@ struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
         require_one_based_indexing(λ, U...)
         for k in Base.OneTo(N)
             size(U[k], 2) == length(λ) || throw(
-                DimensionMismatch("U[$k] has dimensions $(size(U[k])) but λ has length $(length(λ))")
+                DimensionMismatch(
+                    "U[$k] has dimensions $(size(U[k])) but λ has length $(length(λ))",
+                ),
             )
         end
-        new{T,N,Tλ,TU}(λ, U)
+        return new{T,N,Tλ,TU}(λ, U)
     end
 end
 CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} =
@@ -58,16 +60,27 @@ function show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
 end
 
 function summary(io::IO, M::CPD)
-    dimstring = ndims(M) == 0 ? "0-dimensional" :
-                ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
+    dimstring =
+        ndims(M) == 0 ? "0-dimensional" :
+        ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
     ncomps = ncomponents(M)
-    print(io, dimstring, " ", typeof(M),
-        " with ", ncomps, ncomps == 1 ? " component" : " components")
+    return print(
+        io,
+        dimstring,
+        " ",
+        typeof(M),
+        " with ",
+        ncomps,
+        ncomps == 1 ? " component" : " components",
+    )
 end
 
 function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
-    return sum(M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M)))
-               for j in Base.OneTo(ncomponents(M)); init=zero(eltype(T)))
+    return sum(
+        M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M))) for
+        j in Base.OneTo(ncomponents(M));
+        init = zero(eltype(T)),
+    )
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)

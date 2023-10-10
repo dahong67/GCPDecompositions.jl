@@ -8,14 +8,20 @@ Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to a general loss and return a `CPD` object.
 
 # Inputs
-+ `X` : multi-dimensional tensor/array to approximate/decompose
-+ `r` : number of components for the CPD
-+ `func` : loss function, `default = (x, m) -> (m - x)^2`
-+ `grad` : loss function derivative, default uses `ForwardDiff.jl`
-+ `lower` : lower bound for factor matrix entries, `default = -Inf`
+
+  - `X` : multi-dimensional tensor/array to approximate/decompose
+  - `r` : number of components for the CPD
+  - `func` : loss function, `default = (x, m) -> (m - x)^2`
+  - `grad` : loss function derivative, default uses `ForwardDiff.jl`
+  - `lower` : lower bound for factor matrix entries, `default = -Inf`
 """
-gcp(X::Array, r, func=(x, m) -> (m - x)^2, grad=(x, m) -> ForwardDiff.derivative(m -> func(x, m), m), lower=-Inf) =
-    _gcp(X, r, func, grad, lower, (;))
+gcp(
+    X::Array,
+    r,
+    func = (x, m) -> (m - x)^2,
+    grad = (x, m) -> ForwardDiff.derivative(m -> func(x, m), m),
+    lower = -Inf,
+) = _gcp(X, r, func, grad, lower, (;))
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     T = nonmissingtype(TX)
@@ -44,7 +50,7 @@ function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     end
 
     # Run LBFGSB
-    (lower === -Inf) || (lbfgsopts = (; lb=fill(lower, length(u0)), lbfgsopts...))
+    (lower === -Inf) || (lbfgsopts = (; lb = fill(lower, length(u0)), lbfgsopts...))
     u = lbfgsb(f, g!, u0; lbfgsopts...)[2]
     U = map(range -> reshape(u[range], :, r), vec_ranges)
     return CPD(ones(T, r), U)
@@ -55,9 +61,16 @@ function gcp_func(M::CPD{T,N}, X::Array{TX,N}, func) where {T,TX,N}
     return sum(func(X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
 end
 
-function gcp_grad_U!(GU::NTuple{N,TGU}, M::CPD{T,N}, X::Array{TX,N}, grad) where {T,TX,N,TGU<:AbstractMatrix{T}}
-    Y = [ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : grad(X[I], M[I])
-         for I in CartesianIndices(X)]
+function gcp_grad_U!(
+    GU::NTuple{N,TGU},
+    M::CPD{T,N},
+    X::Array{TX,N},
+    grad,
+) where {T,TX,N,TGU<:AbstractMatrix{T}}
+    Y = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : grad(X[I], M[I]) for
+        I in CartesianIndices(X)
+    ]
 
     # MTTKRPs (inefficient but simple)
     return ntuple(Val(N)) do k
@@ -67,6 +80,6 @@ function gcp_grad_U!(GU::NTuple{N,TGU}, M::CPD{T,N}, X::Array{TX,N}, grad) where
             Zk[:, j] = reduce(kron, [view(M.U[i], :, j) for i in reverse(setdiff(1:N, k))])
         end
         mul!(GU[k], Yk, Zk)
-        rmul!(GU[k], Diagonal(M.λ))
+        return rmul!(GU[k], Diagonal(M.λ))
     end
 end
