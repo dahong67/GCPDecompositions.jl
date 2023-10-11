@@ -2,29 +2,59 @@
 
 # Main fitting function
 """
-    gcp(X::Array, r[, func, grad, lower]) -> CPD
+    gcp(X::Array, r, loss = LeastSquaresLoss()) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
-with respect to a general loss and return a `CPD` object.
+with respect to the loss function `loss` and return a `CPD` object.
+Conventional CP corresponds to the default `LeastSquaresLoss()`.
 
-# Inputs
+If the LossFunctions.jl package is also loaded,
+`loss` can also be a loss function from that package.
+Check `GCPDecompositions.LossFunctionsExt.SupportedLosses`
+to see what losses are supported.
 
-  - `X` : multi-dimensional tensor/array to approximate/decompose
-  - `r` : number of components for the CPD
-  - `func` : loss function, `default = (x, m) -> (m - x)^2`
-  - `grad` : loss function derivative, default uses `ForwardDiff.jl`
-  - `lower` : lower bound for factor matrix entries, `default = -Inf`
+See also: `CPD`, `AbstractLoss`.
 """
-gcp(
-    X::Array,
+gcp(X::Array, r, loss::AbstractLoss = LeastSquaresLoss()) = _gcp(
+    X,
     r,
-    func = (x, m) -> (m - x)^2,
-    grad = (x, m) -> ForwardDiff.derivative(m -> func(x, m), m),
-    lower = -Inf,
-) = _gcp(X, r, func, grad, lower, (;))
+    (x, m) -> value(loss, x, m),
+    (x, m) -> deriv(loss, x, m),
+    _factor_matrix_lower_bound(loss),
+    (;),
+)
+
+# Choose lower bound on factor matrix entries based on the domain of the loss
+function _factor_matrix_lower_bound(loss)
+    # Get domain for the loss function
+    dom = domain(loss)
+    min, max = extrema(dom)
+
+    # Throw errors for domains that are not supported
+    dom isa Interval ||
+        throw(DomainError(dom, "only domains of type `Interval` are (currently) supported"))
+    max === +Inf || throw(
+        DomainError(
+            dom,
+            "only domains of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+        ),
+    )
+    min === -Inf ||
+        iszero(min) ||
+        throw(
+            DomainError(
+                dom,
+                "only domains of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+            ),
+        )
+
+    # Return value
+    return min
+end
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
-    T = nonmissingtype(TX)
+    # T = promote_type(nonmissingtype(TX), Float64)
+    T = Float64    # LBFGSB.jl seems to only support Float64
 
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))

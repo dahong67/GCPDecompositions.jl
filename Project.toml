@@ -5,6 +5,7 @@ version = "0.1.2"
 
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 LBFGSB = "5be7bae1-8223-5378-bac3-9e7378a2f6e6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
@@ -17,6 +18,7 @@ LossFunctionsExt = "LossFunctions"
 
 [compat]
 ForwardDiff = "0.10.36"
+IntervalSets = "0.7.7"
 LBFGSB = "0.4.1"
 LossFunctions = "0.11.1"
 julia = "1.6"

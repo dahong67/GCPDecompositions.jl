@@ -1,4 +1,7 @@
 [deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -6,6 +9,8 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [compat]
+Distributions = "0.25.102"
+IntervalSets = "0.7.7"
 LossFunctions = "0.11.1"
 OffsetArrays = "1.12.7"
 TestItemRunner = "0.2.1"
