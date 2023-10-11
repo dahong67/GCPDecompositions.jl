@@ -64,6 +64,33 @@ end
     end
 end
 
+@testitem "PoissonLogLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(fill(10.0, r), rand.(sz, r))
+        X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> exp(m) - x * m,
+            (x, m) -> exp(m) - x,
+            -Inf,
+            (;),
+        )
+
+        # Test
+        Random.seed!(0)
+        Mh = gcp(X, r, PoissonLogLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
 @testitem "UserDefinedLoss" begin
     using Random, Distributions, IntervalSets
 

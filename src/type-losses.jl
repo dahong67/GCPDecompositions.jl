@@ -74,6 +74,22 @@ value(loss::PoissonLoss, x, m) = m - x * log(m + loss.eps)
 deriv(loss::PoissonLoss, x, m) = one(m) - x / (m + loss.eps)
 domain(::PoissonLoss) = Interval(0.0, +Inf)
 
+"""
+    PoissonLogLoss()
+
+Loss corresponding to a statistical assumption of Poisson data `X`
+with log-rate given by the low-rank model tensor `M`.
+
+  - **Distribution:** ``x_i \\sim \\operatorname{Poisson}(\\lambda_i)``
+  - **Link function:** ``m_i = \\log \\lambda_i``
+  - **Loss function:** ``f(x,m) = e^m - x m``
+  - **Domain:** ``m \\in \\mathbb{R}``
+"""
+struct PoissonLogLoss <: AbstractLoss end
+value(::PoissonLogLoss, x, m) = exp(m) - x * m
+deriv(::PoissonLogLoss, x, m) = exp(m) - x
+domain(::PoissonLogLoss) = Interval(-Inf, +Inf)
+
 # User-defined loss
 
 """
