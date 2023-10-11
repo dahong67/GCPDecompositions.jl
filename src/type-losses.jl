@@ -36,6 +36,23 @@ deriv(::LeastSquaresLoss, x, m) = 2 * (m - x)
 domain(::LeastSquaresLoss) = Interval(-Inf, +Inf)
 
 """
+    NonnegativeLeastSquaresLoss()
+
+Loss corresponding to nonnegative CP decomposition.
+Corresponds to a statistical assumption of Gaussian data `X`
+with nonnegative mean given by the low-rank model tensor `M`.
+
+  - **Distribution:** ``x_i \\sim \\mathcal{N}(\\mu_i, \\sigma)``
+  - **Link function:** ``m_i = \\mu_i``
+  - **Loss function:** ``f(x,m) = (x-m)^2``
+  - **Domain:** ``m \\in [0, \\infty)``
+"""
+struct NonnegativeLeastSquaresLoss <: AbstractLoss end
+value(::NonnegativeLeastSquaresLoss, x, m) = (x - m)^2
+deriv(::NonnegativeLeastSquaresLoss, x, m) = 2 * (m - x)
+domain(::NonnegativeLeastSquaresLoss) = Interval(0.0, Inf)
+
+"""
     PoissonLoss(eps::Real = 1e-10)
 
 Loss corresponding to a statistical assumption of Poisson data `X`
