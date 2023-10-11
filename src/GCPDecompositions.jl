@@ -21,6 +21,7 @@ export AbstractLoss,
     NonnegativeLeastSquaresLoss,
     PoissonLoss,
     PoissonLogLoss,
+    GammaLoss,
     UserDefinedLoss
 
 include("type-cpd.jl")

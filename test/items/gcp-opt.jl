@@ -91,6 +91,33 @@ end
     end
 end
 
+@testitem "GammaLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), randn.(sz, r))
+        X = [rand(Gamma(exp(M[I]))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> log(m + 1e-10) + x / (m + 1e-10),
+            (x, m) -> -1 * (x / (m^2 + 1e-10)) + (1 / (m + 1e-10)),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, GammaLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
 @testitem "UserDefinedLoss" begin
     using Random, Distributions, IntervalSets
 

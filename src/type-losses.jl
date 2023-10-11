@@ -90,6 +90,28 @@ value(::PoissonLogLoss, x, m) = exp(m) - x * m
 deriv(::PoissonLogLoss, x, m) = exp(m) - x
 domain(::PoissonLogLoss) = Interval(-Inf, +Inf)
 
+"""
+    GammaLoss(eps::Real = 1e-10)
+
+Loss corresponding to a statistical assumption of Gamma-distributed data `X`
+with scale given by the low-rank model tensor `M`.
+
+- **Distribution:** ``x_i \\sim \\operatorname{Gamma}(k_i, \\theta_i)``
+- **Link function:** ``m_i = k_i \\sigma_i``
+- **Loss function:** ``f(x,m) = \\frac{x}{m + \\epsilon} + \\log(m + \\epsilon)``
+- **Domain:** ``m \\in [0, \\infty)``
+"""
+struct GammaLoss{T<:Real} <: AbstractLoss 
+  eps::T
+  GammaLoss{T}(eps::T) where {T<:Real} =
+    eps >= zero(eps) ? new(eps) :
+    throw(DomainError(eps, "Gamma loss requires nonnegative `eps`"))
+end
+GammaLoss(eps::T = 1e-10) where {T<:Real} = GammaLoss{T}(eps)
+value(loss::GammaLoss, x, m) = log(m + loss.eps) + x / (m + loss.eps)
+deriv(loss::GammaLoss, x, m) = -1 * (x / (m^2 + loss.eps)) + (1 / (m + loss.eps))
+domain(::GammaLoss) = Interval(0.0, +Inf)
+
 # User-defined loss
 
 """
