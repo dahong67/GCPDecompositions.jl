@@ -70,8 +70,8 @@ end
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
         Random.seed!(0)
-        M = CPD(fill(10.0, r), rand.(sz, r))
-        X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+        M = CPD(ones(r), randn.(sz, r))
+        X = [rand(Poisson(exp(M[I]))) for I in CartesianIndices(size(M))]
 
         # Compute reference
         Random.seed!(0)
