@@ -16,7 +16,7 @@ using LBFGSB: lbfgsb
 export CPD
 export ncomponents
 export gcp
-export AbstractLoss, LeastSquaresLoss, PoissonLoss
+export AbstractLoss, LeastSquaresLoss, PoissonLoss, UserDefinedLoss
 
 include("type-cpd.jl")
 include("type-losses.jl")

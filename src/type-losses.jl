@@ -16,7 +16,7 @@ Concrete types `ConcreteLoss <: AbstractLoss` should implement:
 """
 abstract type AbstractLoss end
 
-# Concrete types
+# Statistically motivated losses
 
 """
     LeastSquaresLoss()
@@ -56,3 +56,43 @@ PoissonLoss(eps::T = 1e-10) where {T<:Real} = PoissonLoss{T}(eps)
 value(loss::PoissonLoss, x, m) = m - x * log(m + loss.eps)
 deriv(loss::PoissonLoss, x, m) = one(m) - x / (m + loss.eps)
 domain(::PoissonLoss) = Interval(0.0, +Inf)
+
+# User-defined loss
+
+"""
+    UserDefinedLoss
+
+Type for user-defined loss functions ``f(x,m)``,
+where ``x`` is the data entry and ``m`` is the model entry.
+
+Contains three fields:
+
+ 1. `func::Function`   : function that evaluates the loss function ``f(x,m)``
+ 2. `deriv::Function`  : function that evaluates the partial derivative ``\\partial_m f(x,m)`` with respect to ``m``
+ 3. `domain::Interval` : `Interval` from IntervalSets.jl defining the domain for ``m``
+
+The constructor is `UserDefinedLoss(func; deriv, domain)`.
+If not provided,
+
+  - `deriv` is automatically computed from `func` using forward-mode automatic differentiation
+  - `domain` gets a default value of `Interval(-Inf, +Inf)`
+"""
+struct UserDefinedLoss <: AbstractLoss
+    func::Function
+    deriv::Function
+    domain::Interval
+    function UserDefinedLoss(
+        func::Function;
+        deriv::Function = (x, m) -> ForwardDiff.derivative(m -> func(x, m), m),
+        domain::Interval = Interval(-Inf, Inf),
+    )
+        hasmethod(func, Tuple{Real,Real}) ||
+            error("`func` must accept two inputs `(x::Real, m::Real)`")
+        hasmethod(deriv, Tuple{Real,Real}) ||
+            error("`deriv` must accept two inputs `(x::Real, m::Real)`")
+        return new(func, deriv, domain)
+    end
+end
+value(loss::UserDefinedLoss, x, m) = loss.func(x, m)
+deriv(loss::UserDefinedLoss, x, m) = loss.deriv(x, m)
+domain(loss::UserDefinedLoss) = loss.domain
