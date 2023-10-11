@@ -53,7 +53,8 @@ function _factor_matrix_lower_bound(loss)
 end
 
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
-    T = nonmissingtype(TX)
+    # T = promote_type(nonmissingtype(TX), Float64)
+    T = Float64    # LBFGSB.jl seems to only support Float64
 
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
