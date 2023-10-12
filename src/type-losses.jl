@@ -96,8 +96,8 @@ domain(::PoissonLogLoss) = Interval(-Inf, +Inf)
 Loss corresponding to a statistical assumption of Gamma-distributed data `X`
 with scale given by the low-rank model tensor `M`.
 
-- **Distribution:** ``x_i \\sim \\operatorname{Gamma}(k_i, \\theta_i)``
-- **Link function:** ``m_i = k_i \\sigma_i``
+- **Distribution:** ``x_i \\sim \\operatorname{Gamma}(k, \\sigma_i)``
+- **Link function:** ``m_i = k \\sigma_i``
 - **Loss function:** ``f(x,m) = \\frac{x}{m + \\epsilon} + \\log(m + \\epsilon)``
 - **Domain:** ``m \\in [0, \\infty)``
 """
