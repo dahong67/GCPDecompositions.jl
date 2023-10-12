@@ -108,7 +108,7 @@ struct GammaLoss{T<:Real} <: AbstractLoss
     throw(DomainError(eps, "Gamma loss requires nonnegative `eps`"))
 end
 GammaLoss(eps::T = 1e-10) where {T<:Real} = GammaLoss{T}(eps)
-value(loss::GammaLoss, x, m) = log(m + loss.eps) + x / (m + loss.eps)
+value(loss::GammaLoss, x, m) = x / (m + loss.eps) + log(m + loss.eps)
 deriv(loss::GammaLoss, x, m) = -1 * (x / (m^2 + loss.eps)) + (1 / (m + loss.eps))
 domain(::GammaLoss) = Interval(0.0, +Inf)
 
