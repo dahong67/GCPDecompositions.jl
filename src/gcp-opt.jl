@@ -15,7 +15,7 @@ to see what losses are supported.
 
 See also: `CPD`, `AbstractLoss`.
 """
-gcp(X::Array, r, loss::AbstractLoss = LeastSquaresLoss()) = _gcp(
+gcp(X::Array, r, loss = LeastSquaresLoss()) = _gcp(
     X,
     r,
     (x, m) -> value(loss, x, m),
