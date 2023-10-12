@@ -1,20 +1,13 @@
 module LossFunctionsExt
 
 using GCPDecompositions, LossFunctions
-import GCPDecompositions: _factor_matrix_lower_bound
+using IntervalSets
 
 const SupportedLosses = Union{LossFunctions.DistanceLoss,LossFunctions.MarginLoss}
 
-GCPDecompositions.gcp(X::Array, r, loss::SupportedLosses) = GCPDecompositions._gcp(
-    X,
-    r,
-    (x, m) -> loss(m, x),
-    (x, m) -> LossFunctions.deriv(loss, m, x),
-    _factor_matrix_lower_bound(loss),
-    (;),
-)
-
-_factor_matrix_lower_bound(::LossFunctions.DistanceLoss) = -Inf
-_factor_matrix_lower_bound(::LossFunctions.MarginLoss)   = -Inf
+GCPDecompositions.value(loss::SupportedLosses, x, m)   = loss(m, x)
+GCPDecompositions.deriv(loss::SupportedLosses, x, m)   = LossFunctions.deriv(loss, m, x)
+GCPDecompositions.domain(::LossFunctions.DistanceLoss) = Interval(-Inf, Inf)
+GCPDecompositions.domain(::LossFunctions.MarginLoss)   = Interval(-Inf, Inf)
 
 end
