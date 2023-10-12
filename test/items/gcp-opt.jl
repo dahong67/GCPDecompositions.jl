@@ -97,8 +97,8 @@ end
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
         Random.seed!(0)
-        M = CPD(ones(r), randn.(sz, r))
-        X = [rand(Gamma(exp(M[I]))) for I in CartesianIndices(size(M))]
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Gamma(1.5, M[I])) for I in CartesianIndices(size(M))]
 
         # Compute reference
         Random.seed!(0)
@@ -106,7 +106,7 @@ end
             X,
             r,
             (x, m) -> log(m + 1e-10) + x / (m + 1e-10),
-            (x, m) -> -1 * (x / (m^2 + 1e-10)) + (1 / (m + 1e-10)),
+            (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
             0.0,
             (;),
         )
