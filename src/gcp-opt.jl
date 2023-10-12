@@ -45,6 +45,8 @@ function _factor_matrix_lower_bound(loss)
     return min
 end
 
+# TODO: remove the older `func, grad, lower` signature
+# will require reworking how we do testing
 _gcp(X::Array{TX,N}, r, loss, lbfgsopts) where {TX,N} = _gcp(
     X,
     r,
