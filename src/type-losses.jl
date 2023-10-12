@@ -109,7 +109,7 @@ struct GammaLoss{T<:Real} <: AbstractLoss
 end
 GammaLoss(eps::T = 1e-10) where {T<:Real} = GammaLoss{T}(eps)
 value(loss::GammaLoss, x, m) = x / (m + loss.eps) + log(m + loss.eps)
-deriv(loss::GammaLoss, x, m) = -1 * (x / (m^2 + loss.eps)) + (1 / (m + loss.eps))
+deriv(loss::GammaLoss, x, m) = -x / (m + loss.eps)^2 + inv(m + loss.eps)
 domain(::GammaLoss) = Interval(0.0, +Inf)
 
 # User-defined loss
