@@ -15,14 +15,7 @@ to see what losses are supported.
 
 See also: `CPD`, `AbstractLoss`.
 """
-gcp(X::Array, r, loss = LeastSquaresLoss()) = _gcp(
-    X,
-    r,
-    (x, m) -> value(loss, x, m),
-    (x, m) -> deriv(loss, x, m),
-    _factor_matrix_lower_bound(loss),
-    (;),
-)
+gcp(X::Array, r, loss = LeastSquaresLoss()) = _gcp(X, r, loss, (;))
 
 # Choose lower bound on factor matrix entries based on the domain of the loss
 function _factor_matrix_lower_bound(loss)
@@ -52,6 +45,14 @@ function _factor_matrix_lower_bound(loss)
     return min
 end
 
+_gcp(X::Array{TX,N}, r, loss, lbfgsopts) where {TX,N} = _gcp(
+    X,
+    r,
+    (x, m) -> value(loss, x, m),
+    (x, m) -> deriv(loss, x, m),
+    _factor_matrix_lower_bound(loss),
+    lbfgsopts,
+)
 function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
