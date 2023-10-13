@@ -58,6 +58,22 @@ function _gcp(
     # Compute lower bound from constraints
     lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
 
+    # Error for unsupported loss/constraint combinations
+    dom = domain(loss)
+    if dom == Interval(-Inf, +Inf)
+        lower in (-Inf, 0.0) || error(
+            "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
+        )
+    elseif dom == Interval(0.0, +Inf)
+        lower == 0.0 || error(
+            "only lower bound constraints of `0` are (currently) supported for loss functions with a domain of `0 .. Inf`",
+        )
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+        )
+    end
+
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
