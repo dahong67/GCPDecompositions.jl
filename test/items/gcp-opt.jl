@@ -1,5 +1,37 @@
 ## GCP decomposition - full optimization
 
+@testitem "unsupported constraints" begin
+    using Random, IntervalSets
+
+    sz = (15, 20, 25)
+    r = 2
+    Random.seed!(0)
+    M = CPD(ones(r), rand.(sz, r))
+    X = [M[I] for I in CartesianIndices(size(M))]
+
+    # Exercise `default_constraints`
+    @test_throws ErrorException gcp(
+        X,
+        r,
+        UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+    )
+
+    # Exercise `_gcp`
+    @test_throws ErrorException gcp(
+        X,
+        r,
+        LeastSquaresLoss();
+        constraints = (GCPConstraints.LowerBound(1),),
+    )
+    @test_throws ErrorException gcp(X, r, PoissonLoss(); constraints = ())
+    @test_throws ErrorException gcp(
+        X,
+        r,
+        UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf));
+        constraints = (GCPConstraints.LowerBound(1),),
+    )
+end
+
 @testitem "LeastSquaresLoss" begin
     using Random
 
