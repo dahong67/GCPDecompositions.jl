@@ -3,7 +3,8 @@
 # Main fitting function
 """
     gcp(X::Array, r, loss = LeastSquaresLoss();
-        constraints = default_constraints(loss)) -> CPD
+        constraints = default_constraints(loss),
+        algorithm = default_algorithm(X, r, loss, constraints)) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
@@ -19,8 +20,13 @@ to see what losses are supported.
 
 See also: `CPD`, `AbstractLoss`.
 """
-gcp(X::Array, r, loss = LeastSquaresLoss(); constraints = default_constraints(loss)) =
-    _gcp(X, r, loss, constraints, (;))
+gcp(
+    X::Array,
+    r,
+    loss = LeastSquaresLoss();
+    constraints = default_constraints(loss),
+    algorithm = default_algorithm(X, r, loss, constraints),
+) = _gcp(X, r, loss, constraints, algorithm)
 
 # Choose constraints based on the domain of the loss function
 function default_constraints(loss)
@@ -36,6 +42,9 @@ function default_constraints(loss)
     end
 end
 
+# Choose default algorithm
+default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
+
 # TODO: remove this `func, grad, lower` signature
 # will require reworking how we do testing
 _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
@@ -43,14 +52,14 @@ _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
     r,
     UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
     (GCPConstraints.LowerBound(lower),),
-    lbfgsopts,
+    GCPAlgorithms.LBFGSB(; lbfgsopts...),
 )
 function _gcp(
     X::Array{TX,N},
     r,
     loss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
-    lbfgsopts,
+    algorithm::GCPAlgorithms.LBFGSB,
 ) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
@@ -98,8 +107,8 @@ function _gcp(
     end
 
     # Run LBFGSB
-    (lower === -Inf) || (lbfgsopts = (; lb = fill(lower, length(u0)), lbfgsopts...))
-    u = lbfgsb(f, g!, u0; lbfgsopts...)[2]
+    lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
+    u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
     U = map(range -> reshape(u[range], :, r), vec_ranges)
     return CPD(ones(T, r), U)
 end
