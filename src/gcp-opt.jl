@@ -17,32 +17,18 @@ See also: `CPD`, `AbstractLoss`.
 """
 gcp(X::Array, r, loss = LeastSquaresLoss()) = _gcp(X, r, loss, (;))
 
-# Choose lower bound on factor matrix entries based on the domain of the loss
+# Choose lower bound on factor matrix entries based on the domain of the loss function
 function _factor_matrix_lower_bound(loss)
-    # Get domain for the loss function
     dom = domain(loss)
-    min, max = extrema(dom)
-
-    # Throw errors for domains that are not supported
-    dom isa Interval ||
-        throw(DomainError(dom, "only domains of type `Interval` are (currently) supported"))
-    max === +Inf || throw(
-        DomainError(
-            dom,
-            "only domains of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
-        ),
-    )
-    min === -Inf ||
-        iszero(min) ||
-        throw(
-            DomainError(
-                dom,
-                "only domains of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
-            ),
+    if dom == Interval(-Inf, +Inf)
+        return -Inf
+    elseif dom == Interval(0.0, +Inf)
+        return 0.0
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
         )
-
-    # Return value
-    return min
+    end
 end
 
 # TODO: remove this `func, grad, lower` signature
