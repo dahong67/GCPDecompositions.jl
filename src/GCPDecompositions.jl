@@ -22,9 +22,11 @@ export AbstractLoss,
     PoissonLoss,
     PoissonLogLoss,
     UserDefinedLoss
+export GCPConstraints
 
 include("type-cpd.jl")
 include("type-losses.jl")
+include("type-constraints.jl")
 include("gcp-opt.jl")
 
 if !isdefined(Base, :get_extension)

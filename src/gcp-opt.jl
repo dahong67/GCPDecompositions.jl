@@ -2,11 +2,15 @@
 
 # Main fitting function
 """
-    gcp(X::Array, r, loss = LeastSquaresLoss()) -> CPD
+    gcp(X::Array, r, loss = LeastSquaresLoss();
+        constraints = default_constraints(loss)) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
-Conventional CP corresponds to the default `LeastSquaresLoss()`.
+The weights `λ` are constrained to all be one and `constraints` is a
+`Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
+Conventional CP corresponds to the default `LeastSquaresLoss()` loss
+with no constraints (i.e., `constraints = ()`).
 
 If the LossFunctions.jl package is also loaded,
 `loss` can also be a loss function from that package.
@@ -15,15 +19,16 @@ to see what losses are supported.
 
 See also: `CPD`, `AbstractLoss`.
 """
-gcp(X::Array, r, loss = LeastSquaresLoss()) = _gcp(X, r, loss, (;))
+gcp(X::Array, r, loss = LeastSquaresLoss(); constraints = default_constraints(loss)) =
+    _gcp(X, r, loss, constraints, (;))
 
-# Choose lower bound on factor matrix entries based on the domain of the loss function
-function _factor_matrix_lower_bound(loss)
+# Choose constraints based on the domain of the loss function
+function default_constraints(loss)
     dom = domain(loss)
     if dom == Interval(-Inf, +Inf)
-        return -Inf
+        return ()
     elseif dom == Interval(0.0, +Inf)
-        return 0.0
+        return (GCPConstraints.LowerBound(0.0),)
     else
         error(
             "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
@@ -37,14 +42,37 @@ _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
     X,
     r,
     UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
+    (GCPConstraints.LowerBound(lower),),
     lbfgsopts,
 )
-function _gcp(X::Array{TX,N}, r, loss, lbfgsopts) where {TX,N}
+function _gcp(
+    X::Array{TX,N},
+    r,
+    loss,
+    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
+    lbfgsopts,
+) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
 
-    # Choose lower bound on factor matrix entries based on the domain of the loss
-    lower = _factor_matrix_lower_bound(loss)
+    # Compute lower bound from constraints
+    lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
+
+    # Error for unsupported loss/constraint combinations
+    dom = domain(loss)
+    if dom == Interval(-Inf, +Inf)
+        lower in (-Inf, 0.0) || error(
+            "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
+        )
+    elseif dom == Interval(0.0, +Inf)
+        lower == 0.0 || error(
+            "only lower bound constraints of `0` are (currently) supported for loss functions with a domain of `0 .. Inf`",
+        )
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+        )
+    end
 
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
