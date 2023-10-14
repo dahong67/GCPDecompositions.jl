@@ -40,4 +40,18 @@ Base.@kwdef struct LBFGSB <: AbstractAlgorithm
     iprint::Int    = -1
 end
 
+"""
+    ALS
+
+**A**lternating **L**east **S**quares.
+Workhorse algorithm for `LeastSquaresLoss` with no constraints.
+
+Algorithm parameters:
+
+- `maxiters::Int` : max number of iterations (default: `50`)
+"""
+Base.@kwdef struct ALS <: AbstractAlgorithm
+    maxiters::Int = 50
+end
+
 end

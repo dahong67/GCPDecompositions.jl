@@ -9,7 +9,7 @@ import Base: ndims, size, show, summary
 import Base: getindex
 import ForwardDiff
 using IntervalSets
-using LinearAlgebra: mul!, rmul!, Diagonal
+using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using LBFGSB: lbfgsb
 
 # Exports

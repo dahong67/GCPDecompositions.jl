@@ -43,6 +43,7 @@ function default_constraints(loss)
 end
 
 # Choose default algorithm
+default_algorithm(X, r, loss::LeastSquaresLoss, constraints::Tuple{}) = GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 # TODO: remove this `func, grad, lower` signature
@@ -139,4 +140,41 @@ function gcp_grad_U!(
         mul!(GU[k], Yk, Zk)
         return rmul!(GU[k], Diagonal(M.λ))
     end
+end
+
+function _gcp(
+    X::Array{TX,N},
+    r,
+    loss::LeastSquaresLoss,
+    constraints::Tuple{},
+    algorithm::GCPAlgorithms.ALS,
+) where {TX,N}
+    T = promote_type(nonmissingtype(TX), Float64)
+
+    # Random initialization
+    M0 = CPD(ones(T, r), rand.(T, size(X), r))
+    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
+    end
+    λ, U = M0.λ, collect(M0.U)
+
+    # Inefficient but simple implementation
+    for _ in 1:algorithm.maxiters
+        for n in 1:N
+            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+            Xn = reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), size(X, n), :)
+            Zn = similar(Xn, prod(size(X)[setdiff(1:N, n)]), r)
+            for j in 1:r
+                Zn[:, j] =
+                    reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
+            end
+            U[n] = (Xn * Zn) / V
+            λ = norm.(eachcol(U[n]))
+            U[n] = U[n] ./ permutedims(λ)
+        end
+    end
+
+    return CPD(λ, Tuple(U))
 end
