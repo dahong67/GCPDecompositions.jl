@@ -43,7 +43,8 @@ function default_constraints(loss)
 end
 
 # Choose default algorithm
-default_algorithm(X, r, loss::LeastSquaresLoss, constraints::Tuple{}) = GCPAlgorithms.ALS()
+default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
+    GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 # TODO: remove this `func, grad, lower` signature
@@ -148,8 +149,8 @@ function _gcp(
     loss::LeastSquaresLoss,
     constraints::Tuple{},
     algorithm::GCPAlgorithms.ALS,
-) where {TX,N}
-    T = promote_type(nonmissingtype(TX), Float64)
+) where {TX<:Real,N}
+    T = promote_type(TX, Float64)
 
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
