@@ -48,10 +48,10 @@ Workhorse algorithm for `LeastSquaresLoss` with no constraints.
 
 Algorithm parameters:
 
-- `maxiters::Int` : max number of iterations (default: `50`)
+- `maxiters::Int` : max number of iterations (default: `200`)
 """
 Base.@kwdef struct ALS <: AbstractAlgorithm
-    maxiters::Int = 50
+    maxiters::Int = 200
 end
 
 end
