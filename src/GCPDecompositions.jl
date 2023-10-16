@@ -23,6 +23,8 @@ export AbstractLoss,
     PoissonLogLoss,
     GammaLoss,
     RayleighLoss,
+    BernoulliOddsLoss,
+    BernoulliLogitLoss,
     UserDefinedLoss
 
 include("type-cpd.jl")

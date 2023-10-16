@@ -134,6 +134,52 @@ value(loss::RayleighLoss, x, m) = 2*log(m + loss.eps) + (pi / 4) * ((x/(m + loss
 deriv(loss::RayleighLoss, x, m) = 2/(m + loss.eps) - (pi / 2) * (x^2 / (m + loss.eps)^3)
 domain(::RayleighLoss) = Interval(0.0, +Inf)
 
+"""
+    BernoulliOddsLoss(eps::Real = 1e-10)
+
+Loss corresponding to the statistical assumption of Bernouli data `X`
+with success rate given by the low-rank model tensor `M`
+
+  - **Distribution:** ``x_i \\sim \\operatorname{Bernouli}(\\rho_i)``
+  - **Link function:** ``m_i = \\rho / (1 - \\rho)``
+  - **Loss function:** ``f(x, m) = \\log(m + 1) - x\\log(m + \\epsilon)``
+  - **Domain:** ``m \\in [0, \\infty)``
+"""
+struct BernoulliOddsLoss{T<:Real} <: AbstractLoss 
+  eps::T
+  BernoulliOddsLoss{T}(eps::T) where {T<:Real} =
+    eps >= zero(eps) ? new(eps) :
+    throw(DomainError(eps, "BernoulliOddsLoss loss requires nonnegative `eps`"))
+end
+BernoulliOddsLoss(eps::T = 1e-10) where {T<:Real} = BernoulliOddsLoss{T}(eps)
+value(loss::BernoulliOddsLoss, x, m) = log(m + 1) - x * log(m + loss.eps)
+deriv(loss::BernoulliOddsLoss, x, m) = 1 / (m + 1) - (x / (m + loss.eps))
+domain(::BernoulliOddsLoss) = Interval(0.0, +Inf)
+
+
+"""
+    BernoulliLogitLoss(eps::Real = 1e-10)
+
+Loss corresponding to the statistical assumption of Bernouli data `X`
+with log-success rate given by the low-rank model tensor `M`
+
+  - **Distribution:** ``x_i \\sim \\operatorname{Bernouli}(\\rho_i)``
+  - **Link function:** ``m_i = \\log(\\rho_i / (1 - \\rho_i))``
+  - **Loss function:** ``f(x, m) = \\log(1 + e^m) - xm``
+  - **Domain:** ``m \\in \\mathbb{R}``
+"""
+struct BernoulliLogitLoss{T<:Real} <: AbstractLoss 
+  eps::T
+  BernoulliLogitLoss{T}(eps::T) where {T<:Real} =
+    eps >= zero(eps) ? new(eps) :
+    throw(DomainError(eps, "BernoulliLogitsLoss loss requires nonnegative `eps`"))
+end
+BernoulliLogitLoss(eps::T = 1e-10) where {T<:Real} = BernoulliLogitLoss{T}(eps)
+value(::BernoulliLogitLoss, x, m) = log(1 + exp(m)) - x * m
+deriv(::BernoulliLogitLoss, x, m) = exp(m) / (1 + exp(m)) - x
+domain(::BernoulliLogitLoss) = Interval(-Inf, +Inf)
+
+
 # User-defined loss
 
 """

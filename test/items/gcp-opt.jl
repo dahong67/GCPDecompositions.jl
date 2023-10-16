@@ -106,8 +106,8 @@ end
         Mr = GCPDecompositions._gcp(
             X,
             r,
-            (x, m) -> 2*log(m + 1e-10) + (pi / 4) * ((x/(m + 1e-10))^2),
-            (x, m) -> 2/(m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
+            (x, m) -> log(m + 1e-10) + x / (m + 1e-10),
+            (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
             0.0,
             (;),
         )
@@ -142,6 +142,60 @@ end
         # Test 
         Random.seed!(0)
         Mh = gcp(X, r, RayleighLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+@testitem "BernoulliOddsLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Bernoulli(M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> log(m + 1) - x * log(m + 1e-10),
+            (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, BernoulliOddsLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+@testitem "BernoulliLogitsLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Bernoulli(exp(M[I])/(exp(M[I]) + 1))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> log(1 + exp(m)) - x * m,
+            (x, m) -> exp(m) / (1 + exp(m)) - x,
+            -Inf,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, BernoulliLogitLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
