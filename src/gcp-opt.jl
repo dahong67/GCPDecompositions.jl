@@ -2,11 +2,15 @@
 
 # Main fitting function
 """
-    gcp(X::Array, r, loss = LeastSquaresLoss()) -> CPD
+    gcp(X::Array, r, loss = LeastSquaresLoss();
+        constraints = default_constraints(loss)) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
-Conventional CP corresponds to the default `LeastSquaresLoss()`.
+The weights `λ` are constrained to all be one and `constraints` is a
+`Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
+Conventional CP corresponds to the default `LeastSquaresLoss()` loss
+with no constraints (i.e., `constraints = ()`).
 
 If the LossFunctions.jl package is also loaded,
 `loss` can also be a loss function from that package.
@@ -15,46 +19,60 @@ to see what losses are supported.
 
 See also: `CPD`, `AbstractLoss`.
 """
-gcp(X::Array, r, loss::AbstractLoss = LeastSquaresLoss()) = _gcp(
-    X,
-    r,
-    (x, m) -> value(loss, x, m),
-    (x, m) -> deriv(loss, x, m),
-    _factor_matrix_lower_bound(loss),
-    (;),
-)
+gcp(X::Array, r, loss = LeastSquaresLoss(); constraints = default_constraints(loss)) =
+    _gcp(X, r, loss, constraints, (;))
 
-# Choose lower bound on factor matrix entries based on the domain of the loss
-function _factor_matrix_lower_bound(loss)
-    # Get domain for the loss function
+# Choose constraints based on the domain of the loss function
+function default_constraints(loss)
     dom = domain(loss)
-    min, max = extrema(dom)
-
-    # Throw errors for domains that are not supported
-    dom isa Interval ||
-        throw(DomainError(dom, "only domains of type `Interval` are (currently) supported"))
-    max === +Inf || throw(
-        DomainError(
-            dom,
-            "only domains of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
-        ),
-    )
-    min === -Inf ||
-        iszero(min) ||
-        throw(
-            DomainError(
-                dom,
-                "only domains of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
-            ),
+    if dom == Interval(-Inf, +Inf)
+        return ()
+    elseif dom == Interval(0.0, +Inf)
+        return (GCPConstraints.LowerBound(0.0),)
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
         )
-
-    # Return value
-    return min
+    end
 end
 
-function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
+# TODO: remove this `func, grad, lower` signature
+# will require reworking how we do testing
+_gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
+    X,
+    r,
+    UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
+    (GCPConstraints.LowerBound(lower),),
+    lbfgsopts,
+)
+function _gcp(
+    X::Array{TX,N},
+    r,
+    loss,
+    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
+    lbfgsopts,
+) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
+
+    # Compute lower bound from constraints
+    lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
+
+    # Error for unsupported loss/constraint combinations
+    dom = domain(loss)
+    if dom == Interval(-Inf, +Inf)
+        lower in (-Inf, 0.0) || error(
+            "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
+        )
+    elseif dom == Interval(0.0, +Inf)
+        lower == 0.0 || error(
+            "only lower bound constraints of `0` are (currently) supported for loss functions with a domain of `0 .. Inf`",
+        )
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+        )
+    end
 
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
@@ -70,12 +88,12 @@ function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
     vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(N))
     function f(u)
         U = map(range -> reshape(view(u, range), :, r), vec_ranges)
-        return gcp_func(CPD(ones(T, r), U), X, func)
+        return gcp_func(CPD(ones(T, r), U), X, loss)
     end
     function g!(gu, u)
         U = map(range -> reshape(view(u, range), :, r), vec_ranges)
         GU = map(range -> reshape(view(gu, range), :, r), vec_ranges)
-        gcp_grad_U!(GU, CPD(ones(T, r), U), X, grad)
+        gcp_grad_U!(GU, CPD(ones(T, r), U), X, loss)
         return gu
     end
 
@@ -87,18 +105,18 @@ function _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N}
 end
 
 # Objective function and gradient (w.r.t. `M.U`)
-function gcp_func(M::CPD{T,N}, X::Array{TX,N}, func) where {T,TX,N}
-    return sum(func(X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
+function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
+    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
 end
 
 function gcp_grad_U!(
     GU::NTuple{N,TGU},
     M::CPD{T,N},
     X::Array{TX,N},
-    grad,
+    loss,
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
     Y = [
-        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : grad(X[I], M[I]) for
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
         I in CartesianIndices(X)
     ]
 
