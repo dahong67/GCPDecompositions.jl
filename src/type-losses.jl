@@ -112,6 +112,28 @@ value(loss::GammaLoss, x, m) = x / (m + loss.eps) + log(m + loss.eps)
 deriv(loss::GammaLoss, x, m) = -x / (m + loss.eps)^2 + inv(m + loss.eps)
 domain(::GammaLoss) = Interval(0.0, +Inf)
 
+"""
+    RayleighLoss(eps::Real = 1e-10)
+
+Loss corresponding to the statistical assumption of Rayleigh data `X`
+with sacle given by the low-rank model tensor `M`
+
+  - **Distribution:** ``x_i \\sim \\operatorname{Rayleigh}(\\theta_i)``
+  - **Link function:** ``m_i = \\sqrt{\\frac{\\pi}{2}\\theta_i}``
+  - **Loss function:** ``f(x, m) = 2\\log(m + \\epsilon) + \\frac{\\pi}{4}(\\frac{x}{m + \\epsilon})^2``
+  - **Domain:** ``m \\in [0, \\infty)``
+"""
+struct RayleighLoss{T<:Real} <: AbstractLoss 
+  eps::T
+  RayleighLoss{T}(eps::T) where {T<:Real} =
+    eps >= zero(eps) ? new(eps) :
+    throw(DomainError(eps, "Rayleigh loss requires nonnegative `eps`"))
+end
+RayleighLoss(eps::T = 1e-10) where {T<:Real} = RayleighLoss{T}(eps)
+value(loss::RayleighLoss, x, m) = 2*log(m + loss.eps) + (pi / 4) * ((x/(m + loss.eps))^2)
+deriv(loss::RayleighLoss, x, m) = 2/(m + loss.eps) - (pi / 2) * (x^2 / (m + loss.eps)^3)
+domain(::RayleighLoss) = Interval(0.0, +Inf)
+
 # User-defined loss
 
 """
