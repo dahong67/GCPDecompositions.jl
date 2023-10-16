@@ -9,7 +9,7 @@ import Base: ndims, size, show, summary
 import Base: getindex
 import ForwardDiff
 using IntervalSets
-using LinearAlgebra: mul!, rmul!, Diagonal
+using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using LBFGSB: lbfgsb
 
 # Exports
@@ -22,11 +22,12 @@ export AbstractLoss,
     PoissonLoss,
     PoissonLogLoss,
     UserDefinedLoss
-export GCPConstraints
+export GCPConstraints, GCPAlgorithms
 
 include("type-cpd.jl")
 include("type-losses.jl")
 include("type-constraints.jl")
+include("type-algorithms.jl")
 include("gcp-opt.jl")
 
 if !isdefined(Base, :get_extension)

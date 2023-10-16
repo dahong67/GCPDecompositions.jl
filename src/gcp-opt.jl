@@ -3,7 +3,8 @@
 # Main fitting function
 """
     gcp(X::Array, r, loss = LeastSquaresLoss();
-        constraints = default_constraints(loss)) -> CPD
+        constraints = default_constraints(loss),
+        algorithm = default_algorithm(X, r, loss, constraints)) -> CPD
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
@@ -19,8 +20,13 @@ to see what losses are supported.
 
 See also: `CPD`, `AbstractLoss`.
 """
-gcp(X::Array, r, loss = LeastSquaresLoss(); constraints = default_constraints(loss)) =
-    _gcp(X, r, loss, constraints, (;))
+gcp(
+    X::Array,
+    r,
+    loss = LeastSquaresLoss();
+    constraints = default_constraints(loss),
+    algorithm = default_algorithm(X, r, loss, constraints),
+) = _gcp(X, r, loss, constraints, algorithm)
 
 # Choose constraints based on the domain of the loss function
 function default_constraints(loss)
@@ -36,6 +42,11 @@ function default_constraints(loss)
     end
 end
 
+# Choose default algorithm
+default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
+    GCPAlgorithms.ALS()
+default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
+
 # TODO: remove this `func, grad, lower` signature
 # will require reworking how we do testing
 _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
@@ -43,14 +54,14 @@ _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
     r,
     UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
     (GCPConstraints.LowerBound(lower),),
-    lbfgsopts,
+    GCPAlgorithms.LBFGSB(; lbfgsopts...),
 )
 function _gcp(
     X::Array{TX,N},
     r,
     loss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
-    lbfgsopts,
+    algorithm::GCPAlgorithms.LBFGSB,
 ) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
@@ -98,8 +109,8 @@ function _gcp(
     end
 
     # Run LBFGSB
-    (lower === -Inf) || (lbfgsopts = (; lb = fill(lower, length(u0)), lbfgsopts...))
-    u = lbfgsb(f, g!, u0; lbfgsopts...)[2]
+    lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
+    u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
     U = map(range -> reshape(u[range], :, r), vec_ranges)
     return CPD(ones(T, r), U)
 end
@@ -130,4 +141,41 @@ function gcp_grad_U!(
         mul!(GU[k], Yk, Zk)
         return rmul!(GU[k], Diagonal(M.λ))
     end
+end
+
+function _gcp(
+    X::Array{TX,N},
+    r,
+    loss::LeastSquaresLoss,
+    constraints::Tuple{},
+    algorithm::GCPAlgorithms.ALS,
+) where {TX<:Real,N}
+    T = promote_type(TX, Float64)
+
+    # Random initialization
+    M0 = CPD(ones(T, r), rand.(T, size(X), r))
+    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
+    end
+    λ, U = M0.λ, collect(M0.U)
+
+    # Inefficient but simple implementation
+    for _ in 1:algorithm.maxiters
+        for n in 1:N
+            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+            Xn = reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), size(X, n), :)
+            Zn = similar(Xn, prod(size(X)[setdiff(1:N, n)]), r)
+            for j in 1:r
+                Zn[:, j] =
+                    reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
+            end
+            U[n] = (Xn * Zn) / V
+            λ = norm.(eachcol(U[n]))
+            U[n] = U[n] ./ permutedims(λ)
+        end
+    end
+
+    return CPD(λ, Tuple(U))
 end
