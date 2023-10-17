@@ -261,6 +261,82 @@ end
 end
 
 
+@testitem "HuberLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [M[I] for I in CartesianIndices(size(M))]
+  
+        # Compute reference
+        Δ = 1
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2,
+            (x, m) -> abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
+            -Inf,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, HuberLoss(Δ))
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+
+@testitem "BetaDivergenceLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+
+        function beta_value(β, x, m) 
+            if β == 0
+              return x / (m + 1e-10) + log(m + 1e-10)
+            elseif β == 1
+              return m - x * log(m + 1e-10)
+            else
+              return 1 / β * m^β - 1 / (β - 1) * x * m^(β - 1)
+            end
+          end
+        function beta_deriv(β, x, m) 
+            if β == 0
+                return -x / (m + 1e-10)^2 + 1 / (m + 1e-10)
+            elseif β == 1
+                return 1 - x / (m + 1e-10)
+            else
+                return m^(β - 1) - x * m^(β - 2)
+            end
+        end
+
+        # Compute reference
+        β = 1
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> beta_value(β, x, m),
+            (x, m) -> beta_deriv(β, x, m),
+            0.0,
+            (;),
+        )
+
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, BetaDivergenceLoss(β))
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
 
 
 @testitem "UserDefinedLoss" begin

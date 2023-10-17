@@ -222,14 +222,53 @@ struct HuberLoss{T<:Real} <: AbstractLoss
   Δ >= zero(Δ) ? new(Δ) :
     throw(DomainError(Δ, "HuberLoss requires nonnegative `Δ`"))
 end
-Huber(Δ::T) where {T<:Real} = BernoulliLogitLoss{T}(Δ)
-value(::HuberLoss, x, m) = abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2 
-deriv(::HuberLoss, x, m) = abs(x - m) <= Δ ? -2 * (x - m) : 
+HuberLoss(Δ::T) where {T<:Real} = HuberLoss{T}(Δ)
+value(loss::HuberLoss, x, m) = abs(x - m) <= loss.Δ ? (x - m)^2 : 2 *loss. Δ * abs(x - m) - loss.Δ^2 
+deriv(loss::HuberLoss, x, m) = abs(x - m) <= loss.Δ ? -2 * (x - m) : -2 * sign(x - m) * loss.Δ * x
 domain(::HuberLoss) = Interval(-Inf, +Inf) 
 
 
-# User-defined loss
+"""
+    BetaDivergenceLoss(β::Real, eps::Real)
 
+    BetaDivergence Loss for given β
+
+  - **Loss function:** ``f(x, m; β) = \\frac{1}{\\beta}m^{\\beta} - \\frac{1}{\\beta - 1}xm^{\\beta - 1}
+                          if \\beta \\in \\mathbb{R}  \\{0, 1\\},
+                            m - x\\log(m) if \\beta = 1,
+                            \\frac{x}{m} + \\log(m) if \\beta = 0``
+  - **Domain:** ``m \\in [0, \\infty)``
+"""
+struct BetaDivergenceLoss{S<:Real, T<:Real} <: AbstractLoss 
+  β::T
+  eps::T
+  BetaDivergenceLoss{S, T}(β::S, eps::T) where {S<:Real, T<:Real} =
+    eps >= zero(eps) ? new(β, eps) :
+    throw(DomainError(eps, "BetaDivergenceLoss requires nonnegative `eps`"))
+end
+BetaDivergenceLoss(β::S, eps::T = 1e-10) where {S<:Real, T<:Real} = BetaDivergenceLoss{S, T}(β, eps)
+function value(loss::BetaDivergenceLoss, x, m) 
+  if loss.β == 0
+    return x / (m + loss.eps) + log(m + loss.eps)
+  elseif loss.β == 1
+    return m - x * log(m + loss.eps)
+  else
+    return 1 / loss.β * m^loss.β - 1 / (loss.β - 1) * x * m^(loss.β - 1)
+  end
+end
+function deriv(loss::BetaDivergenceLoss, x, m) 
+  if loss.β == 0
+    return -x / (m + loss.eps)^2 + 1 / (m + loss.eps)
+  elseif loss.β == 1
+    return 1 - x / (m + loss.eps)
+  else
+    return m^(loss.β - 1) - x * m^(loss.β - 2)
+  end
+end
+domain(::BetaDivergenceLoss) = Interval(0.0, +Inf)
+
+
+# User-defined loss
 """
     UserDefinedLoss
 

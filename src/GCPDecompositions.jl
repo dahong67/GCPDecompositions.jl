@@ -26,6 +26,8 @@ export AbstractLoss,
     BernoulliOddsLoss,
     BernoulliLogitLoss,
     NegativeBinomialOddsLoss,
+    HuberLoss,
+    BetaDivergenceLoss,
     UserDefinedLoss
 export GCPConstraints
 
