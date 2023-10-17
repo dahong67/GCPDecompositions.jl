@@ -294,7 +294,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2, β in [0, 0.5, 1]
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
@@ -319,7 +319,6 @@ end
         end
 
         # Compute reference
-        β = 1
         Random.seed!(0)
         Mr = GCPDecompositions._gcp(
             X,
@@ -329,7 +328,6 @@ end
             0.0,
             (;),
         )
-
 
         # Test 
         Random.seed!(0)
