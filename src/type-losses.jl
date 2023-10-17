@@ -138,10 +138,10 @@ domain(::RayleighLoss) = Interval(0.0, +Inf)
     BernoulliOddsLoss(eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Bernouli data `X`
-with success rate given by the low-rank model tensor `M`
+with odds-sucess rate given by the low-rank model tensor `M`
 
   - **Distribution:** ``x_i \\sim \\operatorname{Bernouli}(\\rho_i)``
-  - **Link function:** ``m_i = \\rho / (1 - \\rho)``
+  - **Link function:** ``m_i = \\frac{\\rho_i}{1 - \\rho_i}``
   - **Loss function:** ``f(x, m) = \\log(m + 1) - x\\log(m + \\epsilon)``
   - **Domain:** ``m \\in [0, \\infty)``
 """
@@ -149,7 +149,7 @@ struct BernoulliOddsLoss{T<:Real} <: AbstractLoss
   eps::T
   BernoulliOddsLoss{T}(eps::T) where {T<:Real} =
     eps >= zero(eps) ? new(eps) :
-    throw(DomainError(eps, "BernoulliOddsLoss loss requires nonnegative `eps`"))
+    throw(DomainError(eps, "BernoulliOddsLoss requires nonnegative `eps`"))
 end
 BernoulliOddsLoss(eps::T = 1e-10) where {T<:Real} = BernoulliOddsLoss{T}(eps)
 value(loss::BernoulliOddsLoss, x, m) = log(m + 1) - x * log(m + loss.eps)
@@ -161,10 +161,10 @@ domain(::BernoulliOddsLoss) = Interval(0.0, +Inf)
     BernoulliLogitLoss(eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Bernouli data `X`
-with log-success rate given by the low-rank model tensor `M`
+with log odds-success rate given by the low-rank model tensor `M`
 
   - **Distribution:** ``x_i \\sim \\operatorname{Bernouli}(\\rho_i)``
-  - **Link function:** ``m_i = \\log(\\rho_i / (1 - \\rho_i))``
+  - **Link function:** ``m_i = \\log(\\frac{\\rho_i}{1 - \\rho_i})``
   - **Loss function:** ``f(x, m) = \\log(1 + e^m) - xm``
   - **Domain:** ``m \\in \\mathbb{R}``
 """
@@ -172,12 +172,59 @@ struct BernoulliLogitLoss{T<:Real} <: AbstractLoss
   eps::T
   BernoulliLogitLoss{T}(eps::T) where {T<:Real} =
     eps >= zero(eps) ? new(eps) :
-    throw(DomainError(eps, "BernoulliLogitsLoss loss requires nonnegative `eps`"))
+    throw(DomainError(eps, "BernoulliLogitsLoss requires nonnegative `eps`"))
 end
 BernoulliLogitLoss(eps::T = 1e-10) where {T<:Real} = BernoulliLogitLoss{T}(eps)
 value(::BernoulliLogitLoss, x, m) = log(1 + exp(m)) - x * m
 deriv(::BernoulliLogitLoss, x, m) = exp(m) / (1 + exp(m)) - x
 domain(::BernoulliLogitLoss) = Interval(-Inf, +Inf)
+
+
+"""
+    NegativeBinomialOddsLoss(r::Integer, eps::Real = 1e-10)
+
+Loss corresponding to the statistical assumption of Negative Binomial
+data `X` with log odds failure rate given by the low-rank model tensor `M`
+
+  - **Distribution:** ``x_i \\sim \\operatorname{NegativeBinomial}(r, \\rho_i) ``
+  - **Link function:** ``m = \\frac{\\rho}{1 - \\rho}``
+  - **Loss function:** ``f(x, m) = (r + x) \\log(1 + m) - x\\log(m + \\epsilon) ``
+  - **Domain:** ``m \\in [0, \\infty)``
+"""
+struct NegativeBinomialOddsLoss{S<:Integer, T<:Real} <: AbstractLoss 
+  r::S
+  eps::T
+  function NegativeBinomialOddsLoss{S, T}(r::S, eps::T) where {S<: Integer, T<:Real}
+    eps >= zero(eps) ? new(eps) :
+    throw(DomainError(eps, "NegativeBinomialOddsLoss requires nonnegative `eps`"))
+    r >= zero(r) ? new(r) :
+    throw(DomainError(r, "NegativeBinomialOddsLoss requires nonnegative `r`"))
+  end
+end
+NegativeBinomialOddsLoss(r::S, eps::T = 1e-10) where {S<:Integer, T<:Real} = NegativeBinomialOddsLoss{S, T}(r, eps)
+value(loss::NegativeBinomialOddsLoss, x, m) = (loss.r + x) * log(1 + m) - x * log(m + loss.eps)
+deriv(loss::NegativeBinomialOddsLoss, x, m) = (loss.r + x) / (1 + m) - x / (m + loss.eps)
+domain(::NegativeBinomialOddsLoss) = Interval(0.0, +Inf)
+
+
+"""
+    HuberLoss(Δ::Real)
+
+  Huber Loss for given Δ
+
+  - **Loss function:** ``f(x, m) = (x - m)^2 if \\abs(x - m)\\leq\\Delta, 2\\Delta\\abs(x - m) - \\Delta^2 otherwise``
+  - **Domain:** ``m \\in \\mathbb{R}``
+"""
+struct HuberLoss{T<:Real} <: AbstractLoss 
+  Δ::T
+  HuberLoss{T}(Δ::T) where {T<:Real} =
+  Δ >= zero(Δ) ? new(Δ) :
+    throw(DomainError(Δ, "HuberLoss requires nonnegative `Δ`"))
+end
+Huber(Δ::T) where {T<:Real} = BernoulliLogitLoss{T}(Δ)
+value(::HuberLoss, x, m) = abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2 
+deriv(::HuberLoss, x, m) = abs(x - m) <= Δ ? -2 * (x - m) : 
+domain(::HuberLoss) = Interval(-Inf, +Inf) 
 
 
 # User-defined loss

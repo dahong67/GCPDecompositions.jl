@@ -232,6 +232,37 @@ end
     end
 end
 
+@testitem "NegativeBinomialOddsLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        num_failures = 5
+        X = [rand(NegativeBinomial(num_failures, M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
+  
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10),
+            (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, NegativeBinomialOddsLoss(num_failures))
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+
+
+
 @testitem "UserDefinedLoss" begin
     using Random, Distributions, IntervalSets
 
