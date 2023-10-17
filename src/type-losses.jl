@@ -195,10 +195,11 @@ struct NegativeBinomialOddsLoss{S<:Integer, T<:Real} <: AbstractLoss
   r::S
   eps::T
   function NegativeBinomialOddsLoss{S, T}(r::S, eps::T) where {S<: Integer, T<:Real}
-    eps >= zero(eps) ? new(eps) :
+    eps >= zero(eps) ||
     throw(DomainError(eps, "NegativeBinomialOddsLoss requires nonnegative `eps`"))
-    r >= zero(r) ? new(r) :
+    r >= zero(r) ||
     throw(DomainError(r, "NegativeBinomialOddsLoss requires nonnegative `r`"))
+    new(r, eps)
   end
 end
 NegativeBinomialOddsLoss(r::S, eps::T = 1e-10) where {S<:Integer, T<:Real} = NegativeBinomialOddsLoss{S, T}(r, eps)
