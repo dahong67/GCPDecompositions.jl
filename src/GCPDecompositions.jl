@@ -21,6 +21,13 @@ export AbstractLoss,
     NonnegativeLeastSquaresLoss,
     PoissonLoss,
     PoissonLogLoss,
+    GammaLoss,
+    RayleighLoss,
+    BernoulliOddsLoss,
+    BernoulliLogitLoss,
+    NegativeBinomialOddsLoss,
+    HuberLoss,
+    BetaDivergenceLoss,
     UserDefinedLoss
 export GCPConstraints, GCPAlgorithms
 

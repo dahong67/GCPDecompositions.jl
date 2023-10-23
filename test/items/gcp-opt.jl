@@ -123,6 +123,221 @@ end
     end
 end
 
+@testitem "GammaLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        k = 1.5
+        X = [rand(Gamma(k, M[I]/k)) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> log(m + 1e-10) + x / (m + 1e-10),
+            (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, GammaLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+@testitem "RayleighLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Rayleigh(M[I]/(sqrt(pi/2)))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> 2*log(m + 1e-10) + (pi / 4) * ((x/(m + 1e-10))^2),
+            (x, m) -> 2/(m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, RayleighLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+@testitem "BernoulliOddsLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Bernoulli(M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> log(m + 1) - x * log(m + 1e-10),
+            (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, BernoulliOddsLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+@testitem "BernoulliLogitsLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Bernoulli(exp(M[I])/(exp(M[I]) + 1))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> log(1 + exp(m)) - x * m,
+            (x, m) -> exp(m) / (1 + exp(m)) - x,
+            -Inf,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, BernoulliLogitLoss())
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+@testitem "NegativeBinomialOddsLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        num_failures = 5
+        X = [rand(NegativeBinomial(num_failures, M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
+  
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10),
+            (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, NegativeBinomialOddsLoss(num_failures))
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+
+@testitem "HuberLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [M[I] for I in CartesianIndices(size(M))]
+  
+        # Compute reference
+        Δ = 1
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2,
+            (x, m) -> abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
+            -Inf,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, HuberLoss(Δ))
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+
+@testitem "BetaDivergenceLoss" begin
+    using Random
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2, β in [0, 0.5, 1]
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        # May want to consider other distributions depending on value of β
+        X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+
+        function beta_value(β, x, m) 
+            if β == 0
+              return x / (m + 1e-10) + log(m + 1e-10)
+            elseif β == 1
+              return m - x * log(m + 1e-10)
+            else
+              return 1 / β * m^β - 1 / (β - 1) * x * m^(β - 1)
+            end
+          end
+        function beta_deriv(β, x, m) 
+            if β == 0
+                return -x / (m + 1e-10)^2 + 1 / (m + 1e-10)
+            elseif β == 1
+                return 1 - x / (m + 1e-10)
+            else
+                return m^(β - 1) - x * m^(β - 2)
+            end
+        end
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = GCPDecompositions._gcp(
+            X,
+            r,
+            (x, m) -> beta_value(β, x, m),
+            (x, m) -> beta_deriv(β, x, m),
+            0.0,
+            (;),
+        )
+
+        # Test 
+        Random.seed!(0)
+        Mh = gcp(X, r, BetaDivergenceLoss(β))
+        @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+    end
+end
+
+
 @testitem "UserDefinedLoss" begin
     using Random, Distributions, IntervalSets
 
