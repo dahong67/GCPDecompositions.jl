@@ -165,17 +165,27 @@ function _gcp(
     for _ in 1:algorithm.maxiters
         for n in 1:N
             V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-            Xn = reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), size(X, n), :)
-            Zn = similar(Xn, prod(size(X)[setdiff(1:N, n)]), r)
-            for j in 1:r
-                Zn[:, j] =
-                    reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
-            end
-            U[n] = (Xn * Zn) / V
+            U[n] = mttkrp(X, U, n) / V
             λ = norm.(eachcol(U[n]))
             U[n] = U[n] ./ permutedims(λ)
         end
     end
 
     return CPD(λ, Tuple(U))
+end
+
+# inefficient but simple
+function mttkrp(X::Array{TX, N}, U, n) where {TX, N}
+    # Matricized tensor (in mode n)
+    Xn = reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), size(X, n), :)
+
+    # Khatri-Rao product (in mode n)
+    r = size(U[1], 2)
+    Zn = similar(Xn, prod(size(X)[setdiff(1:N, n)]), r)
+    for j in 1:r
+        Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
+    end
+
+    # MTTKRP (in mode n)
+    return Xn * Zn
 end
