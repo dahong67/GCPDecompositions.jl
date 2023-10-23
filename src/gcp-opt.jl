@@ -175,13 +175,16 @@ function _gcp(
 end
 
 # inefficient but simple
-function mttkrp(X::Array{TX, N}, U, n) where {TX, N}
+function mttkrp(X, U, n)
+    # Dimensions
+    N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
+    (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
+
     # Matricized tensor (in mode n)
     Xn = reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), size(X, n), :)
 
     # Khatri-Rao product (in mode n)
-    r = size(U[1], 2)
-    Zn = similar(Xn, prod(size(X)[setdiff(1:N, n)]), r)
+    Zn = similar(U[1], prod(I[setdiff(1:N, n)]), r)
     for j in 1:r
         Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
     end
