@@ -138,7 +138,7 @@ version = "0.10.36"
 
 [[deps.GCPDecompositions]]
 deps = ["ForwardDiff", "IntervalSets", "LBFGSB", "LinearAlgebra"]
-path = "C:\\Users\\alexm\\.julia\\dev\\GCPDecompositions"
+path = ".."
 uuid = "f59fb95b-1bc8-443b-b347-5e445a549f37"
 version = "0.1.2"
 
