@@ -21,9 +21,11 @@ for (col_idx, r) in enumerate(rs)
     end
 end
 
+# Set up plot and plot first rank 
 first_r = rs[1]
 plt = lineplot(szs, results[:, 1], title="MTTKRP runtime vs. size", 
             xlabel="Size", ylabel="Runtime(ms)", name="r = $first_r")
+# Plot the rest of the ranks
 for (idx, r) in enumerate(rs[2:end])
     lineplot!(plt, szs, results[:, idx + 1], name="r = $r")
 end
