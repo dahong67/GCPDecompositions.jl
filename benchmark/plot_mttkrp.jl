@@ -3,25 +3,27 @@ using GCPDecompositions
 using BenchmarkTools
 using UnicodePlots
 
-BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
+# Load benchmark results from benchmark_results.txt
+benchmark_results = readresults("benchmark_results.txt")
+mttkrp_results = benchmark_results.benchmarkgroup["mttkrp"]
 
-szs = [15, 30, 45, 60, 75, 90]
+szs = [10,30,50,80,120,200]
 shapes = [(sz, sz, sz) for sz in szs]
-n = 1
-rs = 1:5
+rs = 20:20:200
 results = zeros((size(szs)[1], size(rs)[1]))
 
-for (idx, r) in enumerate(rs)
-    Random.seed!(0)
-    Xs = [randn(sz) for sz in shapes];
-    Us = [[randn(Ik,r) for Ik in sz] for sz in shapes];
-    times = [@belapsed GCPDecompositions.mttkrp($X, $U, $n) for (X,U) in zip(Xs, Us)] 
-    results[:, idx] = times
+# Collect results in array where columns are ranks and rows are sizes
+for (col_idx, r) in enumerate(rs)
+    for (row_idx, sz) in enumerate(szs)
+        # Get median runtime (in milliseconds)
+        median_time = median(mttkrp_results["mttkrp-size(X)=($sz, $sz, $sz), rank(X)=$r"]).time / 10^6
+        results[row_idx, col_idx] = median_time
+    end
 end
 
 first_r = rs[1]
 plt = lineplot(szs, results[:, 1], title="MTTKRP runtime vs. size", 
-            xlabel="Size", ylabel="Runtime(s)", name="r = $first_r");
+            xlabel="Size", ylabel="Runtime(ms)", name="r = $first_r")
 for (idx, r) in enumerate(rs[2:end])
     lineplot!(plt, szs, results[:, idx + 1], name="r = $r")
 end
