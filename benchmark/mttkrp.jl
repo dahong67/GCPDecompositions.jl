@@ -1,3 +1,5 @@
+module BenchmarkMTTKRP
+
 using BenchmarkTools
 
 using Random
@@ -17,4 +19,6 @@ for sz in shapes, r in rs
     X = randn(sz)
     U = [randn(Ik,r) for Ik in sz]
     bench_mttkrp["mttkrp-size(X)=$sz, rank(X)=$r"] = @benchmarkable GCPDecompositions.mttkrp($X, $U, $n)
+end
+
 end
