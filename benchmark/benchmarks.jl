@@ -13,6 +13,6 @@ const SUITE = BenchmarkGroup()
 SELECTED_SUITES = split(get(ENV, "GCP_BENCHMARK_SUITES", DEFAULT_SUITES))
 for suite_name in SELECTED_SUITES
     module_name = SUITE_MODULES[suite_name]
-    include(joinpath(@__DIR__, "$(suite_name).jl"))
+    include(joinpath(@__DIR__, "suites", "$(suite_name).jl"))
     SUITE[suite_name] = eval(module_name).SUITE
 end
