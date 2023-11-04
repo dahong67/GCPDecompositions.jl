@@ -1,5 +1,7 @@
 using BenchmarkTools
 
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
+
 const SUITE = BenchmarkGroup()
 
 module BenchmarkGCP
