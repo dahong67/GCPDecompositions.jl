@@ -4,7 +4,7 @@ using BenchmarkTools
 using UnicodePlots
 
 # Load benchmark results from benchmark_results.txt
-benchmark_results = readresults("benchmark_results.txt")
+benchmark_results = readresults(joinpath(@__DIR__, "results.json"))
 mttkrp_results = benchmark_results.benchmarkgroup["mttkrp"]
 
 szs = [10,30,50,80,120,200]
