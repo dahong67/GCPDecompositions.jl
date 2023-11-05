@@ -1,14 +1,15 @@
-# Select which benchmark suites to run
+# Script to run benchmarks and export a report
+
+## Make sure the benchmark environment is activated
+import Pkg
+Pkg.activate(@__DIR__)
+
+## Run benchmarks
+using GCPDecompositions, PkgBenchmark
+
 const SELECTED_SUITES = nothing     # set to `nothing` to run all suites
 # const SELECTED_SUITES = ["mttkrp"]
 
-# Load packages
-import Pkg
-Pkg.activate(@__DIR__)
-using GCPDecompositions, PkgBenchmark
-using BenchmarkTools, UnicodePlots
-
-# Run benchmarks and save results
 results =
     isnothing(SELECTED_SUITES) ? benchmarkpkg(GCPDecompositions) :
     benchmarkpkg(
@@ -17,12 +18,13 @@ results =
     )
 writeresults(joinpath(@__DIR__, "results.json"), results)
 
-# Generate report and save
+## Generate report and save
+using BenchmarkTools, UnicodePlots
 
-## Create initial/base report
+### Create initial/base report
 report = sprint(export_markdown, results)
 
-## Add plots for MTTKRP sweeps
+### Add plots for MTTKRP sweeps
 # NOTE:
 # > Using a separate plot for each curve since it would be great
 # > to be able to copy into GitHub comments (e.g., within PRs)
@@ -69,5 +71,5 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     """
 end
 
-## Save report
+### Save report
 write(joinpath(@__DIR__, "report.md"), report)
