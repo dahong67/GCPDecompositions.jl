@@ -6,6 +6,10 @@
 # By default it will run all of the benchmark suites.
 # To select a subset, pass them in as ARGS:
 # > julia benchmark/run.jl mttkrp
+# 
+# This script produces/overwrites two files:
+# + `benchmark/results.json` : results from the benchmark run
+# + `benchmark/report.md` : report summarizing the results
 
 ## Make sure the benchmark environment is activated
 import Pkg
