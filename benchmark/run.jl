@@ -1,4 +1,11 @@
 # Script to run benchmarks and export a report
+# 
+# To run this script from the package root directory:
+# > julia benchmark/run.jl
+# 
+# By default it will run all of the benchmark suites.
+# To select a subset, pass them in as ARGS:
+# > julia benchmark/run.jl mttkrp
 
 ## Make sure the benchmark environment is activated
 import Pkg
@@ -6,15 +13,11 @@ Pkg.activate(@__DIR__)
 
 ## Run benchmarks
 using GCPDecompositions, PkgBenchmark
-
-const SELECTED_SUITES = nothing     # set to `nothing` to run all suites
-# const SELECTED_SUITES = ["mttkrp"]
-
 results =
-    isnothing(SELECTED_SUITES) ? benchmarkpkg(GCPDecompositions) :
+    isempty(ARGS) ? benchmarkpkg(GCPDecompositions) :
     benchmarkpkg(
         GCPDecompositions,
-        BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => join(SELECTED_SUITES, ' '))),
+        BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => join(ARGS, ' '))),
     )
 writeresults(joinpath(@__DIR__, "results.json"), results)
 
