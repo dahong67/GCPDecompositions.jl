@@ -17,10 +17,10 @@ szs = [
     (120, 120, 120),
     (200, 200, 200),
 ]
-n = 1
+ns = 1:3
 rs = 20:20:200
 
-for sz in szs, r in rs
+for sz in szs, r in rs, n in ns
     Random.seed!(0)
     X = randn(sz)
     U = [randn(Ik,r) for Ik in sz]

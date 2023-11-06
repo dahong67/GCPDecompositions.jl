@@ -121,12 +121,43 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     </table>
     """
 
+    # Runtime vs. mode
+    mode_sweeps = (sortkeys ∘ group)(
+        ((key, _),) -> (; size = key.size, rank = key.rank),
+        ((key, result),) -> ("mode $(key.mode)", result),
+        pairs(mttkrp_dict),
+    )
+    mode_plts = map(pairs(mode_sweeps)) do (key, sweep)
+        return boxplot(
+            getindex.(sweep, 1),
+            getproperty.(getindex.(sweep, 2), :times) ./ 1e6;
+            title = string(key)[begin+1:end-1],
+            xlabel = "Time (ms)",
+            canvas = DotCanvas,
+            width = 30,
+            height = 10,
+            margin = 0,
+        )
+    end
+    mode_report = """
+    ## Runtime vs. mode
+    <table>
+    <tr>
+    $(join(["<th>$(string(key)[begin+1:end-1])</th>" for key in keys(mode_plts)], '\n'))
+    </tr>
+    <tr>
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in mode_plts], '\n'))
+    </tr>
+    </table>
+    """
+
     # Add to the report
     report *= "\n\n" * """
     # MTTKRP benchmark plots
 
     $size_report
     $rank_report
+    $mode_report
     """
 end
 
