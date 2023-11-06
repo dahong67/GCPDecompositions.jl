@@ -26,7 +26,7 @@ results =
 writeresults(joinpath(@__DIR__, "results.json"), results)
 
 ## Generate report and save
-using BenchmarkTools, UnicodePlots
+using BenchmarkTools, Dictionaries, SplitApplyCombine, UnicodePlots
 
 ### Create initial/base report
 report = sprint(export_markdown, results)
@@ -44,20 +44,32 @@ report = sprint(export_markdown, results)
 # > However, GitHub also doesn't currently support coloring the text
 # > (https://github.com/github/markup/issues/1440).
 if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
+    # Load results into a dictionary
     mttkrp_results = PkgBenchmark.benchmarkgroup(results)["mttkrp"]
+    mttkrp_dict = (sortkeys ∘ dictionary ∘ map)(mttkrp_results) do (key_str, result)
+        key_vals = match(
+            r"^size=\((?<size>[0-9, ]*)\), rank=(?<rank>[0-9]+), mode=(?<mode>[0-9]+)$",
+            key_str,
+        )
+        key = (;
+            size = Tuple(parse.(Int, split(key_vals[:size], ','))),
+            rank = parse(Int, key_vals[:rank]),
+            mode = parse(Int, key_vals[:mode]),
+        )
+        return key => result
+    end
 
-    szs = [10, 30, 50, 80, 120, 200]
-    n = 1
-    rs = 20:20:200
-
-    plts = map(rs) do r
-        med_times = map(szs) do sz
-            return median(mttkrp_results["size=$((sz, sz, sz)), rank=$r, mode=$n"]).time / 1e6
-        end
+    # Runtime vs. size (for square tensors)
+    size_sweeps = (sortkeys ∘ group)(
+        ((key, _),) -> (; ndims = length(key.size), rank = key.rank, mode = key.mode),
+        ((key, result),) -> ((only ∘ unique)(key.size), result),
+        filter(((key, _),) -> allequal(key.size), pairs(mttkrp_dict)),
+    )
+    size_plts = map(pairs(size_sweeps)) do (key, sweep)
         return lineplot(
-            szs,
-            med_times;
-            title = "MTTKRP runtime vs. size (r = $r)",
+            getindex.(sweep, 1),
+            getproperty.(median.(getindex.(sweep, 2)), :time) ./ 1e6;
+            title = string(key)[begin+1:end-1],
             xlabel = "Size",
             ylabel = "Time (ms)",
             canvas = DotCanvas,
@@ -66,16 +78,21 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             margin = 0,
         )
     end
-    report *= "\n\n" * """
-    # MTTKRP benchmark plots
+    size_report = """
+    ## Runtime vs. size (for square tensors)
     <table>
     <tr>
-    $(join(["<th>r = $r</th>" for r in rs], ' '))
+    $(join(["<th>$(string(key)[begin+1:end-1])</th>" for key in keys(size_plts)], '\n'))
     </tr>
     <tr>
-    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in plts],'\n'))
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts], '\n'))
     </tr>
     </table>
+    """
+    report *= "\n\n" * """
+    # MTTKRP benchmark plots
+
+    $size_report
     """
 end
 
