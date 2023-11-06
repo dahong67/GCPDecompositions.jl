@@ -9,6 +9,7 @@ mttkrp_results = benchmark_results.benchmarkgroup["mttkrp"]
 
 szs = [10,30,50,80,120,200]
 shapes = [(sz, sz, sz) for sz in szs]
+n = 1
 rs = 20:20:200
 results = zeros((size(szs)[1], size(rs)[1]))
 
@@ -16,7 +17,7 @@ results = zeros((size(szs)[1], size(rs)[1]))
 for (col_idx, r) in enumerate(rs)
     for (row_idx, sz) in enumerate(szs)
         # Get median runtime (in milliseconds)
-        median_time = median(mttkrp_results["mttkrp-size(X)=($sz, $sz, $sz), rank(X)=$r"]).time / 10^6
+        median_time = median(mttkrp_results["size=($sz, $sz, $sz), rank=$r, mode=$n"]).time / 10^6
         results[row_idx, col_idx] = median_time
     end
 end

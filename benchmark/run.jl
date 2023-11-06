@@ -47,11 +47,12 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     mttkrp_results = PkgBenchmark.benchmarkgroup(results)["mttkrp"]
 
     szs = [10, 30, 50, 80, 120, 200]
+    n = 1
     rs = 20:20:200
 
     plts = map(rs) do r
         med_times = map(szs) do sz
-            return median(mttkrp_results["mttkrp-size(X)=$((sz, sz, sz)), rank(X)=$r"]).time / 1e6
+            return median(mttkrp_results["size=$((sz, sz, sz)), rank=$r, mode=$n"]).time / 1e6
         end
         return lineplot(
             szs,

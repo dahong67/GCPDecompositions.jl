@@ -9,16 +9,22 @@ const SUITE = BenchmarkGroup()
 
 bench_mttkrp = SUITE
 
-szs = [10,30,50,80,120,200]
-shapes = [(sz, sz, sz) for sz in szs]
+szs = [
+    (10, 10, 10),
+    (30, 30, 30),
+    (50, 50, 50),
+    (80, 80, 80),
+    (120, 120, 120),
+    (200, 200, 200),
+]
 n = 1
 rs = 20:20:200
 
-for sz in shapes, r in rs
+for sz in szs, r in rs
     Random.seed!(0)
     X = randn(sz)
     U = [randn(Ik,r) for Ik in sz]
-    bench_mttkrp["mttkrp-size(X)=$sz, rank(X)=$r"] = @benchmarkable GCPDecompositions.mttkrp($X, $U, $n)
+    bench_mttkrp["size=$sz, rank=$r, mode=$n"] = @benchmarkable GCPDecompositions.mttkrp($X, $U, $n)
 end
 
 end
