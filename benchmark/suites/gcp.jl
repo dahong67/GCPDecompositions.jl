@@ -13,7 +13,8 @@ for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
     Random.seed!(0)
     M = CPD(ones(r), rand.(sz, r))
     X = [M[I] for I in CartesianIndices(size(M))]
-    SUITE["least-squares-size(X)=$sz, rank(X)=$r"] = @benchmarkable gcp($X, $r, LeastSquaresLoss()) 
+    SUITE["least-squares-size(X)=$sz, rank(X)=$r"] =
+        @benchmarkable gcp($X, $r, LeastSquaresLoss())
 end
 
 # Benchmark Poisson loss
@@ -29,7 +30,7 @@ for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
     Random.seed!(0)
     M = CPD(ones(r), rand.(sz, r))
     k = 1.5
-    X = [rand(Gamma(k, M[I]/k)) for I in CartesianIndices(size(M))]
+    X = [rand(Gamma(k, M[I] / k)) for I in CartesianIndices(size(M))]
     SUITE["gamma-size(X)=$sz, rank(X)=$r"] = @benchmarkable gcp($X, $r, GammaLoss())
 end
 
@@ -37,8 +38,9 @@ end
 for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
     Random.seed!(0)
     M = CPD(ones(r), rand.(sz, r))
-    X = [rand(Bernoulli(M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
-    SUITE["bernoulliOdds-size(X)=$sz, rank(X)=$r"] = @benchmarkable gcp($X, $r, BernoulliOddsLoss())
+    X = [rand(Bernoulli(M[I] / (M[I] + 1))) for I in CartesianIndices(size(M))]
+    SUITE["bernoulliOdds-size(X)=$sz, rank(X)=$r"] =
+        @benchmarkable gcp($X, $r, BernoulliOddsLoss())
 end
 
 end
