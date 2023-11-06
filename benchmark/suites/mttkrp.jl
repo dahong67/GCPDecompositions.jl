@@ -7,8 +7,6 @@ using GCPDecompositions
 
 const SUITE = BenchmarkGroup()
 
-bench_mttkrp = SUITE
-
 szs = [
     (10, 10, 10),
     (30, 30, 30),
@@ -24,7 +22,7 @@ for sz in szs, r in rs, n in ns
     Random.seed!(0)
     X = randn(sz)
     U = [randn(Ik,r) for Ik in sz]
-    bench_mttkrp["size=$sz, rank=$r, mode=$n"] = @benchmarkable GCPDecompositions.mttkrp($X, $U, $n)
+    SUITE["size=$sz, rank=$r, mode=$n"] = @benchmarkable GCPDecompositions.mttkrp($X, $U, $n)
 end
 
 end
