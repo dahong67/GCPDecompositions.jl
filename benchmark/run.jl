@@ -89,10 +89,44 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     </tr>
     </table>
     """
+
+    # Runtime vs. rank
+    rank_sweeps = (sortkeys ∘ group)(
+        ((key, _),) -> (; size = key.size, mode = key.mode),
+        ((key, result),) -> (key.rank, result),
+        pairs(mttkrp_dict),
+    )
+    rank_plts = map(pairs(rank_sweeps)) do (key, sweep)
+        return lineplot(
+            getindex.(sweep, 1),
+            getproperty.(median.(getindex.(sweep, 2)), :time) ./ 1e6;
+            title = string(key)[begin+1:end-1],
+            xlabel = "Rank",
+            ylabel = "Time (ms)",
+            canvas = DotCanvas,
+            width = 30,
+            height = 10,
+            margin = 0,
+        )
+    end
+    rank_report = """
+    ## Runtime vs. rank
+    <table>
+    <tr>
+    $(join(["<th>$(string(key)[begin+1:end-1])</th>" for key in keys(rank_plts)], '\n'))
+    </tr>
+    <tr>
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in rank_plts], '\n'))
+    </tr>
+    </table>
+    """
+
+    # Add to the report
     report *= "\n\n" * """
     # MTTKRP benchmark plots
 
     $size_report
+    $rank_report
     """
 end
 
