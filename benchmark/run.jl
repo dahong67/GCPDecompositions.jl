@@ -94,7 +94,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
 
     if compare != "none"
         mttkrp_results_baseline = PkgBenchmark.benchmarkgroup(results_baseline)["mttkrp"]
-        mttkrp_dict = (sortkeys ∘ dictionary ∘ map)(mttkrp_results) do (key_str, result)
+        mttkrp_dict_baseline = (sortkeys ∘ dictionary ∘ map)(mttkrp_results_baseline) do (key_str, result)
             key_vals = match(
                 r"^size=\((?<size>[0-9, ]*)\), rank=(?<rank>[0-9]+), mode=(?<mode>[0-9]+)$",
                 key_str,
