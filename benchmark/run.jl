@@ -4,8 +4,11 @@
 # > julia benchmark/run.jl
 # 
 # By default it will run all of the benchmark suites.
-# To select a subset, pass them in as ARGS:
-# > julia benchmark/run.jl mttkrp
+# To select a subset, pass them in as a command line arg:
+# > julia benchmark/run.jl --suite mttkrp
+#
+# To compare against a previous commit, pass the commit git id as a command line arg:
+# > julia benchmark/run.jl --compare eca7cb4
 # 
 # This script produces/overwrites two files:
 # + `benchmark/results.json` : results from the benchmark run
@@ -14,16 +17,42 @@
 ## Make sure the benchmark environment is activated
 import Pkg
 Pkg.activate(@__DIR__)
+Pkg.instantiate()
 
 ## Run benchmarks
-using GCPDecompositions, PkgBenchmark
-results =
-    isempty(ARGS) ? benchmarkpkg(GCPDecompositions) :
-    benchmarkpkg(
-        GCPDecompositions,
-        BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => join(ARGS, ' '))),
-    )
-writeresults(joinpath(@__DIR__, "results.json"), results)
+using GCPDecompositions, PkgBenchmark, ArgParse
+
+settings = ArgParseSettings()
+@add_arg_table settings begin
+    "--suite"
+        help = "which suite to run benchmarks for" 
+        arg_type = String
+        default = "all"
+    "--compare"
+        help = "git id for previous commit to compare current version against"
+        arg_type = String
+        default = "none"
+end
+parsed_args = parse_args(settings)
+
+if (parsed_args["compare"] == "none")
+    results =
+        parsed_args["suite"] == "all" ? benchmarkpkg(GCPDecompositions) :
+        benchmarkpkg(
+            GCPDecompositions,
+            BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => parsed_args["suite"])),
+        )
+    writeresults(joinpath(@__DIR__, "results.json"), results)
+else
+    results =
+        parsed_args["suite"] == "all" ? judge(GCPDecompositions, parsed_args["compare"]) :
+        judge(
+            GCPDecompositions,
+            parsed_args["compare"],
+            BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => parsed_args["suite"])),
+        )
+    writeresults(joinpath(@__DIR__, "results.json"), results)
+end
 
 ## Generate report and save
 using BenchmarkTools, Dictionaries, SplitApplyCombine, UnicodePlots
@@ -59,6 +88,8 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         return key => result
     end
 
+    plot_vars = ["size"]
+
     # Runtime vs. size (for square tensors)
     size_sweeps = (sortkeys ∘ group)(
         ((key, _),) -> (; ndims = length(key.size), rank = key.rank, mode = key.mode),
@@ -80,6 +111,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     end
     size_report = """
     ## Runtime vs. size (for square tensors)
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the square tensor, for varying ranks and modes:
     <table>
     <tr>
     $(join(["<th>$(string(key)[begin+1:end-1])</th>" for key in keys(size_plts)], '\n'))
@@ -111,6 +143,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     end
     rank_report = """
     ## Runtime vs. rank
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the rank, for varying sizes and modes:
     <table>
     <tr>
     $(join(["<th>$(string(key)[begin+1:end-1])</th>" for key in keys(rank_plts)], '\n'))
@@ -141,6 +174,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     end
     mode_report = """
     ## Runtime vs. mode
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the mode, for varying sizes and ranks:
     <table>
     <tr>
     $(join(["<th>$(string(key)[begin+1:end-1])</th>" for key in keys(mode_plts)], '\n'))

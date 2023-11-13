@@ -16,7 +16,8 @@ szs = [
     (200, 200, 200),
 ]
 ns = 1:3
-rs = 20:20:200
+#rs = 20:20:200
+rs = 20
 
 for sz in szs, r in rs, n in ns
     Random.seed!(0)
