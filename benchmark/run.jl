@@ -137,7 +137,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         )
     end
     if compare != "none"
-        size_plts_basline = map(pairs(size_sweeps_basline)) do (key, sweep)
+        size_plts_baseline = map(pairs(size_sweeps_baseline)) do (key, sweep)
             return lineplot(
                 getindex.(sweep, 1),
                 getproperty.(median.(getindex.(sweep, 2)), :time) ./ 1e6;
@@ -161,7 +161,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     <tr>
     $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts], '\n'))
     </tr>
-    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts_basline], '\n'))
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts_baseline], '\n'))
     </table>
     """
 
