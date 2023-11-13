@@ -161,7 +161,9 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     <tr>
     $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts], '\n'))
     </tr>
+    <tr>
     $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts_baseline], '\n'))
+    </tr>
     </table>
     """
 
@@ -184,6 +186,26 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             margin = 0,
         )
     end
+    if compare != "none"
+        rank_sweeps_baseline = (sortkeys ∘ group)(
+            ((key, _),) -> (; size = key.size, mode = key.mode),
+            ((key, result),) -> (key.rank, result),
+            pairs(mttkrp_dict_baseline),
+        )
+        rank_plts = map(pairs(rank_sweeps_baseline)) do (key, sweep)
+            return lineplot(
+                getindex.(sweep, 1),
+                getproperty.(median.(getindex.(sweep, 2)), :time) ./ 1e6;
+                title = string(key)[begin+1:end-1],
+                xlabel = "Rank",
+                ylabel = "Time (ms)",
+                canvas = DotCanvas,
+                width = 30,
+                height = 10,
+                margin = 0,
+            )
+    end
+
     rank_report = """
     ## Runtime vs. rank
     Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the rank, for varying sizes and modes:
@@ -193,6 +215,9 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     </tr>
     <tr>
     $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in rank_plts], '\n'))
+    </tr>
+    <tr>
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in rank_plts_baseline], '\n'))
     </tr>
     </table>
     """
@@ -215,6 +240,27 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             margin = 0,
         )
     end
+
+    if compare != "none"
+        mode_sweeps = (sortkeys ∘ group)(
+            ((key, _),) -> (; size = key.size, rank = key.rank),
+            ((key, result),) -> ("mode $(key.mode)", result),
+            pairs(mttkrp_dict),
+        )
+        mode_plts = map(pairs(mode_sweeps)) do (key, sweep)
+            return boxplot(
+                getindex.(sweep, 1),
+                getproperty.(getindex.(sweep, 2), :times) ./ 1e6;
+                title = string(key)[begin+1:end-1],
+                xlabel = "Time (ms)",
+                canvas = DotCanvas,
+                width = 30,
+                height = 10,
+                margin = 0,
+            )
+        end
+    end
+
     mode_report = """
     ## Runtime vs. mode
     Below are plots showing the runtime in miliseconds of MTTKRP as a function of the mode, for varying sizes and ranks:
@@ -224,6 +270,9 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     </tr>
     <tr>
     $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in mode_plts], '\n'))
+    </tr>
+    <tr>
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in mode_plts_baseline], '\n'))
     </tr>
     </table>
     """
