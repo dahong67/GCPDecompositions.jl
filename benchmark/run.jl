@@ -34,23 +34,27 @@ settings = ArgParseSettings()
         default = "none"
 end
 parsed_args = parse_args(settings)
+compare = parsed_args["compare"]
+suite = parsed_args["suite"]
 
-if (parsed_args["compare"] == "none")
+if (compare == "none")
     results =
-        parsed_args["suite"] == "all" ? benchmarkpkg(GCPDecompositions) :
+        suite == "all" ? benchmarkpkg(GCPDecompositions) :
         benchmarkpkg(
             GCPDecompositions,
-            BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => parsed_args["suite"])),
+            BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => suite)),
         )
     writeresults(joinpath(@__DIR__, "results.json"), results)
 else
-    results =
-        parsed_args["suite"] == "all" ? judge(GCPDecompositions, parsed_args["compare"]) :
+    judgement =
+        suite == "all" ? judge(GCPDecompositions, compare) :
         judge(
             GCPDecompositions,
-            parsed_args["compare"],
-            BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => parsed_args["suite"])),
+            compare,
+            BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => suite)),
         )
+    results = PkgBenchmark.target_result(judgement)
+    results_baseline = PkgBenchmark.baseline_result(judgement)
     writeresults(joinpath(@__DIR__, "results.json"), results)
 end
 
@@ -58,7 +62,7 @@ end
 using BenchmarkTools, Dictionaries, SplitApplyCombine, UnicodePlots
 
 ### Create initial/base report
-report = sprint(export_markdown, results)
+report = compare != "none" ? sprint(export_markdown, judgement) : sprint(export_markdown, results)
 
 ### Add plots for MTTKRP sweeps
 # NOTE:
@@ -73,7 +77,7 @@ report = sprint(export_markdown, results)
 # > However, GitHub also doesn't currently support coloring the text
 # > (https://github.com/github/markup/issues/1440).
 if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
-    # Load results into a dictionary
+    # Load result (possibly from 2 different commits) into a dictionary
     mttkrp_results = PkgBenchmark.benchmarkgroup(results)["mttkrp"]
     mttkrp_dict = (sortkeys ∘ dictionary ∘ map)(mttkrp_results) do (key_str, result)
         key_vals = match(
@@ -88,6 +92,22 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         return key => result
     end
 
+    if compare != "none"
+        mttkrp_results_baseline = PkgBenchmark.benchmarkgroup(results_basline)["mttkrp"]
+        mttkrp_dict_baseline = (sortkeys ∘ dictionary ∘ map)(mttkrp_results) do (key_str, result)
+            key_vals = match(
+                r"^size=\((?<size>[0-9, ]*)\), rank=(?<rank>[0-9]+), mode=(?<mode>[0-9]+)$",
+                key_str,
+            )
+            key = (;
+                size = Tuple(parse.(Int, split(key_vals[:size], ','))),
+                rank = parse(Int, key_vals[:rank]),
+                mode = parse(Int, key_vals[:mode]),
+            )
+            return key => result
+        end
+    end
+
     plot_vars = ["size"]
 
     # Runtime vs. size (for square tensors)
@@ -96,6 +116,13 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         ((key, result),) -> ((only ∘ unique)(key.size), result),
         filter(((key, _),) -> allequal(key.size), pairs(mttkrp_dict)),
     )
+    if compare != "none"
+        size_sweeps_baseline = (sortkeys ∘ group)(
+            ((key, _),) -> (; ndims = length(key.size), rank = key.rank, mode = key.mode),
+            ((key, result),) -> ((only ∘ unique)(key.size), result),
+            filter(((key, _),) -> allequal(key.size), pairs(mttkrp_dict_baseline)),
+        )
+    end
     size_plts = map(pairs(size_sweeps)) do (key, sweep)
         return lineplot(
             getindex.(sweep, 1),
@@ -109,6 +136,21 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             margin = 0,
         )
     end
+    if compare != "none"
+        size_plts_basline = map(pairs(size_sweeps_basline)) do (key, sweep)
+            return lineplot(
+                getindex.(sweep, 1),
+                getproperty.(median.(getindex.(sweep, 2)), :time) ./ 1e6;
+                title = string(key)[begin+1:end-1],
+                xlabel = "Size",
+                ylabel = "Time (ms)",
+                canvas = DotCanvas,
+                width = 30,
+                height = 10,
+                margin = 0,
+            )
+        end
+    end
     size_report = """
     ## Runtime vs. size (for square tensors)
     Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the square tensor, for varying ranks and modes:
@@ -119,6 +161,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     <tr>
     $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts], '\n'))
     </tr>
+    $(join(["<td>\n\n```\n$(string(plt; color=false))\n```\n\n</td>" for plt in size_plts_basline], '\n'))
     </table>
     """
 
