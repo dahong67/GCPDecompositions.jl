@@ -94,7 +94,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
 
     if compare != "none"
         mttkrp_results_baseline = PkgBenchmark.benchmarkgroup(results_baseline)["mttkrp"]
-        mttkrp_dict_baseline = (sortkeys ∘ dictionary ∘ map)(mttkrp_results) do (key_str, result)
+        mttkrp_dict = (sortkeys ∘ dictionary ∘ map)(mttkrp_results) do (key_str, result)
             key_vals = match(
                 r"^size=\((?<size>[0-9, ]*)\), rank=(?<rank>[0-9]+), mode=(?<mode>[0-9]+)$",
                 key_str,
@@ -108,6 +108,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         end
     end
 
+
     plot_vars = ["size"]
 
     # Runtime vs. size (for square tensors)
@@ -116,13 +117,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         ((key, result),) -> ((only ∘ unique)(key.size), result),
         filter(((key, _),) -> allequal(key.size), pairs(mttkrp_dict)),
     )
-    if compare != "none"
-        size_sweeps_baseline = (sortkeys ∘ group)(
-            ((key, _),) -> (; ndims = length(key.size), rank = key.rank, mode = key.mode),
-            ((key, result),) -> ((only ∘ unique)(key.size), result),
-            filter(((key, _),) -> allequal(key.size), pairs(mttkrp_dict_baseline)),
-        )
-    end
+
     size_plts = map(pairs(size_sweeps)) do (key, sweep)
         return lineplot(
             getindex.(sweep, 1),
@@ -137,6 +132,11 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
         )
     end
     if compare != "none"
+        size_sweeps_baseline = (sortkeys ∘ group)(
+            ((key, _),) -> (; ndims = length(key.size), rank = key.rank, mode = key.mode),
+            ((key, result),) -> ((only ∘ unique)(key.size), result),
+            filter(((key, _),) -> allequal(key.size), pairs(mttkrp_dict_baseline)),
+        )
         size_plts_baseline = map(pairs(size_sweeps_baseline)) do (key, sweep)
             return lineplot(
                 getindex.(sweep, 1),
@@ -186,6 +186,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             margin = 0,
         )
     end
+
     if compare != "none"
         rank_sweeps_baseline = (sortkeys ∘ group)(
             ((key, _),) -> (; size = key.size, mode = key.mode),
@@ -204,6 +205,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
                 height = 10,
                 margin = 0,
             )
+        end
     end
 
     rank_report = """
@@ -247,7 +249,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             ((key, result),) -> ("mode $(key.mode)", result),
             pairs(mttkrp_dict),
         )
-        mode_plts = map(pairs(mode_sweeps)) do (key, sweep)
+        mode_plts = map(pairs(mode_sweeps_baseline)) do (key, sweep)
             return boxplot(
                 getindex.(sweep, 1),
                 getproperty.(getindex.(sweep, 2), :times) ./ 1e6;
