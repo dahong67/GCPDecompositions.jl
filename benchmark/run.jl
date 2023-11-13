@@ -193,7 +193,7 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
             ((key, result),) -> (key.rank, result),
             pairs(mttkrp_dict_baseline),
         )
-        rank_plts = map(pairs(rank_sweeps_baseline)) do (key, sweep)
+        rank_plts_baseline = map(pairs(rank_sweeps_baseline)) do (key, sweep)
             return lineplot(
                 getindex.(sweep, 1),
                 getproperty.(median.(getindex.(sweep, 2)), :time) ./ 1e6;
@@ -244,12 +244,12 @@ if haskey(PkgBenchmark.benchmarkgroup(results), "mttkrp")
     end
 
     if compare != "none"
-        mode_sweeps = (sortkeys ∘ group)(
+        mode_sweeps_baseline = (sortkeys ∘ group)(
             ((key, _),) -> (; size = key.size, rank = key.rank),
             ((key, result),) -> ("mode $(key.mode)", result),
             pairs(mttkrp_dict),
         )
-        mode_plts = map(pairs(mode_sweeps_baseline)) do (key, sweep)
+        mode_plts_baseline = map(pairs(mode_sweeps_baseline)) do (key, sweep)
             return boxplot(
                 getindex.(sweep, 1),
                 getproperty.(getindex.(sweep, 2), :times) ./ 1e6;
