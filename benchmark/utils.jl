@@ -170,8 +170,8 @@ function plot_table(plots, colnames, rownames)
     # Create vector of row strings
     row_strs = string.("<tr>\n", join.(eachrow(cell_strs), '\n'), "\n</tr>")
 
-    # Return full table
-    return string("<table>\n", join(row_strs, '\n'), "\n</table>")
+    # Return full table (with blank rows "<tr></tr>" to work around GitHub styling)
+    return string("<table>\n", row_strs[1], '\n', join(row_strs[2:end], "\n<tr></tr>\n"), "\n</table>")
 end
 
 end
