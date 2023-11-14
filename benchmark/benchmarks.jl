@@ -1,7 +1,7 @@
 using BenchmarkTools
 
 # Default benchmark parameters
-BenchmarkTools.DEFAULT_PARAMETERS.seconds = 5.0
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 2.5
 
 # Benchmark suite modules
 const SUITE_MODULES = Dict("gcp" => :BenchmarkGCP, "mttkrp" => :BenchmarkMTTKRP)
