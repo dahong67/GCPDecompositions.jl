@@ -5,6 +5,60 @@ module GCPBenchmarkUtils
 using BenchmarkTools, PkgBenchmark
 using Dictionaries, SplitApplyCombine, UnicodePlots
 
+## Insert <details> tags to get collapsible sections on GitHub
+
+"""
+    collapsible_details(markdown; header_level=2)
+
+Modify `markdown` to collapse at header level `header_level`.
+"""
+function collapsible_details(markdown; header_level = 2)
+    # Extract all the lines and find the header lines
+    lines = split(markdown, '\n')
+    header_lines = map(findall(contains(r"^(?<tag>#+) "), lines)) do idx
+        line = lines[idx]
+        level = length(match(r"^(?<tag>#+) ", line)[:tag])
+        return idx => level
+    end
+
+    # Filter out subheaders (level above `header_level`)
+    header_lines = filter(header_lines) do (_, level)
+        return level <= header_level
+    end
+
+    # Loop through and insert "<detail>" tags
+    tag_opened = false
+    for (idx, level) in header_lines
+        # Close prior opened tag
+        if tag_opened
+            lines[idx] = string("</detail>\n", lines[idx])
+            tag_opened = false
+        end
+
+        # Insert/open new tag for headers at `header_level`
+        if level == header_level
+            lines[idx] = string(lines[idx], "\n<detail>")
+            tag_opened = true
+        end
+    end
+    if tag_opened
+        lines[end] = string(lines[end], "\n</detail>")
+        tag_opened = false
+    end
+
+    # Form full string
+    new_markdown = join(lines, '\n')
+
+    # Tidy up spacing with "<detail>" tags
+    new_markdown = replace(
+        new_markdown,
+        r"(?<extra>\n+)\n<\/detail>" => s"\n</detail>\g<extra>",
+        r"<detail>\n(?<extra>\n+)" => s"\g<extra><detail>\n",
+    )
+
+    return new_markdown
+end
+
 ## MTTKRP sweep
 
 """

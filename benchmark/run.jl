@@ -72,6 +72,7 @@ end
 ### Build report
 report = sprint(export_markdown, results)
 report *= "\n\n" * GCPBenchmarkUtils.export_mttkrp_sweep(results)
+report = collapsible_details(report)
 
 ### Save report
 write(joinpath(@__DIR__, "report.md"), report)
