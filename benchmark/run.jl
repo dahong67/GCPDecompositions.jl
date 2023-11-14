@@ -27,11 +27,11 @@ using ArgParse
 settings = ArgParseSettings()
 @add_arg_table settings begin
     "--suite"
-        help = "which suite to run benchmarks for" 
-        arg_type = String
+    help = "which suite to run benchmarks for"
+    arg_type = String
     "--compare"
-        help = "git id for previous commit to compare current version against"
-        arg_type = String
+    help = "git id for previous commit to compare current version against"
+    arg_type = String
 end
 parsed_args = parse_args(settings)
 
