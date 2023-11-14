@@ -26,34 +26,34 @@ function collapsible_details(markdown; header_level = 2)
         return level <= header_level
     end
 
-    # Loop through and insert "<detail>" tags
+    # Loop through and insert "<details>" tags
     tag_opened = false
     for (idx, level) in header_lines
         # Close prior opened tag
         if tag_opened
-            lines[idx] = string("</detail>\n", lines[idx])
+            lines[idx] = string("</details>\n", lines[idx])
             tag_opened = false
         end
 
         # Insert/open new tag for headers at `header_level`
         if level == header_level
-            lines[idx] = string(lines[idx], "\n<detail>")
+            lines[idx] = string(lines[idx], "\n<details>")
             tag_opened = true
         end
     end
     if tag_opened
-        lines[end] = string(lines[end], "\n</detail>")
+        lines[end] = string(lines[end], "\n</details>")
         tag_opened = false
     end
 
     # Form full string
     new_markdown = join(lines, '\n')
 
-    # Tidy up spacing with "<detail>" tags
+    # Tidy up spacing with "<details>" tags
     new_markdown = replace(
         new_markdown,
-        r"(?<extra>\n+)\n<\/detail>" => s"\n</detail>\g<extra>",
-        r"<detail>\n(?<extra>\n+)" => s"\g<extra><detail>\n",
+        r"(?<extra>\n+)\n<\/details>" => s"\n</details>\g<extra>",
+        r"<details>\n(?<extra>\n+)" => s"\g<extra><details>\n",
     )
 
     return new_markdown
