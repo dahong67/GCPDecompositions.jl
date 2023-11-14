@@ -26,6 +26,15 @@ append!(
 #     ],
 # )
 
+## Imbalanced tensors
+append!(
+    SETUPS,
+    [
+        (; size = sz, rank = r, mode = n) for
+        sz in [(30, 100, 1000)], r in 50:50:300, n in 1:3
+    ],
+)
+
 # Generate random benchmarks
 for SETUP in SETUPS
     Random.seed!(0)
