@@ -30,8 +30,8 @@ append!(
 append!(
     SETUPS,
     [
-        (; size = sz, rank = r, mode = n) for
-        sz in [(30, 100, 1000)], r in 50:50:300, n in 1:3
+        (; size = sz, rank = r, mode = n) for sz in [(30, 100, 1000), (1000, 100, 30)],
+        r in 100:100:300, n in 1:3
     ],
 )
 
