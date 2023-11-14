@@ -40,6 +40,7 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkResults}}
         return haskey(bg, "mttkrp") ? name => bg["mttkrp"] : nothing
     end
     results_list = filter(!isnothing, results_list)
+    isempty(results_list) && return ""
 
     # Call the main method
     return export_mttkrp_sweep(results_list)
