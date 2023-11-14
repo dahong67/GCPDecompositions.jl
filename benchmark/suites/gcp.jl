@@ -1,10 +1,7 @@
 module BenchmarkGCP
 
-using BenchmarkTools
-
-using Random
-using GCPDecompositions
-using Distributions
+using BenchmarkTools, GCPDecompositions
+using Random, Distributions
 
 const SUITE = BenchmarkGroup()
 

@@ -1,30 +1,38 @@
 module BenchmarkMTTKRP
 
-using BenchmarkTools
-
+using BenchmarkTools, GCPDecompositions
 using Random
-using GCPDecompositions
 
 const SUITE = BenchmarkGroup()
 
-szs = [
-    (10, 10, 10),
-    (30, 30, 30),
-    (50, 50, 50),
-    (80, 80, 80),
-    (120, 120, 120),
-    (200, 200, 200),
-]
-ns = 1:3
-#rs = 20:20:200
-rs = 20
+# Collect setups
+const SETUPS = []
 
-for sz in szs, r in rs, n in ns
+## Balanced order-3 tensors
+append!(
+    SETUPS,
+    [
+        (; size = sz, rank = r, mode = n) for
+        sz in [ntuple(n -> In, 3) for In in 50:50:200], r in 50:50:300, n in 1:3
+    ],
+)
+
+# ## Balanced order-4 tensors
+# append!(
+#     SETUPS,
+#     [
+#         (; size = sz, rank = r, mode = n) for
+#         sz in [ntuple(n -> In, 4) for In in 30:30:120], r in 30:30:180, n in 1:4
+#     ],
+# )
+
+# Generate random benchmarks
+for SETUP in SETUPS
     Random.seed!(0)
-    X = randn(sz)
-    U = [randn(Ik, r) for Ik in sz]
-    SUITE["size=$sz, rank=$r, mode=$n"] =
-        @benchmarkable GCPDecompositions.mttkrp($X, $U, $n)
+    X = randn(SETUP.size)
+    U = [randn(In, SETUP.rank) for In in SETUP.size]
+    SUITE["size=$(SETUP.size), rank=$(SETUP.rank), mode=$(SETUP.mode)"] =
+        @benchmarkable GCPDecompositions.mttkrp($X, $U, $(SETUP.mode))
 end
 
 end
