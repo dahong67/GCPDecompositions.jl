@@ -17,12 +17,14 @@
 # + `benchmark/report.md` : report summarizing the results
 
 ## Make sure the benchmark environment is activated and load utilities
+@info("Loading benchmark environment")
 import Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 include("utils.jl")
 
 ## Parse command line arguments
+@info("Parsing arguments")
 using ArgParse
 settings = ArgParseSettings()
 @add_arg_table settings begin
@@ -36,6 +38,7 @@ end
 parsed_args = parse_args(settings)
 
 ## Run benchmarks
+@info("Running benchmarks")
 using GCPDecompositions, PkgBenchmark
 
 ### Create ENV for BenchmarkConfig
@@ -64,6 +67,7 @@ else
 end
 
 ## Generate report and save
+@info("Generating report")
 
 ### Build report
 report = sprint(export_markdown, results)
