@@ -51,8 +51,8 @@ else
         suite == "all" ? judge(GCPDecompositions, compare) :
         judge(
             GCPDecompositions,
-            compare,
             BenchmarkConfig(; env = Dict("GCP_BENCHMARK_SUITES" => suite)),
+            BenchmarkConfig(; id=compare, env = Dict("GCP_BENCHMARK_SUITES" => suite)),
         )
     results = PkgBenchmark.target_result(judgement)
     results_baseline = PkgBenchmark.baseline_result(judgement)
