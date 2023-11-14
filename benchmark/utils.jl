@@ -52,8 +52,8 @@ function collapsible_details(markdown; header_level = 2)
     # Tidy up spacing with "<details>" tags
     new_markdown = replace(
         new_markdown,
-        r"(?<extra>\n+)\n<\/details>" => s"\n</details>\g<extra>",
         r"<details>\n(?<extra>\n+)" => s"\g<extra><details>\n",
+        r"(?<extra>\n+)\n<\/details>" => s"\n</details>\g<extra>",
     )
 
     return new_markdown
