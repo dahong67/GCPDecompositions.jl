@@ -211,7 +211,7 @@ function plot_table(plots, colnames, rownames)
     # Create matrix of cell strings
     cell_strs = [
         "<th></th>" permutedims(string.("<th>", colnames, "</th>"))
-        string.("<td>", rownames, "</td>") string.("<td>\n\n", plot_strs, "\n\n</td>")
+        string.("<th>", rownames, "</th>") string.("<td>\n\n", plot_strs, "\n\n</td>")
     ]
 
     # Create vector of row strings
