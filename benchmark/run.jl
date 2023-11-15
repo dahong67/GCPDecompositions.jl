@@ -72,7 +72,14 @@ end
 ### Build report
 report = sprint(export_markdown, results)
 report *= "\n\n" * GCPBenchmarkUtils.export_mttkrp_sweep(results)
+
+### Tidy up report
 report = GCPBenchmarkUtils.collapsible_details(report)
+report = replace(
+    report,
+    r"^# Benchmark Report for \S*\n" => "# Benchmark Report for `GCPDecompositions`\n";
+    count = 1,
+)
 
 ### Save report
 write(joinpath(@__DIR__, "report.md"), report)
