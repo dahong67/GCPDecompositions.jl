@@ -141,11 +141,6 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkGroup}})
             margin = 0,
         )
     end
-    size_report = """
-    ## Runtime vs. size (for square tensors)
-    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the square tensor, for varying ranks and modes:
-    $(plot_table(size_plots, pretty_str.(size_groups), result_names))
-    """
 
     # Runtime vs. rank
     rank_group_keys = group(key -> (; size = key.size, mode = key.mode), all_keys)
@@ -165,11 +160,6 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkGroup}})
             margin = 0,
         )
     end
-    rank_report = """
-    ## Runtime vs. rank
-    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the rank, for varying sizes and modes:
-    $(plot_table(rank_plots, pretty_str.(rank_groups), result_names))
-    """
 
     # Runtime vs. mode
     mode_group_keys = group(key -> (; size = key.size, rank = key.rank), all_keys)
@@ -188,18 +178,21 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkGroup}})
             margin = 0,
         )
     end
-    mode_report = """
-    ## Runtime vs. mode
-    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the mode, for varying sizes and ranks:
-    $(plot_table(mode_plots, pretty_str.(mode_groups), result_names))
-    """
 
     return """
     # MTTKRP benchmark plots
 
-    $size_report
-    $rank_report
-    $mode_report
+    ## Runtime vs. size (for square tensors)
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the square tensor, for varying ranks and modes:
+    $(plot_table(size_plots, pretty_str.(size_groups), result_names))
+
+    ## Runtime vs. rank
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the rank, for varying sizes and modes:
+    $(plot_table(rank_plots, pretty_str.(rank_groups), result_names))
+
+    ## Runtime vs. mode
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the mode, for varying sizes and ranks:
+    $(plot_table(mode_plots, pretty_str.(mode_groups), result_names))
     """
 end
 
