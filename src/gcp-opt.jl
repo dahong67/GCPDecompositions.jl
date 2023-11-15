@@ -181,7 +181,7 @@ function mttkrp(X, U, n)
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
     # Matricized tensor (in mode n)
-    Xn = collect(reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), size(X, n), :))
+    Xn = reshape(permutedims(X, [n; setdiff(1:N, n)]), size(X, n), :)
 
     # Khatri-Rao product (in mode n)
     Zn = similar(U[1], prod(I[setdiff(1:N, n)]), r)
