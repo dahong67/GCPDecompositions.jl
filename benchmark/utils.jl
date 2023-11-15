@@ -5,6 +5,60 @@ module GCPBenchmarkUtils
 using BenchmarkTools, PkgBenchmark
 using Dictionaries, SplitApplyCombine, UnicodePlots
 
+## Insert <details> tags to get collapsible sections on GitHub
+
+"""
+    collapsible_details(markdown; header_level=2)
+
+Modify `markdown` to collapse at header level `header_level`.
+"""
+function collapsible_details(markdown; header_level = 2)
+    # Extract all the lines and find the header lines
+    lines = split(markdown, '\n')
+    header_lines = map(findall(contains(r"^(?<tag>#+) "), lines)) do idx
+        line = lines[idx]
+        level = length(match(r"^(?<tag>#+) ", line)[:tag])
+        return idx => level
+    end
+
+    # Filter out subheaders (level above `header_level`)
+    header_lines = filter(header_lines) do (_, level)
+        return level <= header_level
+    end
+
+    # Loop through and insert "<details>" tags
+    tag_opened = false
+    for (idx, level) in header_lines
+        # Close prior opened tag
+        if tag_opened
+            lines[idx] = string("\n</details>\n", '\n', lines[idx])
+            tag_opened = false
+        end
+
+        # Insert/open new tag for headers at `header_level`
+        if level == header_level
+            lines[idx] = string(lines[idx], '\n', "\n<details>\n")
+            tag_opened = true
+        end
+    end
+    if tag_opened
+        lines[end] = string(lines[end], '\n', "\n</details>\n")
+        tag_opened = false
+    end
+
+    # Form full string
+    new_markdown = join(lines, '\n')
+
+    # Tidy up spacing with "<details>" tags
+    new_markdown = replace(
+        new_markdown,
+        r"<details>\n\n(?<extra>\n+)" => s"\g<extra><details>\n\n",
+        r"(?<extra>\n+)\n\n<\/details>" => s"\n\n</details>\g<extra>",
+    )
+
+    return new_markdown
+end
+
 ## MTTKRP sweep
 
 """
@@ -87,11 +141,6 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkGroup}})
             margin = 0,
         )
     end
-    size_report = """
-    ## Runtime vs. size (for square tensors)
-    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the square tensor, for varying ranks and modes:
-    $(plot_table(size_plots, pretty_str.(size_groups), result_names))
-    """
 
     # Runtime vs. rank
     rank_group_keys = group(key -> (; size = key.size, mode = key.mode), all_keys)
@@ -111,11 +160,6 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkGroup}})
             margin = 0,
         )
     end
-    rank_report = """
-    ## Runtime vs. rank
-    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the rank, for varying sizes and modes:
-    $(plot_table(rank_plots, pretty_str.(rank_groups), result_names))
-    """
 
     # Runtime vs. mode
     mode_group_keys = group(key -> (; size = key.size, rank = key.rank), all_keys)
@@ -134,18 +178,21 @@ function export_mttkrp_sweep(results_list::Vector{Pair{String,BenchmarkGroup}})
             margin = 0,
         )
     end
-    mode_report = """
-    ## Runtime vs. mode
-    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the mode, for varying sizes and ranks:
-    $(plot_table(mode_plots, pretty_str.(mode_groups), result_names))
-    """
 
     return """
     # MTTKRP benchmark plots
 
-    $size_report
-    $rank_report
-    $mode_report
+    ## Runtime vs. size (for square tensors)
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the square tensor, for varying ranks and modes:
+    $(plot_table(size_plots, pretty_str.(size_groups), result_names))
+
+    ## Runtime vs. rank
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the size of the rank, for varying sizes and modes:
+    $(plot_table(rank_plots, pretty_str.(rank_groups), result_names))
+
+    ## Runtime vs. mode
+    Below are plots showing the runtime in miliseconds of MTTKRP as a function of the mode, for varying sizes and ranks:
+    $(plot_table(mode_plots, pretty_str.(mode_groups), result_names))
     """
 end
 
@@ -164,7 +211,7 @@ function plot_table(plots, colnames, rownames)
     # Create matrix of cell strings
     cell_strs = [
         "<th></th>" permutedims(string.("<th>", colnames, "</th>"))
-        string.("<td>", rownames, "</td>") string.("<td>\n\n", plot_strs, "\n\n</td>")
+        string.("<th>", rownames, "</th>") string.("<td>\n\n", plot_strs, "\n\n</td>")
     ]
 
     # Create vector of row strings
