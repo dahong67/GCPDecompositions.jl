@@ -18,6 +18,10 @@ If the LossFunctions.jl package is also loaded,
 Check `GCPDecompositions.LossFunctionsExt.SupportedLosses`
 to see what losses are supported.
 
+Algorithm for computing one mode of MTTKRP is from "Fast Alternating LS Algorithms
+for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
+section III-B.
+
 See also: `CPD`, `AbstractLoss`.
 """
 gcp(
@@ -65,7 +69,6 @@ function _gcp(
 ) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
-
     # Compute lower bound from constraints
     lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
 
@@ -93,7 +96,7 @@ function _gcp(
         M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
     end
     u0 = vcat(vec.(M0.U)...)
-
+    
     # Setup vectorized objective function and gradient
     vec_cutoffs = (0, cumsum(r .* size(X))...)
     vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(N))
@@ -107,7 +110,6 @@ function _gcp(
         gcp_grad_U!(GU, CPD(ones(T, r), U), X, loss)
         return gu
     end
-
     # Run LBFGSB
     lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
     u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
@@ -174,21 +176,34 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
-# inefficient but simple
+# Faster MTTKRP
 function mttkrp(X, U, n)
+
     # Dimensions
     N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
-    # Matricized tensor (in mode n)
-    Xn = reshape(permutedims(X, [n; setdiff(1:N, n)]), size(X, n), :)
-
-    # Khatri-Rao product (in mode n)
-    Zn = similar(U[1], prod(I[setdiff(1:N, n)]), r)
+    # See section III-B from "Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
+    Rn = similar(U[n])
+    Jn = prod(size(X)[1:n])
+    Kn = prod(size(X)[n+1:end])
+    # Compute tensor-vector products right to left (equations 15, 17) for each rank
     for j in 1:r
-        Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
+        # Inner tensor-vector products
+        Rn_j = reshape(reshape(X, Jn, Kn) * reduce(kron, [view(U[i], :, j) for i in reverse(n+1:N)], init=1), size(X)[1:n]) 
+        
+        # Outer tensor-vector products
+        # Permute so dims to be multiplied are last
+        Rn_j = permutedims(Rn_j, [n; 1:n-1])
+        # Multiply from right to left
+        sz = size(Rn_j)
+        m = length(sz)
+        for k in n-1:-1:1
+            Rn_j = reshape(Rn_j, prod(sz[1:m-1]), sz[m])
+            Rn_j = Rn_j * U[k][:, j]
+            m -= 1
+        end
+        Rn[:, j] = Rn_j  
     end
-
-    # MTTKRP (in mode n)
-    return Xn * Zn
+    return Rn
 end
