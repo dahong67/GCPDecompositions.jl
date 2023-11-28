@@ -199,8 +199,7 @@ function mttkrp(X, U, n)
         sz = size(Rn_j)
         m = length(sz)
         for k in n-1:-1:1
-            Rn_j = reshape(Rn_j, prod(sz[1:m-1]), sz[m])
-            Rn_j = Rn_j * U[k][:, j]
+            Rn_j = reshape(Rn_j, prod(sz[1:m-1]), sz[m]) * U[k][:, j]
             m -= 1
         end
         Rn[:, j] = Rn_j  
