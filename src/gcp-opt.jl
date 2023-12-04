@@ -191,12 +191,28 @@ function mttkrp(X, U, n)
     Kn = prod(size(X)[n+1:end])
     # Compute tensor-vector products right to left (equations 15, 17) for each rank
     for j in 1:r
-        # Inner tensor-vector products
-        inner = reshape(reshape(X, Jn, Kn) * reduce(kron, [view(U[i], :, j) for i in reverse(n+1:N)], init=1), size(X)[1:n]) 
-        # Outer tensor-vector products
-        Jn_inner = prod(size(inner)[1:n-1])
-        Kn_inner = prod(size(inner)[n:end])
-        Rn[:, j] = transpose(reshape(inner, Jn_inner, Kn_inner)) * reduce(kron, [view(U[i], :, j) for i in reverse(1:n-1)], init=1)
+
+        # Special cases are n = 1 and n = N (n = 1 has no outer tensor-vector products),
+        # n = N has no inner tensor-vector products
+        if n == 1
+            # Just inner tensor-vector products
+            kr_inner = reduce(kron, [view(U[i], :, j) for i in reverse(n+1:N)])
+            Rn[:, j] = transpose(reshape(X, Jn, Kn) * kr_inner)
+        elseif n == N
+            # Just outer tensor-vector products
+            kr_outer = reduce(kron, [view(U[i], :, j) for i in reverse(1:n-1)])
+            Rn[:, j] = transpose(reshape(X, prod(size(X)[1:n-1]), prod(size(X)[n:end]))) * kr_outer
+        else
+            # Inner tensor-vector products
+            kr_inner = reduce(kron, [view(U[i], :, j) for i in reverse(n+1:N)])
+            inner = reshape(reshape(X, Jn, Kn) * kr_inner, size(X)[1:n]) 
+            # Outer tensor-vector products
+            Jn_inner = prod(size(inner)[1:n-1])
+            Kn_inner = prod(size(inner)[n:end])
+            kr_outer = reduce(kron, [view(U[i], :, j) for i in reverse(1:n-1)])
+            Rn[:, j] = transpose(reshape(inner, Jn_inner, Kn_inner)) * kr_outer
+        end
+        
     end
     return Rn
 end
