@@ -194,11 +194,12 @@ function mttkrp(X, U, n)
     # Special cases are n = 1 and n = N (n = 1 has no outer tensor-vector products),
     # n = N has no inner tensor-vector products
     if n == 1
+        # Just inner tensor-vector products
+        kr_inner = similar(U[1], prod(I[2:N]), r)
         for j in 1:r
-            # Just inner tensor-vector products
-            kr_inner = reduce(kron, [view(U[i], :, j) for i in reverse(n+1:N)])
-            Rn[:, j] = transpose(reshape(X, Jn, Kn) * kr_inner)
+            kr_inner[:,j] = reduce(kron, [view(U[i], :, j) for i in reverse(2:N)])
         end
+        Rn = reshape(X, size(X, 1), :) * kr_inner
     elseif n == N
         for j in 1:r
             # Just outer tensor-vector products
