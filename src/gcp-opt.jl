@@ -195,10 +195,7 @@ function mttkrp(X, U, n)
     # n = N has no inner tensor-vector products
     if n == 1
         # Just inner tensor-vector products
-        kr_inner = similar(U[1], prod(I[2:N]), r)
-        for j in 1:r
-            kr_inner[:,j] = reduce(kron, [view(U[i], :, j) for i in reverse(2:N)])
-        end
+        kr_inner = khatrirao(U[reverse(2:N)]...)
         Rn = reshape(X, size(X, 1), :) * kr_inner
     elseif n == N
         for j in 1:r
@@ -219,4 +216,19 @@ function mttkrp(X, U, n)
         end
     end
     return Rn
+end
+
+"""
+    khatrirao(A1, A2, ...)
+    
+    Computes the Khatri-Rao product (i.e., column-wise Kronecker product)
+    of the matrices `A1`, `A2`, etc.
+"""
+function khatrirao(A::Vararg{T,N}) where {T<:Matrix,N}
+    r = (only∘unique)(size.(A,2))
+    K = similar(A[1], prod(size.(A,1)), r)
+    for j in 1:r
+        K[:, j] = reduce(kron, [view(A[i], :, j) for i in 1:N])
+    end
+    return K
 end
