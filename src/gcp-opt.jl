@@ -224,21 +224,9 @@ end
 """
 function khatrirao(A::Vararg{T,N}) where {T<:Matrix,N}
     r = (only∘unique)(size.(A,2))
-    #K = similar(A[1], prod(size.(A,1)), r)
-    R = ntuple(Val(N)) do k
-        dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
-        return reshape(A[k],dims)
+    K = similar(A[1], prod(size.(A,1)), r)
+    for j in 1:r
+        K[:, j] = reduce(kron, [view(A[i], :, j) for i in 1:N])
     end
-    return reshape(broadcast(*, R...),:,r)
-
-
-    #for j in 1:r
-        # Quick way to avoid making two copies of `K`:
-        # 1. use `reduce` to compute all but the last `kron`
-        # 2. use `kron!` for the last one
-        # Can/should optimize later: https://github.com/dahong67/GCPDecompositions.jl/issues/34
-    #    temp = reduce(kron, [view(A[i], :, j) for i in 1:N-1])
-    #    kron!(view(K, :, j), temp, view(A[N], :, j))
-    #end
-    #return K
+    return K
 end
