@@ -144,7 +144,7 @@ function gcp_grad_U!(
 end
 
 function _gcp(
-    X::Array{TX,N},
+    X::AbstractArray{TX,N},
     r,
     loss::LeastSquaresLoss,
     constraints::Tuple{},
