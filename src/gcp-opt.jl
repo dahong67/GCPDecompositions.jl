@@ -222,11 +222,12 @@ end
     Computes the Khatri-Rao product (i.e., column-wise Kronecker product)
     of the matrices `A1`, `A2`, etc.
 """
-function khatrirao(A::Vararg{T,N}) where {T<:Matrix,N}
-    r = (only∘unique)(size.(A,2))
-    K = similar(A[1], prod(size.(A,1)), r)
-    for j in 1:r
-        K[:, j] = reduce(kron, [view(A[i], :, j) for i in 1:N])
+function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+    r = size(A[1],2)
+    # @boundscheck all(==(r),size.(A,2)) || throw(DimensionMismatch())
+    R = ntuple(Val(N)) do k
+        dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
+        return reshape(A[k],dims)
     end
-    return K
+    return reshape(broadcast(*, R...),:,r)
 end
