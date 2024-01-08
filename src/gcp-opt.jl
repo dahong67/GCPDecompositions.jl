@@ -2,7 +2,7 @@
 
 # Main fitting function
 """
-    gcp(X::Array, r, loss = LeastSquaresLoss();
+    gcp(X::AbstractArray, r, loss = LeastSquaresLoss();
         constraints = default_constraints(loss),
         algorithm = default_algorithm(X, r, loss, constraints)) -> CPD
 
@@ -21,7 +21,7 @@ to see what losses are supported.
 See also: `CPD`, `AbstractLoss`.
 """
 gcp(
-    X::Array,
+    X::AbstractArray,
     r,
     loss = LeastSquaresLoss();
     constraints = default_constraints(loss),
@@ -43,13 +43,13 @@ function default_constraints(loss)
 end
 
 # Choose default algorithm
-default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
+default_algorithm(X::AbstractArray{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
     GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 # TODO: remove this `func, grad, lower` signature
 # will require reworking how we do testing
-_gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
+_gcp(X::AbstractArray{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
     X,
     r,
     UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
@@ -57,7 +57,7 @@ _gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
     GCPAlgorithms.LBFGSB(; lbfgsopts...),
 )
 function _gcp(
-    X::Array{TX,N},
+    X::AbstractArray{TX,N},
     r,
     loss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
@@ -116,14 +116,14 @@ function _gcp(
 end
 
 # Objective function and gradient (w.r.t. `M.U`)
-function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
+function gcp_func(M::CPD{T,N}, X::AbstractArray{TX,N}, loss) where {T,TX,N}
     return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
 end
 
 function gcp_grad_U!(
     GU::NTuple{N,TGU},
     M::CPD{T,N},
-    X::Array{TX,N},
+    X::AbstractArray{TX,N},
     loss,
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
     Y = [
