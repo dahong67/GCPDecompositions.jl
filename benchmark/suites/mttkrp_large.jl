@@ -1,4 +1,4 @@
-module BenchmarkMTTKRP
+module BenchmarkMTTKRPLarge
 
 using BenchmarkTools, GCPDecompositions
 using Random
