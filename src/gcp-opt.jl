@@ -202,15 +202,15 @@ function mttkrp(X, U, n)
         kr_outer = khatrirao(U[reverse(1:N-1)]...)
         mul!(Rn, transpose(reshape(X, prod(size(X)[1:N-1]), size(X)[N])), kr_outer)
     else
-        kr_inner = khatrirao(U[reverse(n+1:N)]...)
+        kr_inner = khatrirao(U[reverse(n+1:N)]...) 
+        kr_outer = khatrirao(U[reverse(1:n-1)]...)
         for j in 1:r
             # Inner tensor-vector products
             inner = reshape(reshape(X, Jn, Kn) * kr_inner[:, j], size(X)[1:n]) 
             # Outer tensor-vector products
             Jn_inner = prod(size(inner)[1:n-1])
             Kn_inner = prod(size(inner)[n:end])
-            kr_outer = reduce(kron, [view(U[i], :, j) for i in reverse(1:n-1)])
-            Rn[:, j] = transpose(reshape(inner, Jn_inner, Kn_inner)) * kr_outer
+            Rn[:, j] = transpose(reshape(inner, Jn_inner, Kn_inner)) * kr_outer[:, j]
         end
     end
     return Rn
