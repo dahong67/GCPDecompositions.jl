@@ -4,6 +4,7 @@ authors = ["David Hong <hong@udel.edu> and contributors"]
 version = "0.1.2"
 
 [deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 LBFGSB = "5be7bae1-8223-5378-bac3-9e7378a2f6e6"
