@@ -22,7 +22,7 @@ LossFunctionsExt = "LossFunctions"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 
 [compat]
-CUDA = "5.0.0"
+CUDA = ">= 4.4.1"
 ForwardDiff = "0.10.36"
 IntervalSets = "0.7.7"
 LBFGSB = "0.4.1"
