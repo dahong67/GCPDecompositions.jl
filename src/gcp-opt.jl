@@ -155,7 +155,7 @@ function _gcp(
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
-    Xnorm = sqrt(sum(x -> isnan(x) ? 0 : abs2(x), X))
+    Xnorm = sqrt(mapreduce(x -> ismissing(x) ? 0 : abs2(x), +, X))
     for k in Base.OneTo(N)
         M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
     end
