@@ -49,7 +49,7 @@ default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 # TODO: remove this `func, grad, lower` signature
 # will require reworking how we do testing
-_gcp(X::AbstractArray{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
+_gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
     X,
     r,
     UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
@@ -57,7 +57,7 @@ _gcp(X::AbstractArray{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gc
     GCPAlgorithms.LBFGSB(; lbfgsopts...),
 )
 function _gcp(
-    X::AbstractArray{TX,N},
+    X::Array{TX,N},
     r,
     loss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
@@ -116,14 +116,14 @@ function _gcp(
 end
 
 # Objective function and gradient (w.r.t. `M.U`)
-function gcp_func(M::CPD{T,N}, X::AbstractArray{TX,N}, loss) where {T,TX,N}
+function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
     return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
 end
 
 function gcp_grad_U!(
     GU::NTuple{N,TGU},
     M::CPD{T,N},
-    X::AbstractArray{TX,N},
+    X::Array{TX,N},
     loss,
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
     Y = [
@@ -144,7 +144,7 @@ function gcp_grad_U!(
 end
 
 function _gcp(
-    X::AbstractArray{TX,N},
+    X::Array{TX,N},
     r,
     loss::LeastSquaresLoss,
     constraints::Tuple{},
@@ -155,7 +155,39 @@ function _gcp(
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
-    Xnorm = sqrt(mapreduce(x -> ismissing(x) ? 0 : abs2(x), +, X))
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
+    end
+    λ, U = M0.λ, collect(M0.U)
+
+    # Inefficient but simple implementation
+    for _ in 1:algorithm.maxiters
+        for n in 1:N
+            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+            U[n] = mttkrp(X, U, n) / V
+            λ = norm.(eachcol(U[n]))
+            U[n] = U[n] ./ permutedims(λ)
+        end
+    end
+
+    return CPD(λ, Tuple(U))
+end
+
+# GPU implementation
+function _gcp(
+    X::CuArray{TX,N},
+    r,
+    loss::LeastSquaresLoss,
+    constraints::Tuple{},
+    algorithm::GCPAlgorithms.ALS,
+) where {TX<:Real,N}
+    T = promote_type(TX, Float64)
+
+    # Random initialization
+    M0 = CPD(CUDA.ones(T, r), CUDA.rand.(T, size(X), r))
+    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    Xnorm = sqrt(mapreduce(x -> isnan(x) ? 0 : abs2(x), +, X))
     for k in Base.OneTo(N)
         M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
     end
