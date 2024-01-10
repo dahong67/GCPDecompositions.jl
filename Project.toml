@@ -11,12 +11,15 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
 
 [weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
 
 [extensions]
+CUDAExt = "CUDA"
 LossFunctionsExt = "LossFunctions"
 
 [compat]
+CUDA = "5.0.0"
 ForwardDiff = "0.10.36"
 IntervalSets = "0.7.7"
 LBFGSB = "0.4.1"

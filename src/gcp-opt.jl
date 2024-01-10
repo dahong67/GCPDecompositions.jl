@@ -155,6 +155,7 @@ function _gcp(
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    #Xnorm = sqrt(mapreduce(x -> isnan(x) || ismissing(x) ? 0 : abs2(x), +, X, init=0f0))
     Xnorm = sqrt(sum(abs2, skipmissing(X)))
     for k in Base.OneTo(N)
         M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
@@ -174,41 +175,9 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
-# GPU implementation
-function _gcp(
-    X::CuArray{TX,N},
-    r,
-    loss::LeastSquaresLoss,
-    constraints::Tuple{},
-    algorithm::GCPAlgorithms.ALS,
-) where {TX<:Real,N}
-    T = promote_type(TX, Float64)
-
-    # Random initialization
-    M0 = CPD(CUDA.ones(T, r), CUDA.rand.(T, size(X), r))
-    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
-    Xnorm = sqrt(mapreduce(x -> isnan(x) ? 0 : abs2(x), +, X))
-    for k in Base.OneTo(N)
-        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
-    end
-    λ, U = M0.λ, collect(M0.U)
-
-    # Inefficient but simple implementation
-    for _ in 1:algorithm.maxiters
-        for n in 1:N
-            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-            U[n] = mttkrp(X, U, n) / V
-            λ = norm.(eachcol(U[n]))
-            U[n] = U[n] ./ permutedims(λ)
-        end
-    end
-
-    return CPD(λ, Tuple(U))
-end
 
 # inefficient but simple
 function mttkrp(X, U, n)
-    # Dimensions
     N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
@@ -217,10 +186,18 @@ function mttkrp(X, U, n)
 
     # Khatri-Rao product (in mode n)
     Zn = similar(U[1], prod(I[setdiff(1:N, n)]), r)
-    for j in 1:r
-        Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
-    end
+    Zn = khatrirao(U[reverse(setdiff(1:N, n))]...)
 
     # MTTKRP (in mode n)
     return Xn * Zn
+end
+
+function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+    r = size(A[1],2)
+    # @boundscheck all(==(r),size.(A,2)) || throw(DimensionMismatch())
+    R = ntuple(Val(N)) do k
+        dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
+        return reshape(A[k],dims)
+    end
+    return reshape(broadcast(*, R...),:,r)
 end

@@ -39,6 +39,7 @@ include("gcp-opt.jl")
 
 if !isdefined(Base, :get_extension)
     include("../ext/LossFunctionsExt.jl")
+    include("../ext/CUDAExt.jl")
 end
 
 end
