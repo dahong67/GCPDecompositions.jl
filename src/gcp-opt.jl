@@ -188,19 +188,11 @@ function mttkrp(X, U, n)
     N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
-    # Matricized tensor (in mode n)
-    Xn = reshape(permutedims(X, [n; setdiff(1:N, n)]), size(X, n), :)
-
-    # Khatri-Rao product (in mode n)
-    Zn = similar(U[1], prod(I[setdiff(1:N, n)]), r)
-    for j in 1:r
-        Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
     # See section III-B from "Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
     Rn = similar(U[n])
     Jn = prod(size(X)[1:n])
     Kn = prod(size(X)[n+1:end])
-    # Compute tensor-vector products right to left (equations 15, 17) for each rank
-
+    
     # Special cases are n = 1 and n = N (n = 1 has no outer tensor-vector products),
     # n = N has no inner tensor-vector products
     if n == 1
