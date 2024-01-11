@@ -186,6 +186,7 @@ function mttkrp(X, U, n)
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
     # See section III-B from "Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
+    Rn = similar(U[n])
     Jn = prod(size(X)[1:n])
     Kn = prod(size(X)[n+1:end])
     # Compute tensor-vector products right to left (equations 15, 17) for each rank
@@ -194,12 +195,10 @@ function mttkrp(X, U, n)
     # n = N has no inner tensor-vector products
     if n == 1
         # Just inner tensor-vector products
-        Rn = similar(U[n])
         kr_inner = khatrirao(U[reverse(2:N)]...)
         mul!(Rn, reshape(X, size(X, 1), :), kr_inner)
     elseif n == N
         # Just outer tensor-vector products
-        Rn = similar(U[n])
         kr_outer = khatrirao(U[reverse(1:N-1)]...)
         mul!(Rn, transpose(reshape(X, prod(size(X)[1:N-1]), size(X)[N])), kr_outer)
     else
@@ -208,8 +207,7 @@ function mttkrp(X, U, n)
         inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r)) 
         Jn_inner = prod(size(inner)[1:n-1])
         Kn_inner = prod(size(inner)[n:end-1])
-        inner = reduce(hcat, [transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)) * kr_outer[:, j] for j in 1:r])
-        return inner
+        Rn = reduce(hcat, [transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)) * kr_outer[:, j] for j in 1:r])
     end
     return Rn
 end
