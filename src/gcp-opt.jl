@@ -207,9 +207,7 @@ function mttkrp(X, U, n)
         inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r)) 
         Jn_inner = prod(size(inner)[1:n-1])
         Kn_inner = prod(size(inner)[n:end-1])
-        for j in 1:r
-            Rn[:, j] .= transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)) * kr_outer[:, j]
-        end
+        Rn = reduce(hcat, [transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)) * kr_outer[:, j] for j in 1:r])
     end
     return Rn
 end
