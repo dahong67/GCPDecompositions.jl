@@ -175,9 +175,16 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
-
-# inefficient but simple
+"""
+    mttkrp(X, U, n) -> Rn
+    
+    Algorithm for computing one mode of MTTKRP is from "Fast Alternating LS Algorithms
+    for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
+    section III-B.
+"""
 function mttkrp(X, U, n)
+
+    # Dimensions
     N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
@@ -186,15 +193,39 @@ function mttkrp(X, U, n)
 
     # Khatri-Rao product (in mode n)
     Zn = similar(U[1], prod(I[setdiff(1:N, n)]), r)
-    Zn = khatrirao(U[reverse(setdiff(1:N, n))]...)
+    for j in 1:r
+        Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
+    # See section III-B from "Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
+    Rn = similar(U[n])
+    Jn = prod(size(X)[1:n])
+    Kn = prod(size(X)[n+1:end])
+    # Compute tensor-vector products right to left (equations 15, 17) for each rank
 
-    # MTTKRP (in mode n)
-    return Xn * Zn
+    # Special cases are n = 1 and n = N (n = 1 has no outer tensor-vector products),
+    # n = N has no inner tensor-vector products
+    if n == 1
+        # Just inner tensor-vector products
+        kr_inner = khatrirao(U[reverse(2:N)]...)
+        mul!(Rn, reshape(X, size(X, 1), :), kr_inner)
+    elseif n == N
+        # Just outer tensor-vector products
+        kr_outer = khatrirao(U[reverse(1:N-1)]...)
+        mul!(Rn, transpose(reshape(X, prod(size(X)[1:N-1]), size(X)[N])), kr_outer)
+    else
+        kr_inner = khatrirao(U[reverse(n+1:N)]...) 
+        kr_outer = khatrirao(U[reverse(1:n-1)]...)
+        inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r)) 
+        Jn_inner = prod(size(inner)[1:n-1])
+        Kn_inner = prod(size(inner)[n:end-1])
+        for j in 1:r
+            Rn[:, j] .= transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)) * kr_outer[:, j]
+        end
+    end
+    return Rn
 end
 
 function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
     r = size(A[1],2)
-    # @boundscheck all(==(r),size.(A,2)) || throw(DimensionMismatch())
     R = ntuple(Val(N)) do k
         dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
         return reshape(A[k],dims)
