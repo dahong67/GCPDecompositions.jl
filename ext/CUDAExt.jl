@@ -19,8 +19,7 @@ function _gcp(
     T = promote_type(TX, Float32)
 
     # Random initialization
-    M0 = CPD(ones(T, r), rand.(T, size(X), r))
-    #M0norm = sqrt(mapreduce(abs2, +, M0[I] for I in CartesianIndices(size(M0))))
+    M0 = CPD(ones(T, r), rand.(T, size(X), r))X_gpu
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
     Xnorm = sqrt(mapreduce(x -> isnan(x) ? 0 : abs2(x), +, X, init=0f0))
     for k in Base.OneTo(N)

@@ -2,7 +2,7 @@
 
 # Main fitting function
 """
-    gcp(X::AbstractArray, r, loss = LeastSquaresLoss();
+    gcp(X::Array, r, loss = LeastSquaresLoss();
         constraints = default_constraints(loss),
         algorithm = default_algorithm(X, r, loss, constraints)) -> CPD
 
@@ -21,7 +21,7 @@ to see what losses are supported.
 See also: `CPD`, `AbstractLoss`.
 """
 gcp(
-    X::AbstractArray,
+    X::Array,
     r,
     loss = LeastSquaresLoss();
     constraints = default_constraints(loss),
@@ -43,7 +43,7 @@ function default_constraints(loss)
 end
 
 # Choose default algorithm
-default_algorithm(X::AbstractArray{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
+default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
     GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
@@ -213,7 +213,7 @@ function mttkrp(X, U, n)
     return Rn
 end
 
-function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+function khatrirao(A::Vararg{T,N}) where {T<:Matrix,N}
     r = size(A[1],2)
     R = ntuple(Val(N)) do k
         dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
