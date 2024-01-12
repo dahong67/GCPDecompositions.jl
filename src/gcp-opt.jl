@@ -213,7 +213,7 @@ function mttkrp(X, U, n)
     return Rn
 end
 
-function khatrirao(A::Vararg{T,N}) where {T<:AbstactMatrix,N}
+function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
     r = size(A[1],2)
     R = ntuple(Val(N)) do k
         dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
