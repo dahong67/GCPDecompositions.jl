@@ -150,8 +150,8 @@ function _gcp(
     constraints::Tuple{},
     algorithm::GCPAlgorithms.ALS,
 ) where {TX<:Real,N}
-    T = promote_type(TX, Float64)
-
+    #T = promote_type(TX, Float64)
+    T = promote_type(TX, Float32)
     # Random initialization
     M0 = CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
