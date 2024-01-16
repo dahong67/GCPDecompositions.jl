@@ -219,6 +219,9 @@ end
     of the matrices `A1`, `A2`, etc.
 """
 function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+    if N == 1
+        return A[1]
+    end
     r = size(A[1],2)
     # @boundscheck all(==(r),size.(A,2)) || throw(DimensionMismatch())
     R = ntuple(Val(N)) do k
