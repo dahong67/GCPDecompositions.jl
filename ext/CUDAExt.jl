@@ -36,7 +36,7 @@ function _gcp(
         for n in 1:N
             V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
             U[n] = GCPDecompositions.mttkrp(X, U, n) / V
-            λ = CuArray(CUDA.norm.(eachcol(U[n])))
+            λ = vec(sqrt.(sum(abs2, U[n]; dims=1)))
             U[n] = U[n] ./ permutedims(λ)
         end
     end
