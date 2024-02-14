@@ -161,17 +161,73 @@ function _gcp(
     end
     λ, U = M0.λ, collect(M0.U)
 
-    # Inefficient but simple implementation
     for _ in 1:algorithm.maxiters
-        for n in 1:N
-            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-            U[n] = mttkrp(X, U, n) / V
-            λ = norm.(eachcol(U[n]))
-            U[n] = U[n] ./ permutedims(λ)
-        end
+        mttkrps_ls!(X, U, λ)
     end
 
     return CPD(λ, Tuple(U))
+end
+
+
+"""
+    mttkrps(X, U) -> Rns
+    
+    Algorithm for computing MTTKRP sequence is from "Fast Alternating LS Algorithms
+    for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
+    section III-C.
+"""
+function mttkrps_ls!(X, U, λ)
+
+    N = ndims(X)
+    R = size(U[1])[2]
+    #Rns = [similar(U[n]) for n in 1:N]
+
+    # Determine order of modes of MTTKRP to compute
+    Jns = [prod(size(X)[1:n]) for n in 1:N]
+    Kns = [prod(size(X)[n+1:end]) for n in 1:N]
+    Kn_minus_ones = [prod(size(X)[n:end]) for n in 1:N]
+    comp = Jns .<= Kn_minus_ones
+    n_star = maximum(map(x -> comp[x] ? x : 0, 1:N))
+    order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
+
+    # Compute MTTKRPs recursively
+    saved = zeros(Jns[n_star], R)
+    for n in order
+        if n == n_star
+            saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(U[reverse(n+1:N)]...)
+            U[n] = mttkrps_helper(saved, U, n, "right", N, Jns, Kns)
+        elseif n == n_star + 1
+            saved = (khatrirao(U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
+            U[n] = n == N ? saved : mttkrps_helper(saved, U, n, "left", N, Jns, Kns)
+        elseif n < n_star
+            saved = hcat([reshape(saved[:, r], (Jns[n], size(X)[n+1])) * U[n+1][:, r] for r in 1:R]...)
+            U[n] = n == 1 ? saved : mttkrps_helper(saved, U, n, "right", N, Jns, Kns)
+        else
+            saved = hcat([reshape(saved[:, r], (size(X)[n-1], Kns[n-1]))' * U[n-1][:, r] for r in 1:R]...)
+            U[n] = n == N ? saved : mttkrps_helper(saved, U, n, "left", N, Jns, Kns)
+        end
+        # Normalization
+        U[n] = U[n] / reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+        λ .= norm.(eachcol(U[n]))
+        U[n] = U[n] ./ permutedims(λ)
+    end
+end
+
+
+function mttkrps_helper(Zn, U, n, side, N, Jns, Kns)
+    Rn = similar(U[n])
+    if side == "right"
+        kr = khatrirao(U[reverse(1:n-1)]...)
+        for r in 1:size(U[n])[2]
+            Rn[:, r] = reshape(Zn[:, r], (Jns[n-1], size(U[n])[1]))' * kr[:, r]
+        end
+    elseif side == "left"
+        kr = khatrirao(U[reverse(n+1:N)]...)
+        for r in 1:size(U[n])[2]
+            Rn[:, r] = reshape(Zn[:, r], (size(U[n])[1], Kns[n])) * kr[:, r]
+        end
+    end
+    return Rn
 end
 
 """
