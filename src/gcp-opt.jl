@@ -180,7 +180,6 @@ function mttkrps_ls!(X, U, λ)
 
     N = ndims(X)
     R = size(U[1])[2]
-    #Rns = [similar(U[n]) for n in 1:N]
 
     # Determine order of modes of MTTKRP to compute
     Jns = [prod(size(X)[1:n]) for n in 1:N]
@@ -195,16 +194,28 @@ function mttkrps_ls!(X, U, λ)
     for n in order
         if n == n_star
             saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(U[reverse(n+1:N)]...)
-            U[n] = mttkrps_helper(saved, U, n, "right", N, Jns, Kns)
+            mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
         elseif n == n_star + 1
             saved = (khatrirao(U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
-            U[n] = n == N ? saved : mttkrps_helper(saved, U, n, "left", N, Jns, Kns)
+            if n == N
+                U[n] = saved
+            else
+                mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
+            end  
         elseif n < n_star
             saved = hcat([reshape(saved[:, r], (Jns[n], size(X)[n+1])) * U[n+1][:, r] for r in 1:R]...)
-            U[n] = n == 1 ? saved : mttkrps_helper(saved, U, n, "right", N, Jns, Kns)
+            if n == 1
+                U[n] = saved
+            else
+                mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
+            end
         else
             saved = hcat([reshape(saved[:, r], (size(X)[n-1], Kns[n-1]))' * U[n-1][:, r] for r in 1:R]...)
-            U[n] = n == N ? saved : mttkrps_helper(saved, U, n, "left", N, Jns, Kns)
+            if n == N
+                U[n] = saved
+            else
+                mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
+            end
         end
         # Normalization
         U[n] = U[n] / reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
@@ -214,20 +225,18 @@ function mttkrps_ls!(X, U, λ)
 end
 
 
-function mttkrps_helper(Zn, U, n, side, N, Jns, Kns)
-    Rn = similar(U[n])
+function mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)
     if side == "right"
         kr = khatrirao(U[reverse(1:n-1)]...)
         for r in 1:size(U[n])[2]
-            Rn[:, r] = reshape(Zn[:, r], (Jns[n-1], size(U[n])[1]))' * kr[:, r]
+            U[n][:, r] = reshape(Zn[:, r], (Jns[n-1], size(U[n])[1]))' * kr[:, r]
         end
     elseif side == "left"
         kr = khatrirao(U[reverse(n+1:N)]...)
         for r in 1:size(U[n])[2]
-            Rn[:, r] = reshape(Zn[:, r], (size(U[n])[1], Kns[n])) * kr[:, r]
+            U[n][:, r] = reshape(Zn[:, r], (size(U[n])[1], Kns[n])) * kr[:, r]
         end
     end
-    return Rn
 end
 
 """
