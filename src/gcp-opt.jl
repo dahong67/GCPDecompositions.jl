@@ -190,6 +190,7 @@ function mttkrps_testing(X, U)
         U[n] = mttkrp(X, U, n) / V
         λ = norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)
+    end
     return
 end
 
