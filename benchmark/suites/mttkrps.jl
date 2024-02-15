@@ -41,7 +41,7 @@ for SETUP in SETUPS
     X = randn(SETUP.size)
     U = [randn(In, SETUP.rank) for In in SETUP.size]
     SUITE["modes=$(SETUP.modes), size=$(SETUP.size), rank=$(SETUP.rank)"] = @benchmarkable(
-        GCPDecompositions.mttkrp($X, $U, $(SETUP.mode)),
+        GCPDecompositions.mttkrps_testing(X, U),
         seconds = 5,
         samples = 5,
     )

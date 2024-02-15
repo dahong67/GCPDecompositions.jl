@@ -173,6 +173,15 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
+function mttkrps_testing(X, U)
+    N = ndims(X)
+    for n in 1:N
+        V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+        U[n] = mttkrp(X, U, n) / V
+        λ = norm.(eachcol(U[n]))
+        U[n] = U[n] ./ permutedims(λ)
+end
+
 
 """
     mttkrps(X, U) -> Rns
