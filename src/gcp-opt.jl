@@ -174,12 +174,23 @@ function _gcp(
 end
 
 function mttkrps_testing(X, U)
-    N = ndims(X)
-    for n in 1:N
+
+    # Random initialization
+    M0 = CPD(ones(T, r), rand.(T, size(X), r))
+    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
+    end
+
+    λ, U = M0.λ, collect(M0.U)
+
+    for n in 1:ndims(X)
         V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
         U[n] = mttkrp(X, U, n) / V
         λ = norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)
+    return
 end
 
 
