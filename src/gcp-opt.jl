@@ -185,12 +185,8 @@ function mttkrps_testing(X, U)
 
     λ, U = M0.λ, collect(M0.U)
 
-    for n in 1:ndims(X)
-        V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-        U[n] = mttkrp(X, U, n) / V
-        λ = norm.(eachcol(U[n]))
-        U[n] = U[n] ./ permutedims(λ)
-    end
+    mttkrps_ls!(X, U, λ)
+    
     return
 end
 
