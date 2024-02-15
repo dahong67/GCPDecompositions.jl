@@ -47,13 +47,12 @@ function mttkrps_testing(X, r)
     λ, U = M0.λ, collect(M0.U)
     # Compute MTTKRP for all modes
     for n in 1:ndims(X)
-        for n in 1:N
-            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-            U[n] = GCPDecompositions.mttkrp(X, U, n) / V
-            λ = norm.(eachcol(U[n]))
-            U[n] = U[n] ./ permutedims(λ)
-        end
+        V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+        U[n] = GCPDecompositions.mttkrp(X, U, n) / V
+        λ = norm.(eachcol(U[n]))
+        U[n] = U[n] ./ permutedims(λ)
     end
+    return
 end
 
 
