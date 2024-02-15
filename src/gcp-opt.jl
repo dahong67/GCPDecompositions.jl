@@ -162,7 +162,12 @@ function _gcp(
     λ, U = M0.λ, collect(M0.U)
 
     for _ in 1:algorithm.maxiters
-        mttkrps_ls!(X, U, λ)
+        for n in 1:N
+            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+            U[n] = mttkrp(X, U, n) / V
+            λ = norm.(eachcol(U[n]))
+            U[n] = U[n] ./ permutedims(λ)
+        end
     end
 
     return CPD(λ, Tuple(U))
