@@ -174,7 +174,7 @@ function _gcp(
 end
 
 # For benchmarking to compare against (1 MTTKRP for all modes)
-function mttkrps_ls!(X, U, λ)
+function mttkrps!(X, U, λ)
     for n in 1:N
         V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
         U[n] = mttkrp(X, U, n) / V

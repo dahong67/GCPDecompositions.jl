@@ -39,8 +39,8 @@ append!(
 # Generate random benchmarks
 for SETUP in SETUPS
 
+    # Setup for ALS, do one iteration of MTTKRPs
     Random.seed!(0)
-    # Setup GCP for 1 iteration
     X = randn(SETUP.size)
     T = Float64
     r = SETUP.rank
@@ -54,7 +54,7 @@ for SETUP in SETUPS
     λ, U = M0.λ, collect(M0.U)
 
     SUITE["modes=$(SETUP.modes), size=$(SETUP.size), rank=$(SETUP.rank)"] = @benchmarkable(
-        GCPDecompositions.mttkrps_ls!(X, U),
+        GCPDecompositions.mttkrps!($X, $U. $λ),
         seconds = 5,
         samples = 5,
     )
