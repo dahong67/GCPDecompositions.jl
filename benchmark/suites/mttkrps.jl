@@ -54,7 +54,7 @@ for SETUP in SETUPS
     λ, U = M0.λ, collect(M0.U)
 
     SUITE["modes=$(SETUP.modes), size=$(SETUP.size), rank=$(SETUP.rank)"] = @benchmarkable(
-        GCPDecompositions.mttkrps!($X, $U. $λ),
+        GCPDecompositions.mttkrps!($X, $U, $λ),
         seconds = 5,
         samples = 5,
     )
