@@ -13,7 +13,7 @@ append!(
     SETUPS,
     [
         (; modes=3, size = sz, rank = r) for
-        sz in [ntuple(n -> In, 3) for In in [20, 50, 100, 200]], r in [10, 100]
+        sz in [ntuple(n -> In, 3) for In in [20, 50, 100, 200, 400]], r in [10, 100]
     ],
 )
 
@@ -31,7 +31,7 @@ append!(
     SETUPS,
     [
         (; modes=5, size = sz, rank = r) for
-        sz in [ntuple(n -> In, 5) for In in [10, 40]], r in [10, 100]
+        sz in [ntuple(n -> In, 5) for In in [10, 30, 60]], r in [10, 100]
     ],
 )
 
