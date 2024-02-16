@@ -43,6 +43,7 @@ for SETUP in SETUPS
     # Setup GCP for 1 iteration
     X = randn(SETUP.size)
     T = Float64
+    r = SETUP.rank
     M0 = GCPDecompositions.CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
     Xnorm = sqrt(sum(abs2, skipmissing(X)))
