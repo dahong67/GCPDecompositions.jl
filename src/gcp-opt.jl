@@ -173,14 +173,24 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
+# For benchmarking to compare against (1 MTTKRP for all modes)
+function mttkrps_ls!(X, U, λ)
+    for n in 1:N
+        V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+        U[n] = mttkrp(X, U, n) / V
+        λ = norm.(eachcol(U[n]))
+        U[n] = U[n] ./ permutedims(λ)
+    end
+end
+
 """
-    mttkrps_ls!(X, U) -> Rns
+    mttkrps_ls!(X, U, λ) -> Rns
     
     Algorithm for computing MTTKRP sequence is from "Fast Alternating LS Algorithms
     for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
     section III-C.
 """
-function mttkrps_ls!(X, U, λ)
+"""function mttkrps_ls!(X, U, λ)
 
     N = ndims(X)
     R = size(U[1])[2]
@@ -226,7 +236,7 @@ function mttkrps_ls!(X, U, λ)
         λ .= norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)
     end
-end
+end """
 
 
 function mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)

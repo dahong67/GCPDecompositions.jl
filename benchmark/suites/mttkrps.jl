@@ -35,9 +35,13 @@ append!(
     ],
 )
 
-# Function to set up and run 1 MTTKRPS
-function mttkrps_testing(X, r)
+
+# Generate random benchmarks
+for SETUP in SETUPS
+
+    Random.seed!(0)
     # Setup GCP for 1 iteration
+    X = randn(SETUP.size)
     M0 = GCPDecompositions.CPD(ones(T, r), rand.(T, size(X), r))
     M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
     Xnorm = sqrt(sum(abs2, skipmissing(X)))
@@ -45,18 +49,9 @@ function mttkrps_testing(X, r)
         M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
     end
     λ, U = M0.λ, collect(M0.U)
-    # Compute MTTKRP for all modes
-    GCPDecompositions.mttkrps_ls!(X, U, λ)
-    return
-end
 
-
-# Generate random benchmarks
-for SETUP in SETUPS
-    Random.seed!(0)
-    X = randn(SETUP.size)
     SUITE["modes=$(SETUP.modes), size=$(SETUP.size), rank=$(SETUP.rank)"] = @benchmarkable(
-        mttkrps_testing(X, SETUP.rank),
+        GCPDecompositions.mttkrps_ls!(X, U),
         seconds = 5,
         samples = 5,
     )
