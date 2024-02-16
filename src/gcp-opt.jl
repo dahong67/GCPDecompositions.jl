@@ -184,13 +184,13 @@ function mttkrps_ls!(X, U, λ)
 end
 
 """
-    mttkrps_ls!(X, U, λ) -> Rns
+    mttkrps_ls_new!(X, U, λ) -> Rns
     
     Algorithm for computing MTTKRP sequence is from "Fast Alternating LS Algorithms
     for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
     section III-C.
 """
-"""function mttkrps_ls!(X, U, λ)
+function mttkrps_ls_new!(X, U, λ)
 
     N = ndims(X)
     R = size(U[1])[2]
@@ -236,7 +236,7 @@ end
         λ .= norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)
     end
-end """
+end 
 
 
 function mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)
