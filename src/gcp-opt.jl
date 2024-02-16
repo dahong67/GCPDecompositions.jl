@@ -175,8 +175,8 @@ end
 
 # For benchmarking to compare against (1 MTTKRP for all modes)
 function mttkrps!(X, U, λ)
-    for n in 1:N
-        V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+    for n in 1:ndims(X)
+        V = reduce(.*, U[i]'U[i] for i in setdiff(1:ndims(X), n))
         U[n] = mttkrp(X, U, n) / V
         λ = norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)
