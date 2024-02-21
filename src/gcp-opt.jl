@@ -44,7 +44,7 @@ end
 
 # Choose default algorithm
 default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
-    GCPAlgorithms.ALS()
+    GCPAlgorithms.FastALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 # TODO: remove this `func, grad, lower` signature
@@ -173,19 +173,39 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
-# For benchmarking
-function mttkrps!(X, U, λ)
-    mttkrps_ls_new!(X, U, λ)
+function _gcp(
+    X::Array{TX,N},
+    r,
+    loss::LeastSquaresLoss,
+    constraints::Tuple{},
+    algorithm::GCPAlgorithms.FastALS,
+) where {TX<:Real,N}
+    T = promote_type(TX, Float64)
+
+    # Random initialization
+    M0 = CPD(ones(T, r), rand.(T, size(X), r))
+    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
+    end
+    λ, U = M0.λ, collect(M0.U)
+
+    for _ in 1:algorithm.maxiters
+        FastALS_iter!(X, U, λ)
+    end
+
+    return CPD(λ, Tuple(U))
 end
 
 """
-    mttkrps_ls_new!(X, U, λ) -> Rns
+    FastALS_iter!(X, U, λ) 
     
-    Algorithm for computing MTTKRP sequence is from "Fast Alternating LS Algorithms
+    Algorithm for computing MTTKRP sequences is from "Fast Alternating LS Algorithms
     for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
     section III-C.
 """
-function mttkrps_ls_new!(X, U, λ)
+function FastALS_iter!(X, U, λ)
 
     N = ndims(X)
     R = size(U[1])[2]
@@ -226,7 +246,7 @@ function mttkrps_ls_new!(X, U, λ)
                 mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
             end
         end
-        # Normalization
+        # Normalization, update weights
         U[n] = U[n] / reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
         λ .= norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)

@@ -54,4 +54,25 @@ Base.@kwdef struct ALS <: AbstractAlgorithm
     maxiters::Int = 200
 end
 
+"""
+    FastALS
+
+Fast Alternating Least Squares.
+Faster and more memory-efficient implementation of ALS from "Fast Alternating LS Algorithms
+for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
+
+Algorithm parameters:
+
+- `maxiters::Int` : max number of iterations (default: `200`)
+
+"""
+Base.@kwdef struct FastALS <: AbstractAlgorithm
+    maxiters::Int = 200
 end
+
+end
+
+
+
+
+
