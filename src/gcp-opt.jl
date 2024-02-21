@@ -219,7 +219,7 @@ function FastALS_iter!(X, U, λ)
     order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
 
     # Compute MTTKRPs recursively
-    saved = zeros(Jns[n_star], R)
+    saved = similar(U[1], Jns[n_star], R)
     for n in order
         if n == n_star
             saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(U[reverse(n+1:N)]...)
@@ -232,14 +232,14 @@ function FastALS_iter!(X, U, λ)
                 mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
             end  
         elseif n < n_star
-            saved = hcat([reshape(saved[:, r], (Jns[n], size(X)[n+1])) * U[n+1][:, r] for r in 1:R]...)
+            saved = hcat([reshape(selectdim(saved, ndims(saved), r), (Jns[n], size(X)[n+1])) * selectdim(U[n+1], ndims(U[n+1]), r) for r in 1:R]...)
             if n == 1
                 U[n] = saved
             else
                 mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
             end
         else
-            saved = hcat([reshape(saved[:, r], (size(X)[n-1], Kns[n-1]))' * U[n-1][:, r] for r in 1:R]...)
+            saved = hcat([reshape(selectdim(saved, ndims(saved), r), (size(X)[n-1], Kns[n-1]))' * selectdim(U[n-1], ndims(U[n-1]), r) for r in 1:R]...)
             if n == N
                 U[n] = saved
             else
@@ -247,7 +247,8 @@ function FastALS_iter!(X, U, λ)
             end
         end
         # Normalization, update weights
-        U[n] = U[n] / reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+        V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
+        U[n] = U[n] / V
         λ .= norm.(eachcol(U[n]))
         U[n] = U[n] ./ permutedims(λ)
     end
@@ -258,12 +259,12 @@ function mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)
     if side == "right"
         kr = khatrirao(U[reverse(1:n-1)]...)
         for r in 1:size(U[n])[2]
-            U[n][:, r] = reshape(Zn[:, r], (Jns[n-1], size(U[n])[1]))' * kr[:, r]
+            U[n][:, r] = reshape(selectdim(Zn, ndims(Zn), r), (Jns[n-1], size(U[n])[1]))' * kr[:, r]
         end
     elseif side == "left"
         kr = khatrirao(U[reverse(n+1:N)]...)
         for r in 1:size(U[n])[2]
-            U[n][:, r] = reshape(Zn[:, r], (size(U[n])[1], Kns[n])) * kr[:, r]
+            U[n][:, r] = reshape(selectdim(Zn, ndims(Zn), r), (size(U[n])[1], Kns[n])) * kr[:, r]
         end
     end
 end
