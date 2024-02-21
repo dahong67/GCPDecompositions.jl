@@ -44,7 +44,7 @@ end
 
 # Choose default algorithm
 default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
-    GCPAlgorithms.FastALS()
+    GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 # TODO: remove this `func, grad, lower` signature
