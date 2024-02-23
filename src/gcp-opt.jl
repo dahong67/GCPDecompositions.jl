@@ -232,14 +232,15 @@ function FastALS_iter!(X, U, λ)
                 mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
             end  
         elseif n < n_star
-            saved = hcat([reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r) for r in 1:R]...)
+            # Try stack
+            saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r) for r in 1:R)
             if n == 1
                 U[n] = saved
             else
                 mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
             end
         else
-            saved = hcat([reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(U[n-1], :, r) for r in 1:R]...)
+            saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(U[n-1], :, r) for r in 1:R)
             if n == N
                 U[n] = saved
             else
