@@ -174,6 +174,73 @@ function _gcp(
     return CPD(λ, Tuple(U))
 end
 
+"""
+    faster_mttkrps!(X, U, λ) 
+    
+    Algorithm for computing MTTKRP sequences is from "Fast Alternating LS Algorithms
+    for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
+    section III-C.
+"""
+function faster_mttkrps!(X, U, λ)
+
+    N = ndims(X)
+    R = size(U[1])[2]
+
+    # Determine order of modes of MTTKRP to compute
+    Jns = [prod(size(X)[1:n]) for n in 1:N]
+    Kns = [prod(size(X)[n+1:end]) for n in 1:N]
+    Kn_minus_ones = [prod(size(X)[n:end]) for n in 1:N]
+    comp = Jns .<= Kn_minus_ones
+    n_star = maximum(map(x -> comp[x] ? x : 0, 1:N))
+    order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
+
+    # Compute MTTKRPs recursively
+    saved = similar(U[1], Jns[n_star], R)
+    for n in order
+        if n == n_star
+            saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(U[reverse(n+1:N)]...)
+            mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
+        elseif n == n_star + 1
+            saved = (khatrirao(U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
+            if n == N
+                U[n] = saved
+            else
+                mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
+            end  
+        elseif n < n_star
+            # Try stack
+            saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r) for r in 1:R)
+            if n == 1
+                U[n] = saved
+            else
+                mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
+            end
+        else
+            saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(U[n-1], :, r) for r in 1:R)
+            if n == N
+                U[n] = saved
+            else
+                mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
+            end
+        end
+    end
+end 
+
+
+function mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)
+    if side == "right"
+        kr = khatrirao(U[reverse(1:n-1)]...)
+        for r in 1:size(U[n])[2]
+            U[n][:, r] = reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))' * kr[:, r]
+        end
+    elseif side == "left"
+        kr = khatrirao(U[reverse(n+1:N)]...)
+        for r in 1:size(U[n])[2]
+            U[n][:, r] = reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])) * kr[:, r]
+        end
+    end
+end
+
 # inefficient but simple
 function mttkrp(X, U, n)
     # Dimensions
