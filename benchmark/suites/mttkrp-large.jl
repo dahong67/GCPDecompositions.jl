@@ -12,8 +12,8 @@ const SETUPS = []
 append!(
     SETUPS,
     [
-        (; size = sz, rank = r, mode = n) for
-        sz in [ntuple(n -> In, 4) for In in 20:20:80], r in 20:20:120, n in 1:4
+        (; size = sz, rank = r, mode = n) for sz in [ntuple(n -> In, 4) for In in 20:20:80],
+        r in 20:20:120, n in 1:4
     ],
 )
 
@@ -23,7 +23,7 @@ append!(
     [
         (; size = sz, rank = r, mode = n) for sz in [(20, 40, 80, 500), (500, 80, 40, 20)],
         r in 100:100:300, n in 1:4
-    ]
+    ],
 )
 
 # Generate random benchmarks
