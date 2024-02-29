@@ -130,15 +130,9 @@ function gcp_grad_U!(
         ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
         I in CartesianIndices(X)
     ]
-
-    # MTTKRPs (inefficient but simple)
+    # Use faster MTTKRPs algorithm
+    faster_mttkrps!(GU, M, Y)
     return ntuple(Val(N)) do k
-        Yk = reshape(PermutedDimsArray(Y, [k; setdiff(1:N, k)]), size(X, k), :)
-        Zk = similar(Yk, prod(size(X)[setdiff(1:N, k)]), ncomponents(M))
-        for j in Base.OneTo(ncomponents(M))
-            Zk[:, j] = reduce(kron, [view(M.U[i], :, j) for i in reverse(setdiff(1:N, k))])
-        end
-        mul!(GU[k], Yk, Zk)
         return rmul!(GU[k], Diagonal(M.λ))
     end
 end
@@ -175,14 +169,15 @@ function _gcp(
 end
 
 """
-    faster_mttkrps!(X, U, λ) 
+    faster_mttkrps!(GU, M, X) 
     
     Algorithm for computing MTTKRP sequences is from "Fast Alternating LS Algorithms
     for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
     section III-C.
 """
-function faster_mttkrps!(X, U, λ)
+function faster_mttkrps!(GU, M, X)
 
+    U = M.U
     N = ndims(X)
     R = size(U[1])[2]
 
@@ -199,44 +194,47 @@ function faster_mttkrps!(X, U, λ)
     for n in order
         if n == n_star
             saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(U[reverse(n+1:N)]...)
-            mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
+            mttkrps_helper!(GU, saved, U, n, "right", N, Jns, Kns)
         elseif n == n_star + 1
-            saved = (khatrirao(U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
             if n == N
-                U[n] = saved
+                mul!(GU[n], reshape(X, (Jns[n-1], Kns[n-1]))', khatrirao(U[reverse(1:n-1)]...))
+                saved = GU[n]
             else
-                mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
+                saved = (khatrirao(U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
+                mttkrps_helper!(GU, saved, U, n, "left", N, Jns, Kns)
             end  
         elseif n < n_star
-            # Try stack
-            saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r) for r in 1:R)
             if n == 1
-                U[n] = saved
+                for r in 1:R
+                    GU[n][:, r] = reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r)
+                end
+                saved = GU[n]
             else
-                mttkrps_helper!(saved, U, n, "right", N, Jns, Kns)
+                saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r) for r in 1:R)
+                mttkrps_helper!(GU, saved, U, n, "right", N, Jns, Kns)
             end
         else
             saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(U[n-1], :, r) for r in 1:R)
             if n == N
-                U[n] = saved
+                GU[n] = saved
             else
-                mttkrps_helper!(saved, U, n, "left", N, Jns, Kns)
+                mttkrps_helper!(GU, saved, U, n, "left", N, Jns, Kns)
             end
         end
     end
 end 
 
 
-function mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)
+function mttkrps_helper!(GU, Zn, U, n, side, N, Jns, Kns)
     if side == "right"
         kr = khatrirao(U[reverse(1:n-1)]...)
         for r in 1:size(U[n])[2]
-            U[n][:, r] = reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))' * kr[:, r]
+            GU[n][:,r] = reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))' * kr[:, r]
         end
     elseif side == "left"
         kr = khatrirao(U[reverse(n+1:N)]...)
         for r in 1:size(U[n])[2]
-            U[n][:, r] = reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])) * kr[:, r]
+            GU[n][:,r] = reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])) * kr[:, r]
         end
     end
 end
@@ -258,4 +256,14 @@ function mttkrp(X, U, n)
 
     # MTTKRP (in mode n)
     return Xn * Zn
+end
+
+function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+    r = size(A[1],2)
+    # @boundscheck all(==(r),size.(A,2)) || throw(DimensionMismatch())
+    R = ntuple(Val(N)) do k
+        dims = (ntuple(i->1,Val(N-k))..., :, ntuple(i->1,Val(k-1))..., r)
+        return reshape(A[k],dims)
+    end
+    return reshape(broadcast(*, R...),:,r)
 end
