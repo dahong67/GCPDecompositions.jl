@@ -204,17 +204,18 @@ function faster_mttkrps!(GU, M, X)
         elseif n < n_star
             if n == 1
                 for r in 1:R
-                    GU[n][:, r] = reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(M.U[n+1], :, r)
+                    mul!(view(GU[n], :, r), reshape(view(saved, :, r), (Jns[n], size(X)[n+1])), view(M.U[n+1], :, r))
+                    #GU[n][:, r] = reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(M.U[n+1], :, r)
                 end
             else
                 saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(M.U[n+1], :, r) for r in 1:R)
                 mttkrps_helper!(GU, saved, M, n, "right", N, Jns, Kns)
             end
         else
-            saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
             if n == N
-                GU[n] = saved
+                GU[n] = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
             else
+                saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
                 mttkrps_helper!(GU, saved, M, n, "left", N, Jns, Kns)
             end
         end
@@ -226,12 +227,14 @@ function mttkrps_helper!(GU, Zn, M, n, side, N, Jns, Kns)
     if side == "right"
         kr = khatrirao(M.U[reverse(1:n-1)]...)
         for r in 1:size(M.U[n])[2]
-            GU[n][:,r] = reshape(view(Zn, :, r), (Jns[n-1], size(M.U[n])[1]))' * kr[:, r]
+            mul!(view(GU[n], :, r), reshape(view(Zn, :, r), (Jns[n-1], size(M.U[n])[1]))', kr[:, r])
+            #GU[n][:,r] = reshape(view(Zn, :, r), (Jns[n-1], size(M.U[n])[1]))' * kr[:, r]
         end
     elseif side == "left"
         kr = khatrirao(M.U[reverse(n+1:N)]...)
         for r in 1:size(M.U[n])[2]
-            GU[n][:,r] = reshape(view(Zn, :, r), (size(M.U[n])[1], Kns[n])) * kr[:, r]
+            mul!(view(GU[n], :, r), reshape(view(Zn, :, r), (size(M.U[n])[1], Kns[n])), kr[:, r])
+            #GU[n][:,r] = reshape(view(Zn, :, r), (size(M.U[n])[1], Kns[n])) * kr[:, r]
         end
     end
 end
