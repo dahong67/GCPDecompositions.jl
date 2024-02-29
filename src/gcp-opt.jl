@@ -183,9 +183,8 @@ end
 """
 function mttkrp(X, U, n)
     # Dimensions
-    N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
-    (N == ndims(X) && I == size(X)) ||
-        throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
+    N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
+    (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
     # See section III-B from "Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
     Rn = similar(U[n])
