@@ -177,7 +177,6 @@ end
 """
 function faster_mttkrps!(GU, M, X)
 
-    U = M.U
     N = ndims(X)
     R = size(U[1])[2]
 
@@ -190,51 +189,49 @@ function faster_mttkrps!(GU, M, X)
     order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
 
     # Compute MTTKRPs recursively
-    saved = similar(U[1], Jns[n_star], R)
+    saved = similar(M.U[1], Jns[n_star], R)
     for n in order
         if n == n_star
-            saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(U[reverse(n+1:N)]...)
-            mttkrps_helper!(GU, saved, U, n, "right", N, Jns, Kns)
+            saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(M.U[reverse(n+1:N)]...)
+            mttkrps_helper!(GU, saved, M, n, "right", N, Jns, Kns)
         elseif n == n_star + 1
             if n == N
-                mul!(GU[n], reshape(X, (Jns[n-1], Kns[n-1]))', khatrirao(U[reverse(1:n-1)]...))
-                saved = GU[n]
+                mul!(GU[n], reshape(X, (Jns[n-1], Kns[n-1]))', khatrirao(M.U[reverse(1:n-1)]...))
             else
-                saved = (khatrirao(U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
-                mttkrps_helper!(GU, saved, U, n, "left", N, Jns, Kns)
+                saved = (khatrirao(M.U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
+                mttkrps_helper!(GU, saved, M, n, "left", N, Jns, Kns)
             end  
         elseif n < n_star
             if n == 1
                 for r in 1:R
-                    GU[n][:, r] = reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r)
+                    GU[n][:, r] = reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(M.U[n+1], :, r)
                 end
-                saved = GU[n]
             else
-                saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(U[n+1], :, r) for r in 1:R)
-                mttkrps_helper!(GU, saved, U, n, "right", N, Jns, Kns)
+                saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(M.U[n+1], :, r) for r in 1:R)
+                mttkrps_helper!(GU, saved, M, n, "right", N, Jns, Kns)
             end
         else
-            saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(U[n-1], :, r) for r in 1:R)
+            saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
             if n == N
                 GU[n] = saved
             else
-                mttkrps_helper!(GU, saved, U, n, "left", N, Jns, Kns)
+                mttkrps_helper!(GU, saved, M, n, "left", N, Jns, Kns)
             end
         end
     end
 end 
 
 
-function mttkrps_helper!(GU, Zn, U, n, side, N, Jns, Kns)
+function mttkrps_helper!(GU, Zn, M, n, side, N, Jns, Kns)
     if side == "right"
-        kr = khatrirao(U[reverse(1:n-1)]...)
-        for r in 1:size(U[n])[2]
-            GU[n][:,r] = reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))' * kr[:, r]
+        kr = khatrirao(M.U[reverse(1:n-1)]...)
+        for r in 1:size(M.U[n])[2]
+            GU[n][:,r] = reshape(view(Zn, :, r), (Jns[n-1], size(M.U[n])[1]))' * kr[:, r]
         end
     elseif side == "left"
-        kr = khatrirao(U[reverse(n+1:N)]...)
-        for r in 1:size(U[n])[2]
-            GU[n][:,r] = reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])) * kr[:, r]
+        kr = khatrirao(M.U[reverse(n+1:N)]...)
+        for r in 1:size(M.U[n])[2]
+            GU[n][:,r] = reshape(view(Zn, :, r), (size(M.U[n])[1], Kns[n])) * kr[:, r]
         end
     end
 end
