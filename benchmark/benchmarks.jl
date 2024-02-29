@@ -1,7 +1,8 @@
 using BenchmarkTools
 
 # Benchmark suite modules
-const SUITE_MODULES = Dict("gcp" => :BenchmarkGCP, "mttkrp" => :BenchmarkMTTKRP)
+const SUITE_MODULES = Dict("gcp" => :BenchmarkGCP, "mttkrp" => :BenchmarkMTTKRP,
+                            "gcp-large" => :BenchmarkGCPLarge)
 
 # Create top-level suite including only sub-suites
 # specified by ENV variable "GCP_BENCHMARK_SUITES"
