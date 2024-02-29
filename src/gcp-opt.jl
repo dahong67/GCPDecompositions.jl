@@ -178,7 +178,7 @@ end
 function faster_mttkrps!(GU, M, X)
 
     N = ndims(X)
-    R = size(U[1])[2]
+    R = size(M.U[1])[2]
 
     # Determine order of modes of MTTKRP to compute
     Jns = [prod(size(X)[1:n]) for n in 1:N]
