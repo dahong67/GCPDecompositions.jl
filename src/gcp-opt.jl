@@ -65,6 +65,7 @@ function _gcp(
 ) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
+
     # Compute lower bound from constraints
     lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
 
@@ -106,6 +107,7 @@ function _gcp(
         gcp_grad_U!(GU, CPD(ones(T, r), U), X, loss)
         return gu
     end
+
     # Run LBFGSB
     lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
     u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
@@ -180,7 +182,6 @@ end
     section III-B.
 """
 function mttkrp(X, U, n)
-
     # Dimensions
     N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) ||
