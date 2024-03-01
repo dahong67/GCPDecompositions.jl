@@ -196,42 +196,35 @@ function mttkrp(X, U, n)
     #   + prod(I[1:n]) > prod(I[n:N]): better to multiply left-to-right
     #   + prod(I[1:n]) < prod(I[n:N]): better to multiply right-to-left
     if n == 1
-        # Just inner tensor-vector products
-        kr_inner = khatrirao(U[reverse(2:N)]...)
-        mul!(G, reshape(X, size(X, 1), :), kr_inner)
+        mul!(G, reshape(X, I[1], :), khatrirao(U[reverse(2:N)]...))
     elseif n == N
-        # Just outer tensor-vector products
-        kr_outer = khatrirao(U[reverse(1:N-1)]...)
-        mul!(G, transpose(reshape(X, :, size(X, N))), kr_outer)
+        mul!(G, transpose(reshape(X, :, I[N])), khatrirao(U[reverse(1:N-1)]...))
     elseif prod(I[1:n]) > prod(I[n:N])
-        kr_inner = khatrirao(U[reverse(1:n-1)]...)
-        kr_outer = khatrirao(U[reverse(n+1:N)]...)
-        inner = reshape(
-            transpose(reshape(X, prod(size(X)[1:n-1]), :)) * kr_inner,
-            (size(X)[n:N]..., r),
-        )
-        Jn_inner = prod(size(inner)[1:1])
-        Kn_inner = prod(size(inner)[2:end-1])
+        # Inner multiplication: left side
+        kr_left = khatrirao(U[reverse(1:n-1)]...)
+        L = reshape(transpose(reshape(X, :, prod(I[n:N]))) * kr_left, (I[n:N]..., r))
+
+        # Outer multiplication: right side
+        kr_right = khatrirao(U[reverse(n+1:N)]...)
         for j in 1:r
             mul!(
                 view(G, :, j),
-                reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner),
-                view(kr_outer, :, j),
+                reshape(selectdim(L, ndims(L), j), I[n], :),
+                view(kr_right, :, j),
             )
         end
     else
-        kr_inner = khatrirao(U[reverse(n+1:N)]...)
-        kr_outer = khatrirao(U[reverse(1:n-1)]...)
-        Jn = prod(size(X)[1:n])
-        Kn = prod(size(X)[n+1:end])
-        inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r))
-        Jn_inner = prod(size(inner)[1:n-1])
-        Kn_inner = prod(size(inner)[n:end-1])
+        # Inner multiplication: right side
+        kr_right = khatrirao(U[reverse(n+1:N)]...)
+        R = reshape(reshape(X, prod(I[1:n]), :) * kr_right, (I[1:n]..., r))
+
+        # Outer multiplication: left side
+        kr_left = khatrirao(U[reverse(1:n-1)]...)
         for j in 1:r
             mul!(
                 view(G, :, j),
-                transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)),
-                view(kr_outer, :, j),
+                transpose(reshape(selectdim(R, ndims(R), j), :, I[n])),
+                view(kr_left, :, j),
             )
         end
     end
