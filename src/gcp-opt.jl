@@ -175,7 +175,7 @@ function _gcp(
 end
 
 """
-    mttkrp(X, U, n) -> Rn
+    mttkrp(X, U, n)
     
     Algorithm for computing one mode of MTTKRP is from "Fast Alternating LS Algorithms
     for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
@@ -186,57 +186,56 @@ function mttkrp(X, U, n)
     N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
-    # See section III-B from "Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
-    Rn = similar(U[n])
-    Jn = prod(size(X)[1:n])
-    Kn = prod(size(X)[n+1:end])
-    # Compute tensor-vector products right to left (equations 15, 17) for each rank
+    # Allocate output array G
+    G = similar(U[n])
 
-    # Special cases are n = 1 and n = N (n = 1 has no outer tensor-vector products),
-    # n = N has no inner tensor-vector products
+    # Choose appropriate multiplication order:
+    # + n == 1: no splitting required
+    # + n == N: no splitting required
+    # + 1 < n < N: better to multiply "bigger" side out first
+    #   + prod(I[1:n]) > prod(I[n:N]): better to multiply left-to-right
+    #   + prod(I[1:n]) < prod(I[n:N]): better to multiply right-to-left
     if n == 1
         # Just inner tensor-vector products
         kr_inner = khatrirao(U[reverse(2:N)]...)
-        mul!(Rn, reshape(X, size(X, 1), :), kr_inner)
+        mul!(G, reshape(X, size(X, 1), :), kr_inner)
     elseif n == N
         # Just outer tensor-vector products
         kr_outer = khatrirao(U[reverse(1:N-1)]...)
-        mul!(Rn, transpose(reshape(X, :, size(X, N))), kr_outer)
-    else
-        if prod(I[n:N]) < prod(I[1:n])  # left-to-right better
-            kr_inner = khatrirao(U[reverse(1:n-1)]...)
-            kr_outer = khatrirao(U[reverse(n+1:N)]...)
-            inner = reshape(
-                transpose(reshape(X, prod(size(X)[1:n-1]), :)) * kr_inner,
-                (size(X)[n:N]..., r),
+        mul!(G, transpose(reshape(X, :, size(X, N))), kr_outer)
+    elseif prod(I[1:n]) > prod(I[n:N])
+        kr_inner = khatrirao(U[reverse(1:n-1)]...)
+        kr_outer = khatrirao(U[reverse(n+1:N)]...)
+        inner = reshape(
+            transpose(reshape(X, prod(size(X)[1:n-1]), :)) * kr_inner,
+            (size(X)[n:N]..., r),
+        )
+        Jn_inner = prod(size(inner)[1:1])
+        Kn_inner = prod(size(inner)[2:end-1])
+        for j in 1:r
+            mul!(
+                view(G, :, j),
+                reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner),
+                view(kr_outer, :, j),
             )
-            Jn_inner = prod(size(inner)[1:1])
-            Kn_inner = prod(size(inner)[2:end-1])
-            for j in 1:r
-                mul!(
-                    view(Rn, :, j),
-                    reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner),
-                    view(kr_outer, :, j),
-                )
-            end
-        else                            # right-to-left better
-            kr_inner = khatrirao(U[reverse(n+1:N)]...)
-            kr_outer = khatrirao(U[reverse(1:n-1)]...)
-            inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r))
-            Jn_inner = prod(size(inner)[1:n-1])
-            Kn_inner = prod(size(inner)[n:end-1])
-            for j in 1:r
-                mul!(
-                    view(Rn, :, j),
-                    transpose(
-                        reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner),
-                    ),
-                    view(kr_outer, :, j),
-                )
-            end
+        end
+    else
+        kr_inner = khatrirao(U[reverse(n+1:N)]...)
+        kr_outer = khatrirao(U[reverse(1:n-1)]...)
+        Jn = prod(size(X)[1:n])
+        Kn = prod(size(X)[n+1:end])
+        inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r))
+        Jn_inner = prod(size(inner)[1:n-1])
+        Kn_inner = prod(size(inner)[n:end-1])
+        for j in 1:r
+            mul!(
+                view(G, :, j),
+                transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)),
+                view(kr_outer, :, j),
+            )
         end
     end
-    return Rn
+    return G
 end
 
 """
