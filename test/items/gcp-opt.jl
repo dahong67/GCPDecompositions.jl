@@ -35,7 +35,7 @@ end
 @testitem "LeastSquaresLoss" begin
     using Random
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
@@ -55,7 +55,7 @@ end
 @testitem "NonnegativeLeastSquaresLoss" begin
     using Random
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
@@ -73,7 +73,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(fill(10.0, r), rand.(sz, r))
         X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
@@ -100,7 +100,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), randn.(sz, r))
         X = [rand(Poisson(exp(M[I]))) for I in CartesianIndices(size(M))]
@@ -127,7 +127,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         k = 1.5
@@ -155,7 +155,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [rand(Rayleigh(M[I]/(sqrt(pi/2)))) for I in CartesianIndices(size(M))]
@@ -182,7 +182,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [rand(Bernoulli(M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
@@ -209,7 +209,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [rand(Bernoulli(exp(M[I])/(exp(M[I]) + 1))) for I in CartesianIndices(size(M))]
@@ -236,7 +236,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         num_failures = 5
@@ -265,7 +265,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
@@ -294,7 +294,7 @@ end
     using Random
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2, β in [0, 0.5, 1]
+    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2, β in [0, 0.5, 1]
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         # May want to consider other distributions depending on value of β
@@ -342,7 +342,7 @@ end
     using Random, Distributions, IntervalSets
 
     @testset "Least Squares" begin
-        @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
             Random.seed!(0)
             M = CPD(ones(r), randn.(sz, r))
             X = [M[I] for I in CartesianIndices(size(M))]
@@ -366,7 +366,7 @@ end
     end
 
     @testset "Poisson" begin
-        @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (30, 40, 50)], r in 1:2
+        @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
             Random.seed!(0)
             M = CPD(fill(10.0, r), rand.(sz, r))
             X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
