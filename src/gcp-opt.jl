@@ -251,7 +251,7 @@ function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
     # Base case: N = 2
     if N == 2
         r = (only ∘ unique)(size.(A, 2))
-        return reshape(reshape(A[1], :, 1, r) .* reshape(A[2], 1, :, r), :, r)
+        return reshape(reshape(A[2], :, 1, r) .* reshape(A[1], 1, :, r), :, r)
     end
 
     # Recursive case: N > 2
