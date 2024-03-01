@@ -17,6 +17,7 @@ function mttkrp(X, U, n)
     N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) ||
         throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
+    n in 1:N || throw(DimensionMismatch("`n` must be in `1:ndims(X)`"))
 
     # Allocate output array G
     G = similar(U[n])
