@@ -203,17 +203,37 @@ function mttkrp(X, U, n)
         kr_outer = khatrirao(U[reverse(1:N-1)]...)
         mul!(Rn, transpose(reshape(X, :, size(X, N))), kr_outer)
     else
-        kr_inner = khatrirao(U[reverse(n+1:N)]...)
-        kr_outer = khatrirao(U[reverse(1:n-1)]...)
-        inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r))
-        Jn_inner = prod(size(inner)[1:n-1])
-        Kn_inner = prod(size(inner)[n:end-1])
-        for j in 1:r
-            mul!(
-                view(Rn, :, j),
-                transpose(reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner)),
-                view(kr_outer, :, j),
+        if prod(I[n:N]) < prod(I[1:n])  # left-to-right better
+            kr_inner = khatrirao(U[reverse(1:n-1)]...)
+            kr_outer = khatrirao(U[reverse(n+1:N)]...)
+            inner = reshape(
+                transpose(reshape(X, prod(size(X)[1:n-1]), :)) * kr_inner,
+                (size(X)[n:N]..., r),
             )
+            Jn_inner = prod(size(inner)[1:1])
+            Kn_inner = prod(size(inner)[2:end-1])
+            for j in 1:r
+                mul!(
+                    view(Rn, :, j),
+                    reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner),
+                    view(kr_outer, :, j),
+                )
+            end
+        else                            # right-to-left better
+            kr_inner = khatrirao(U[reverse(n+1:N)]...)
+            kr_outer = khatrirao(U[reverse(1:n-1)]...)
+            inner = reshape(reshape(X, Jn, Kn) * kr_inner, (size(X)[1:n]..., r))
+            Jn_inner = prod(size(inner)[1:n-1])
+            Kn_inner = prod(size(inner)[n:end-1])
+            for j in 1:r
+                mul!(
+                    view(Rn, :, j),
+                    transpose(
+                        reshape(selectdim(inner, ndims(inner), j), Jn_inner, Kn_inner),
+                    ),
+                    view(kr_outer, :, j),
+                )
+            end
         end
     end
     return Rn
