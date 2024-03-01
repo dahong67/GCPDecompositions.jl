@@ -7,7 +7,8 @@ Compute the Matricized Tensor Times Khatri-Rao Product (MTTKRP)
 of an N-way tensor X with the matrices U1, U2, ..., UN along mode n.
 
 Algorithm is based on Section III-B of the paper:
-> **Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations**.
+> **Fast Alternating LS Algorithms for High Order
+>   CANDECOMP/PARAFAC Tensor Factorizations**.
 > Anh-Huy Phan, Petr Tichavský, Andrzej Cichocki.
 > *IEEE Transactions on Signal Processing*, 2013.
 > DOI: 10.1109/TSP.2013.2269903
