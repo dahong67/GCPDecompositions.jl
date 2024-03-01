@@ -249,11 +249,10 @@ function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
     end
 
     # General case: N > 1
-    r = size(A[1], 2)
-    all(==(r),size.(A,2)) || throw(DimensionMismatch())
-    R = ntuple(Val(N)) do k
-        dims = (ntuple(i -> 1, Val(N - k))..., :, ntuple(i -> 1, Val(k - 1))..., r)
-        return reshape(A[k], dims)
+    r = (only ∘ unique)(size.(A, 2))
+    K = similar(A[1], prod(size.(A, 1)), r)
+    for j in 1:r
+        K[:, j] = reduce(kron, [view(A[i], :, j) for i in 1:N])
     end
-    return reshape(broadcast(*, R...), :, r)
+    return K
 end
