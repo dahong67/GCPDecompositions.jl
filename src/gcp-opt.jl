@@ -252,7 +252,7 @@ function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
     r = (only ∘ unique)(size.(A, 2))
     K = similar(A[1], prod(size.(A, 1)), r)
     for j in 1:r
-        temp = reduce(kron, [view(A[i], :, j) for i in 1:N-1])
+        temp = (N == 2) ? view(A[1], :, j) : kron([view(A[i], :, j) for i in 1:N-1]...)
         kron!(view(K, :, j), temp, view(A[N], :, j))
     end
     return K
