@@ -213,7 +213,10 @@ function faster_mttkrps!(GU, M, X)
             end
         else
             if n == N
-                GU[n] = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
+                for r in 1:R
+                    mul!(view(GU[n], :, r), reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))', view(M.U[n-1], :, r))
+                end
+                #GU[n] = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
             else
                 saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
                 mttkrps_helper!(GU, saved, M, n, "left", N, Jns, Kns)
