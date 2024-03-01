@@ -14,8 +14,9 @@ Algorithm is based on Section III-B of the paper:
 """
 function mttkrp(X, U, n)
     # Dimensions
-    N, I, r = length(U), Tuple(size.(U, 1)), (only∘unique)(size.(U, 2))
-    (N == ndims(X) && I == size(X)) || throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
+    N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
+    (N == ndims(X) && I == size(X)) ||
+        throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
 
     # Allocate output array G
     G = similar(U[n])
