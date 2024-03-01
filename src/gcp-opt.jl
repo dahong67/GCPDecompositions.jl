@@ -175,11 +175,16 @@ function _gcp(
 end
 
 """
-    mttkrp(X, U, n)
-    
-    Algorithm for computing one mode of MTTKRP is from "Fast Alternating LS Algorithms
-    for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
-    section III-B.
+    mttkrp(X, (U1, U2, ..., UN), n)
+
+Compute the Matricized Tensor Times Khatri-Rao Product (MTTKRP)
+of an N-way tensor X with the matrices U1, U2, ..., UN along mode n.
+
+Algorithm is based on Section III-B of the paper:
+> **Fast Alternating LS Algorithms for High Order CANDECOMP/PARAFAC Tensor Factorizations**.
+> Anh-Huy Phan, Petr Tichavský, Andrzej Cichocki.
+> *IEEE Transactions on Signal Processing*, 2013.
+> DOI: 10.1109/TSP.2013.2269903
 """
 function mttkrp(X, U, n)
     # Dimensions
@@ -233,9 +238,9 @@ end
 
 """
     khatrirao(A1, A2, ...)
-    
-    Computes the Khatri-Rao product (i.e., column-wise Kronecker product)
-    of the matrices `A1`, `A2`, etc.
+
+Compute the Khatri-Rao product (i.e., the column-wise Kronecker product)
+of the matrices `A1`, `A2`, etc.
 """
 function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
     # Special case: N = 1
