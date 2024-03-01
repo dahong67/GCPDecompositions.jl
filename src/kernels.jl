@@ -14,6 +14,7 @@ Algorithm is based on Section III-B of the paper:
 """
 function mttkrp(X, U, n)
     # Dimensions
+    Base.require_one_based_indexing(X, U)
     N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) ||
         throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
@@ -71,6 +72,8 @@ Compute the Khatri-Rao product (i.e., the column-wise Kronecker product)
 of the matrices `A1`, `A2`, etc.
 """
 function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+    Base.require_one_based_indexing(A...)
+
     # Special case: N = 1
     if N == 1
         return A[1]
