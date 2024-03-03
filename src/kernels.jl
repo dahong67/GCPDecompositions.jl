@@ -28,7 +28,7 @@ See also: `mttkrp`
 """
 function mttkrp!(G, X, U, n)
     # Dimensions
-    Base.require_one_based_indexing(G, X, U)
+    Base.require_one_based_indexing(G, X, U...)
     N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
     (N == ndims(X) && I == size(X)) ||
         throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
