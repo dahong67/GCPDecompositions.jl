@@ -52,13 +52,13 @@ function mttkrp!(G, X, U, n)
         mul!(G, transpose(reshape(X, :, I[N])), buffer_kr)
     elseif prod(I[1:n]) > prod(I[n:N])
         # Inner multiplication: left side
-        buffer = n == 2 ? (;) : (; kr_inner = similar(U[1], prod(I[1:n-1]), r))
-        kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_inner, U[reverse(1:n-1)]...)
+        buffer = n == 2 ? (;) : (; kr_left = similar(U[1], prod(I[1:n-1]), r))
+        kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_left, U[reverse(1:n-1)]...)
         L = reshape(transpose(reshape(X, :, prod(I[n:N]))) * kr_left, (I[n:N]..., r))
 
         # Outer multiplication: right side
-        buffer = n + 1 == N ? (;) : (; kr_outer = similar(U[n+1], prod(I[n+1:N]), r))
-        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_outer, U[reverse(n+1:N)]...)
+        buffer = n + 1 == N ? (;) : (; kr_right = similar(U[n+1], prod(I[n+1:N]), r))
+        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
         for j in 1:r
             mul!(
                 view(G, :, j),
@@ -68,13 +68,13 @@ function mttkrp!(G, X, U, n)
         end
     else
         # Inner multiplication: right side
-        buffer = n + 1 == N ? (;) : (; kr_inner = similar(U[n+1], prod(I[n+1:N]), r))
-        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_inner, U[reverse(n+1:N)]...)
+        buffer = n + 1 == N ? (;) : (; kr_right = similar(U[n+1], prod(I[n+1:N]), r))
+        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
         R = reshape(reshape(X, prod(I[1:n]), :) * kr_right, (I[1:n]..., r))
 
         # Outer multiplication: left side
-        buffer = n == 2 ? (;) : (; kr_outer = similar(U[1], prod(I[1:n-1]), r))
-        kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_outer, U[reverse(1:n-1)]...)
+        buffer = n == 2 ? (;) : (; kr_left = similar(U[1], prod(I[1:n-1]), r))
+        kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_left, U[reverse(1:n-1)]...)
         for j in 1:r
             mul!(
                 view(G, :, j),
