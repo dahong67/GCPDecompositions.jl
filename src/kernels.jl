@@ -43,16 +43,24 @@ function mttkrp!(G, X, U, n)
     #   + prod(I[1:n]) > prod(I[n:N]): better to multiply left-to-right
     #   + prod(I[1:n]) < prod(I[n:N]): better to multiply right-to-left
     if n == 1
-        mul!(G, reshape(X, I[1], :), khatrirao(U[reverse(2:N)]...))
+        buffer_kr = similar(U[2], prod(I[2:N]), r)
+        khatrirao!(buffer_kr, U[reverse(2:N)]...)
+        mul!(G, reshape(X, I[1], :), buffer_kr)
     elseif n == N
-        mul!(G, transpose(reshape(X, :, I[N])), khatrirao(U[reverse(1:N-1)]...))
+        buffer_kr = similar(U[1], prod(I[1:N-1]), r)
+        khatrirao!(buffer_kr, U[reverse(1:N-1)]...)
+        mul!(G, transpose(reshape(X, :, I[N])), buffer_kr)
     elseif prod(I[1:n]) > prod(I[n:N])
         # Inner multiplication: left side
-        kr_left = khatrirao(U[reverse(1:n-1)]...)
+        buffer_kr_inner = similar(U[1], prod(I[1:n-1]), r)
+        khatrirao!(buffer_kr_inner, U[reverse(1:n-1)]...)
+        kr_left = buffer_kr_inner
         L = reshape(transpose(reshape(X, :, prod(I[n:N]))) * kr_left, (I[n:N]..., r))
 
         # Outer multiplication: right side
-        kr_right = khatrirao(U[reverse(n+1:N)]...)
+        buffer_kr_outer = similar(U[n+1], prod(I[n+1:N]), r)
+        khatrirao!(buffer_kr_outer, U[reverse(n+1:N)]...)
+        kr_right = buffer_kr_outer
         for j in 1:r
             mul!(
                 view(G, :, j),
@@ -62,11 +70,15 @@ function mttkrp!(G, X, U, n)
         end
     else
         # Inner multiplication: right side
-        kr_right = khatrirao(U[reverse(n+1:N)]...)
+        buffer_kr_inner = similar(U[n+1], prod(I[n+1:N]), r)
+        khatrirao!(buffer_kr_inner, U[reverse(n+1:N)]...)
+        kr_right = buffer_kr_inner
         R = reshape(reshape(X, prod(I[1:n]), :) * kr_right, (I[1:n]..., r))
 
         # Outer multiplication: left side
-        kr_left = khatrirao(U[reverse(1:n-1)]...)
+        buffer_kr_outer = similar(U[1], prod(I[1:n-1]), r)
+        khatrirao!(buffer_kr_outer, U[reverse(1:n-1)]...)
+        kr_left = buffer_kr_outer
         for j in 1:r
             mul!(
                 view(G, :, j),
