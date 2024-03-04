@@ -50,37 +50,41 @@ function mttkrp!(G, X, U, n)
         buffer_kr = similar(U[1], prod(I[1:N-1]), r)
         khatrirao!(buffer_kr, U[reverse(1:N-1)]...)
         mul!(G, transpose(reshape(X, :, I[N])), buffer_kr)
-    elseif prod(I[1:n]) > prod(I[n:N])
-        # Inner multiplication: left side
-        buffer = n == 2 ? (;) : (; kr_left = similar(U[1], prod(I[1:n-1]), r))
-        kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_left, U[reverse(1:n-1)]...)
-        L = reshape(transpose(reshape(X, :, prod(I[n:N]))) * kr_left, (I[n:N]..., r))
-
-        # Outer multiplication: right side
-        buffer = n + 1 == N ? (;) : (; kr_right = similar(U[n+1], prod(I[n+1:N]), r))
-        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
-        for j in 1:r
-            mul!(
-                view(G, :, j),
-                reshape(selectdim(L, ndims(L), j), I[n], :),
-                view(kr_right, :, j),
-            )
-        end
     else
-        # Inner multiplication: right side
-        buffer = n + 1 == N ? (;) : (; kr_right = similar(U[n+1], prod(I[n+1:N]), r))
-        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
-        R = reshape(reshape(X, prod(I[1:n]), :) * kr_right, (I[1:n]..., r))
+        # Allocate buffers
+        buffer = (;
+            kr_left  = n == 2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
+            kr_right = n + 1 == N ? nothing : similar(U[n+1], prod(I[n+1:N]), r),
+        )
 
-        # Outer multiplication: left side
-        buffer = n == 2 ? (;) : (; kr_left = similar(U[1], prod(I[1:n-1]), r))
+        # Compute left and right Khatri-Rao products
         kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_left, U[reverse(1:n-1)]...)
-        for j in 1:r
-            mul!(
-                view(G, :, j),
-                transpose(reshape(selectdim(R, ndims(R), j), :, I[n])),
-                view(kr_left, :, j),
-            )
+        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
+
+        if prod(I[1:n]) > prod(I[n:N])
+            # Inner multiplication: left side
+            L = reshape(transpose(reshape(X, :, prod(I[n:N]))) * kr_left, (I[n:N]..., r))
+
+            # Outer multiplication: right side
+            for j in 1:r
+                mul!(
+                    view(G, :, j),
+                    reshape(selectdim(L, ndims(L), j), I[n], :),
+                    view(kr_right, :, j),
+                )
+            end
+        else
+            # Inner multiplication: right side
+            R = reshape(reshape(X, prod(I[1:n]), :) * kr_right, (I[1:n]..., r))
+
+            # Outer multiplication: left side
+            for j in 1:r
+                mul!(
+                    view(G, :, j),
+                    transpose(reshape(selectdim(R, ndims(R), j), :, I[n])),
+                    view(kr_left, :, j),
+                )
+            end
         end
     end
     return G
