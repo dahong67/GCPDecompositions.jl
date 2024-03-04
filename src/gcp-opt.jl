@@ -159,21 +159,21 @@ function _gcp(
     for k in Base.OneTo(N)
         M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
     end
-    λ, U = M0.λ, collect(M0.U)
+    M = deepcopy(M0)
 
     # Pre-allocate MTTKRP buffers
-    mttkrp_buffers = [create_mttkrp_buffer(X, Tuple(U), n) for n in 1:N]
+    mttkrp_buffers = ntuple(n -> create_mttkrp_buffer(X, M.U, n), N)
 
     # Alternating Least Squares (ALS) iterations
     for _ in 1:algorithm.maxiters
         for n in 1:N
-            V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-            mttkrp!(U[n], X, Tuple(U), n, mttkrp_buffers[n])
-            U[n] = U[n] / V
-            λ = norm.(eachcol(U[n]))
-            U[n] = U[n] ./ permutedims(λ)
+            V = reduce(.*, M.U[i]'M.U[i] for i in setdiff(1:N, n))
+            mttkrp!(M.U[n], X, M.U, n, mttkrp_buffers[n])
+            rdiv!(M.U[n], lu!(V))
+            M.λ .= norm.(eachcol(M.U[n]))
+            M.U[n] ./= permutedims(M.λ)
         end
     end
 
-    return CPD(λ, Tuple(U))
+    return M
 end

@@ -11,7 +11,7 @@ import LinearAlgebra: norm
 import ForwardDiff
 using Compat
 using IntervalSets
-using LinearAlgebra: mul!, rmul!, Diagonal
+using LinearAlgebra: lu!, mul!, rdiv!, rmul!, Diagonal
 using LBFGSB: lbfgsb
 
 # Exports
