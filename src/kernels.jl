@@ -38,8 +38,11 @@ function mttkrp!(G, X, U, n)
 
     # Allocate buffers
     buffer = (;
-        kr_left  = n in 1:2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
+        kr_left = n in 1:2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
         kr_right = n in N-1:N ? nothing : similar(U[n+1], prod(I[n+1:N]), r),
+        inner = n in [1, N] ? nothing :
+                prod(I[1:n]) > prod(I[n:N]) ? similar(G, I[n:N]..., r) :
+                similar(G, I[1:n]..., r),
     )
 
     # Choose appropriate multiplication order:
@@ -61,25 +64,31 @@ function mttkrp!(G, X, U, n)
 
         if prod(I[1:n]) > prod(I[n:N])
             # Inner multiplication: left side
-            L = reshape(transpose(reshape(X, :, prod(I[n:N]))) * kr_left, (I[n:N]..., r))
+            mul!(
+                reshape(buffer.inner, :, r),
+                transpose(reshape(X, :, prod(I[n:N]))),
+                kr_left,
+            )
 
             # Outer multiplication: right side
             for j in 1:r
                 mul!(
                     view(G, :, j),
-                    reshape(selectdim(L, ndims(L), j), I[n], :),
+                    reshape(selectdim(buffer.inner, ndims(buffer.inner), j), I[n], :),
                     view(kr_right, :, j),
                 )
             end
         else
             # Inner multiplication: right side
-            R = reshape(reshape(X, prod(I[1:n]), :) * kr_right, (I[1:n]..., r))
+            mul!(reshape(buffer.inner, :, r), reshape(X, prod(I[1:n]), :), kr_right)
 
             # Outer multiplication: left side
             for j in 1:r
                 mul!(
                     view(G, :, j),
-                    transpose(reshape(selectdim(R, ndims(R), j), :, I[n])),
+                    transpose(
+                        reshape(selectdim(buffer.inner, ndims(buffer.inner), j), :, I[n]),
+                    ),
                     view(kr_left, :, j),
                 )
             end
