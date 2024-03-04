@@ -11,11 +11,16 @@ See also: `mttkrp!`
 mttkrp(X, U, n) = mttkrp!(similar(U[n]), X, U, n)
 
 """
-    mttkrp!(G, X, (U1, U2, ..., UN), n)
+    mttkrp!(G, X, (U1, U2, ..., UN), n, buffer=create_mttkrp_buffer(X, U, n))
 
 Compute the Matricized Tensor Times Khatri-Rao Product (MTTKRP)
 of an N-way tensor X with the matrices U1, U2, ..., UN along mode n
 and store the result in G.
+
+Optionally, provide a `buffer` for intermediate calculations.
+Always use `create_mttkrp_buffer` to make the `buffer`;
+the internal details of `buffer` may change in the future
+and should not be relied upon.
 
 Algorithm is based on Section III-B of the paper:
 > **Fast Alternating LS Algorithms for High Order
@@ -24,9 +29,9 @@ Algorithm is based on Section III-B of the paper:
 > *IEEE Transactions on Signal Processing*, 2013.
 > DOI: 10.1109/TSP.2013.2269903
 
-See also: `mttkrp`
+See also: `mttkrp`, `create_mttkrp_buffer`
 """
-function mttkrp!(G, X, U, n)
+function mttkrp!(G, X, U, n, buffer = create_mttkrp_buffer(X, U, n))
     # Dimensions
     Base.require_one_based_indexing(G, X, U...)
     N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
@@ -35,15 +40,6 @@ function mttkrp!(G, X, U, n)
     n in 1:N || throw(DimensionMismatch("`n` must be in `1:ndims(X)`"))
     size(G) == size(U[n]) ||
         throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
-
-    # Allocate buffers
-    buffer = (;
-        kr_left = n in 1:2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
-        kr_right = n in N-1:N ? nothing : similar(U[n+1], prod(I[n+1:N]), r),
-        inner = n in [1, N] ? nothing :
-                prod(I[1:n]) > prod(I[n:N]) ? similar(G, I[n:N]..., r) :
-                similar(G, I[1:n]..., r),
-    )
 
     # Choose appropriate multiplication order:
     # + n == 1: no splitting required
@@ -95,6 +91,35 @@ function mttkrp!(G, X, U, n)
         end
     end
     return G
+end
+
+"""
+    create_mttkrp_buffer(X, U, n)
+
+Create buffer to hold intermediate calculations in `mttkrp!`.
+
+Always use `create_mttkrp_buffer` to make a `buffer` for `mttkrp!`;
+the internal details of `buffer` may change in the future
+and should not be relied upon.
+
+See also: `mttkrp!`
+"""
+function create_mttkrp_buffer(X, U, n)
+    # Dimensions
+    Base.require_one_based_indexing(X, U...)
+    N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
+    (N == ndims(X) && I == size(X)) ||
+        throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
+    n in 1:N || throw(DimensionMismatch("`n` must be in `1:ndims(X)`"))
+
+    # Allocate buffers
+    return (;
+        kr_left = n in 1:2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
+        kr_right = n in N-1:N ? nothing : similar(U[n+1], prod(I[n+1:N]), r),
+        inner = n in [1, N] ? nothing :
+                prod(I[1:n]) > prod(I[n:N]) ? similar(U[n], I[n:N]..., r) :
+                similar(U[n], I[1:n]..., r),
+    )
 end
 
 """
