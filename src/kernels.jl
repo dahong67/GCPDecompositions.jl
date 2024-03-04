@@ -8,7 +8,14 @@ of an N-way tensor X with the matrices U1, U2, ..., UN along mode n.
 
 See also: `mttkrp!`
 """
-mttkrp(X, U, n) = mttkrp!(similar(U[n]), X, U, n)
+function mttkrp(
+    X::AbstractArray{T,N},
+    U::NTuple{N,TM},
+    n::Integer,
+) where {TM<:AbstractMatrix,T,N}
+    _checked_mttkrp_dims(X, U, n)
+    return mttkrp!(similar(U[n]), X, U, n)
+end
 
 """
     mttkrp!(G, X, (U1, U2, ..., UN), n, buffer=create_mttkrp_buffer(X, U, n))
@@ -31,13 +38,17 @@ Algorithm is based on Section III-B of the paper:
 
 See also: `mttkrp`, `create_mttkrp_buffer`
 """
-function mttkrp!(G, X, U, n, buffer = create_mttkrp_buffer(X, U, n))
-    # Dimensions
-    Base.require_one_based_indexing(G, X, U...)
-    N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
-    (N == ndims(X) && I == size(X)) ||
-        throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
-    n in 1:N || throw(DimensionMismatch("`n` must be in `1:ndims(X)`"))
+function mttkrp!(
+    G::TM,
+    X::AbstractArray{T,N},
+    U::NTuple{N,TM},
+    n::Integer,
+    buffer = create_mttkrp_buffer(X, U, n),
+) where {TM<:AbstractMatrix,T,N}
+    I, r = _checked_mttkrp_dims(X, U, n)
+
+    # Check output dimensions
+    Base.require_one_based_indexing(G)
     size(G) == size(U[n]) ||
         throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
 
@@ -104,13 +115,12 @@ and should not be relied upon.
 
 See also: `mttkrp!`
 """
-function create_mttkrp_buffer(X, U, n)
-    # Dimensions
-    Base.require_one_based_indexing(X, U...)
-    N, I, r = length(U), Tuple(size.(U, 1)), (only ∘ unique)(size.(U, 2))
-    (N == ndims(X) && I == size(X)) ||
-        throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
-    n in 1:N || throw(DimensionMismatch("`n` must be in `1:ndims(X)`"))
+function create_mttkrp_buffer(
+    X::AbstractArray{T,N},
+    U::NTuple{N,TM},
+    n::Integer,
+) where {TM<:AbstractMatrix,T,N}
+    I, r = _checked_mttkrp_dims(X, U, n)
 
     # Allocate buffers
     return (;
@@ -120,6 +130,32 @@ function create_mttkrp_buffer(X, U, n)
                 prod(I[1:n]) > prod(I[n:N]) ? similar(U[n], I[n:N]..., r) :
                 similar(U[n], I[1:n]..., r),
     )
+end
+
+"""
+    _checked_mttkrp_dims(X, (U1, U2, ..., UN), n)
+
+Check that `X` and `U` have compatible dimensions for the mode-`n` MTTKRP.
+If so, return a tuple of the number of rows and the shared number of columns
+for the Khatri-Rao product. If not, throw an error.
+"""
+function _checked_mttkrp_dims(
+    X::AbstractArray{T,N},
+    U::NTuple{N,TM},
+    n::Integer,
+) where {TM<:AbstractMatrix,T,N}
+    # Check mode
+    n in 1:N || throw(DimensionMismatch("`n` must be in `1:ndims(X)`"))
+
+    # Check Khatri-Rao product
+    I, r = _checked_khatrirao_dims(U...)
+
+    # Check tensor
+    Base.require_one_based_indexing(X)
+    (I == size(X)) ||
+        throw(DimensionMismatch("`X` and `U` do not have matching dimensions"))
+
+    return I, r
 end
 
 """
