@@ -92,14 +92,40 @@ function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
         return A[1]
     end
 
+    # General case: N > 1
+    I, r = size.(A, 1), (only ∘ unique)(size.(A, 2))
+    return khatrirao!(similar(A[1], prod(I), r), A...)
+end
+
+"""
+    khatrirao!(K, A1, A2, ...)
+
+Compute the Khatri-Rao product (i.e., the column-wise Kronecker product)
+of the matrices `A1`, `A2`, etc. and store the result in `K`.
+"""
+function khatrirao!(K::T, A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+    # Check dimensions
+    Base.require_one_based_indexing(K, A...)
+    I, r = size.(A, 1), (only ∘ unique)(size.(A, 2))
+    size(K) == (prod(I), r) || throw(
+        DimensionMismatch(
+            "Output `K` must have size equal to `(prod(size.(A,1)), size(A[1],2))",
+        ),
+    )
+
+    # Special case: N = 1
+    if N == 1
+        K .= A[1]
+        return K
+    end
+
     # Base case: N = 2
     if N == 2
-        r = (only ∘ unique)(size.(A, 2))
-        return reshape(reshape(A[2], :, 1, r) .* reshape(A[1], 1, :, r), :, r)
+        reshape(K, I[2], I[1], r) .= reshape(A[2], :, 1, r) .* reshape(A[1], 1, :, r)
+        return K
     end
 
     # Recursive case: N > 2
-    I, r = size.(A, 1), (only ∘ unique)(size.(A, 2))
     n = argmin(n -> I[n] * I[n+1], 1:N-1)
-    return khatrirao(A[1:n-1]..., khatrirao(A[n], A[n+1]), A[n+2:end]...)
+    return khatrirao!(K, A[1:n-1]..., khatrirao(A[n], A[n+1]), A[n+2:end]...)
 end
