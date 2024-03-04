@@ -161,11 +161,15 @@ function _gcp(
     end
     λ, U = M0.λ, collect(M0.U)
 
-    # Inefficient but simple implementation
+    # Pre-allocate MTTKRP buffers
+    mttkrp_buffers = [create_mttkrp_buffer(X, Tuple(U), n) for n in 1:N]
+
+    # Alternating Least Squares (ALS) iterations
     for _ in 1:algorithm.maxiters
         for n in 1:N
             V = reduce(.*, U[i]'U[i] for i in setdiff(1:N, n))
-            U[n] = mttkrp(X, U, n) / V
+            mttkrp!(U[n], X, Tuple(U), n, mttkrp_buffers[n])
+            U[n] = U[n] / V
             λ = norm.(eachcol(U[n]))
             U[n] = U[n] ./ permutedims(λ)
         end

@@ -39,7 +39,7 @@ append!(
 for SETUP in SETUPS
     Random.seed!(0)
     X = randn(SETUP.size)
-    U = [randn(In, SETUP.rank) for In in SETUP.size]
+    U = Tuple([randn(In, SETUP.rank) for In in SETUP.size])
     SUITE["size=$(SETUP.size), rank=$(SETUP.rank), mode=$(SETUP.mode)"] = @benchmarkable(
         GCPDecompositions.mttkrp($X, $U, $(SETUP.mode)),
         seconds = 2,

@@ -8,6 +8,7 @@ import Base: require_one_based_indexing
 import Base: ndims, size, show, summary
 import Base: getindex
 import ForwardDiff
+using Compat
 using IntervalSets
 using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using LBFGSB: lbfgsb
