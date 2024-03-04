@@ -150,21 +150,17 @@ function khatrirao!(K::T, A::Vararg{T,N}) where {T<:AbstractMatrix,N}
         ),
     )
 
-    # Special case: N = 1
-    if N == 1
+    # Compute recursively, using a good order for intermediate multiplications
+    if N == 1        # base case: N = 1
         K .= A[1]
-        return K
-    end
-
-    # Base case: N = 2
-    if N == 2
+    elseif N == 2    # base case: N = 2
         reshape(K, I[2], I[1], r) .= reshape(A[2], :, 1, r) .* reshape(A[1], 1, :, r)
-        return K
+    else             # recursion: N > 2
+        n = argmin(n -> I[n] * I[n+1], 1:N-1)
+        khatrirao!(K, A[1:n-1]..., khatrirao(A[n], A[n+1]), A[n+2:end]...)
     end
 
-    # Recursive case: N > 2
-    n = argmin(n -> I[n] * I[n+1], 1:N-1)
-    return khatrirao!(K, A[1:n-1]..., khatrirao(A[n], A[n+1]), A[n+2:end]...)
+    return K
 end
 
 """
