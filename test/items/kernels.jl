@@ -19,3 +19,14 @@
         end
     end
 end
+
+@testitem "khatrirao" begin
+    using Random
+
+    @testset "size=$sz, rank=$r" for sz in [(10,), (10, 20), (10, 30, 40)], r in [5]
+        Random.seed!(0)
+        U = randn.(sz, r)
+        Zn = reduce(hcat, [reduce(kron, [Ui[:, j] for Ui in U]) for j in 1:r])
+        @test GCPDecompositions.khatrirao(U...) ≈ Zn
+    end
+end
