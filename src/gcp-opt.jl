@@ -8,10 +8,13 @@
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
-The weights `λ` are constrained to all be one and `constraints` is a
-`Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
+
+Keyword arguments:
++ `constraints` : a `Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
++ `algorithm`   : algorithm to use
+
 Conventional CP corresponds to the default `LeastSquaresLoss()` loss
-with no constraints (i.e., `constraints = ()`).
+with the default of no constraints (i.e., `constraints = ()`).
 
 If the LossFunctions.jl package is also loaded,
 `loss` can also be a loss function from that package.
