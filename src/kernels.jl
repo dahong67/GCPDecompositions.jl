@@ -36,6 +36,12 @@ function mttkrp!(G, X, U, n)
     size(G) == size(U[n]) ||
         throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
 
+    # Allocate buffers
+    buffer = (;
+        kr_left  = n in 1:2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
+        kr_right = n in N-1:N ? nothing : similar(U[n+1], prod(I[n+1:N]), r),
+    )
+
     # Choose appropriate multiplication order:
     # + n == 1: no splitting required
     # + n == N: no splitting required
@@ -43,20 +49,12 @@ function mttkrp!(G, X, U, n)
     #   + prod(I[1:n]) > prod(I[n:N]): better to multiply left-to-right
     #   + prod(I[1:n]) < prod(I[n:N]): better to multiply right-to-left
     if n == 1
-        buffer_kr = similar(U[2], prod(I[2:N]), r)
-        khatrirao!(buffer_kr, U[reverse(2:N)]...)
-        mul!(G, reshape(X, I[1], :), buffer_kr)
+        kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
+        mul!(G, reshape(X, I[1], :), kr_right)
     elseif n == N
-        buffer_kr = similar(U[1], prod(I[1:N-1]), r)
-        khatrirao!(buffer_kr, U[reverse(1:N-1)]...)
-        mul!(G, transpose(reshape(X, :, I[N])), buffer_kr)
+        kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_left, U[reverse(1:n-1)]...)
+        mul!(G, transpose(reshape(X, :, I[N])), kr_left)
     else
-        # Allocate buffers
-        buffer = (;
-            kr_left  = n == 2 ? nothing : similar(U[1], prod(I[1:n-1]), r),
-            kr_right = n + 1 == N ? nothing : similar(U[n+1], prod(I[n+1:N]), r),
-        )
-
         # Compute left and right Khatri-Rao products
         kr_left = n == 2 ? U[1] : khatrirao!(buffer.kr_left, U[reverse(1:n-1)]...)
         kr_right = n + 1 == N ? U[N] : khatrirao!(buffer.kr_right, U[reverse(n+1:N)]...)
