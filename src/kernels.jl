@@ -129,14 +129,6 @@ Compute the Khatri-Rao product (i.e., the column-wise Kronecker product)
 of the matrices `A1`, `A2`, etc.
 """
 function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
-    Base.require_one_based_indexing(A...)
-
-    # Special case: N = 1
-    if N == 1
-        return A[1]
-    end
-
-    # General case: N > 1
     I, r = size.(A, 1), (only ∘ unique)(size.(A, 2))
     return khatrirao!(similar(A[1], prod(I), r), A...)
 end
