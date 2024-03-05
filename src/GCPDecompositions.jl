@@ -18,11 +18,11 @@ export ncomponents
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
-include("type-cpd.jl")
-include("type-losses.jl")
-include("type-constraints.jl")
-include("type-algorithms.jl")
-include("kernels.jl")
+include("cpd.jl")
+include("gcp-losses.jl")
+include("gcp-constraints.jl")
+include("gcp-algorithms.jl")
+include("tensor-kernels.jl")
 include("gcp-opt.jl")
 
 if !isdefined(Base, :get_extension)
