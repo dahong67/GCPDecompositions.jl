@@ -6,7 +6,7 @@
 Compute the Khatri-Rao product (i.e., the column-wise Kronecker product)
 of the matrices `A1`, `A2`, etc.
 """
-function khatrirao(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+function khatrirao(A::Vararg{<:AbstractMatrix})
     I, r = _checked_khatrirao_dims(A...)
     return khatrirao!(similar(A[1], prod(I), r), A...)
 end
@@ -17,7 +17,7 @@ end
 Compute the Khatri-Rao product (i.e., the column-wise Kronecker product)
 of the matrices `A1`, `A2`, etc. and store the result in `K`.
 """
-function khatrirao!(K::T, A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+function khatrirao!(K::AbstractMatrix, A::Vararg{<:AbstractMatrix,N}) where {N}
     I, r = _checked_khatrirao_dims(A...)
 
     # Check output dimensions
@@ -48,7 +48,7 @@ Check that `A1`, `A2`, etc. have compatible dimensions for the Khatri-Rao produc
 If so, return a tuple of the number of rows and the shared number of columns.
 If not, throw an error.
 """
-function _checked_khatrirao_dims(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
+function _checked_khatrirao_dims(A::Vararg{<:AbstractMatrix})
     Base.require_one_based_indexing(A...)
     allequal(size.(A, 2)) || throw(
         DimensionMismatch(
