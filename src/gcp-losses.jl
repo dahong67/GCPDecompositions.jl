@@ -1,5 +1,16 @@
 ## Loss function types
 
+"""
+Loss functions for Generalized CP Decomposition.
+"""
+module GCPLosses
+
+using ..GCPDecompositions
+using ..TensorKernels: mttkrps!
+using IntervalSets: Interval
+using LinearAlgebra: mul!, rmul!, Diagonal
+import ForwardDiff
+
 # Abstract type
 
 """
@@ -15,6 +26,65 @@ Concrete types `ConcreteLoss <: AbstractLoss` should implement:
   - `domain(loss::ConcreteLoss)` that returns an `Interval` from IntervalSets.jl defining the domain for ``m``
 """
 abstract type AbstractLoss end
+
+"""
+    value(loss, x, m)
+
+Compute the value of the (entrywise) loss function `loss`
+for data entry `x` and model entry `m`.
+"""
+function value end
+
+"""
+    deriv(loss, x, m)
+
+Compute the derivative of the (entrywise) loss function `loss`
+at the model entry `m` for the data entry `x`.
+"""
+function deriv end
+
+"""
+    domain(loss)
+
+Return the domain of the (entrywise) loss function `loss`.
+"""
+function domain end
+
+# Objective function and gradients
+
+"""
+    objective(M::CPD, X::AbstractArray, loss)
+
+Compute the GCP objective function for the model tensor `M`, data tensor `X`,
+and loss function `loss`.
+"""
+function objective(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
+    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
+end
+
+"""
+    grad_U!(GU, M::CPD, X::AbstractArray, loss)
+
+Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])`
+for the model tensor `M`, data tensor `X`, and loss function `loss`, and store
+the result in `GU = (GU[1],...,GU[N])`.
+"""
+function grad_U!(
+    GU::NTuple{N,TGU},
+    M::CPD{T,N},
+    X::Array{TX,N},
+    loss,
+) where {T,TX,N,TGU<:AbstractMatrix{T}}
+    Y = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
+        I in CartesianIndices(X)
+    ]
+    mttkrps!(GU, Y, M.U)
+    for k in 1:N
+        rmul!(GU[k], Diagonal(M.λ))
+    end
+    return GU
+end
 
 # Statistically motivated losses
 
@@ -306,3 +376,5 @@ end
 value(loss::UserDefinedLoss, x, m) = loss.func(x, m)
 deriv(loss::UserDefinedLoss, x, m) = loss.deriv(x, m)
 domain(loss::UserDefinedLoss) = loss.domain
+
+end
