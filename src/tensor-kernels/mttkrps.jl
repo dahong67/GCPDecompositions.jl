@@ -26,7 +26,7 @@ function mttkrps!(
     X::AbstractArray{T,N},
     U::NTuple{N,TM},
 ) where {TM<:AbstractMatrix,T,N}
-    I, r = _checked_mttkrps_dims(X, U)
+    _checked_mttkrps_dims(X, U)
 
     # Check output dimensions
     Base.require_one_based_indexing(G...)
