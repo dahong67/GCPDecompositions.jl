@@ -29,7 +29,8 @@ end
 # Main fitting function
 
 """
-    gcp(X::Array, r, loss = GCPLosses.LeastSquaresLoss();
+    gcp(X::Array, r;
+        loss = GCPLosses.LeastSquaresLoss(),
         constraints = default_constraints(loss),
         algorithm = default_algorithm(X, r, loss, constraints),
         init = default_init(X, r, loss, constraints, algorithm))
@@ -53,8 +54,8 @@ See also: `CPD`, `GCPLosses`, `GCPConstraints`, `GCPAlgorithms`.
 """
 gcp(
     X::Array,
-    r,
-    loss = GCPLosses.LeastSquaresLoss();
+    r;
+    loss = GCPLosses.LeastSquaresLoss(),
     constraints = default_constraints(loss),
     algorithm = default_algorithm(X, r, loss, constraints),
     init = default_init(X, r, loss, constraints, algorithm),

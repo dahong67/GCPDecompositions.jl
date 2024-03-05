@@ -9,7 +9,7 @@
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r, L2DistLoss())
+        Mh = gcp(X, r; loss = L2DistLoss())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -28,19 +28,19 @@ end
         Random.seed!(10)
         Mr = gcp(
             X,
-            1,
-            GCPLosses.UserDefinedLoss(
+            1;
+            loss = GCPLosses.UserDefinedLoss(
                 (x, m) -> exp(-x * m);
                 deriv = (x, m) -> -x * exp(-x * m),
                 domain = Interval(-Inf, +Inf),
-            );
+            ),
             constraints = (),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test
         Random.seed!(10)
-        Mh = gcp(X, 1, ExpLoss())
+        Mh = gcp(X, 1; loss = ExpLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
