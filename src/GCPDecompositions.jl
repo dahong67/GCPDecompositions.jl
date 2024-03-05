@@ -30,7 +30,7 @@ end
 """
     gcp(X::Array, r, loss = GCPLosses.LeastSquaresLoss();
         constraints = default_constraints(loss),
-        algorithm = default_algorithm(X, r, loss, constraints)) -> CPD
+        algorithm = default_algorithm(X, r, loss, constraints))
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
@@ -47,7 +47,7 @@ If the LossFunctions.jl package is also loaded,
 Check `GCPDecompositions.LossFunctionsExt.SupportedLosses`
 to see what losses are supported.
 
-See also: `CPD`, `GCPLosses`.
+See also: `CPD`, `GCPLosses`, `GCPConstraints`, `GCPAlgorithms`.
 """
 gcp(
     X::Array,
