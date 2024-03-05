@@ -32,7 +32,7 @@ CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatr
     CPD{T,N,Tλ,TU}(λ, U)
 
 """
-    ncomponents(M::CPD) -> Integer
+    ncomponents(M::CPD)
 
 Return the number of components in `M`.
 
