@@ -33,15 +33,11 @@ function mttkrps!(
     size.(G) == size.(U) ||
         throw(DimensionMismatch("Output `G` must have the same size as `U`"))
 
-    # Inefficient but simple algorithm
-    return ntuple(Val(N)) do n
-        Xn = reshape(PermutedDimsArray(X, [n; setdiff(1:N, n)]), I[n], :)
-        Zn = similar(Xn, prod(I[setdiff(1:N, n)]), r)
-        for j in Base.OneTo(r)
-            Zn[:, j] = reduce(kron, [view(U[i], :, j) for i in reverse(setdiff(1:N, n))])
-        end
-        return mul!(G[n], Xn, Zn)
+    # Compute individual MTTKRP's
+    for n in 1:N
+        mttkrp!(G[n], X, U, n)
     end
+    return G
 end
 
 """
