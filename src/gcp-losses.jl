@@ -21,6 +21,29 @@ Concrete types `ConcreteLoss <: AbstractLoss` should implement:
 """
 abstract type AbstractLoss end
 
+"""
+    value(loss, x, m)
+
+Compute the value of the (entrywise) loss function `loss`
+for data entry `x` and model entry `m`.
+"""
+function value end
+
+"""
+    deriv(loss, x, m)
+
+Compute the derivative of the (entrywise) loss function `loss`
+at the model entry `m` for the data entry `x`.
+"""
+function deriv end
+
+"""
+    domain(loss)
+
+Return the domain of the (entrywise) loss function `loss`.
+"""
+function domain end
+
 # Statistically motivated losses
 
 """
