@@ -117,7 +117,8 @@ end
 
 # Objective function and gradient (w.r.t. `M.U`)
 function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
-    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
+    return mapreduce(I -> ismissing(X[I]) ? value(loss, X[I], M[I]) : 0, +, CartesianIndices(X))
+    #return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
 end
 
 function gcp_grad_U!(
@@ -131,10 +132,19 @@ function gcp_grad_U!(
         I in CartesianIndices(X)
     ]
     # Use faster MTTKRPs algorithm
-    faster_mttkrps!(GU, M, Y)
+    #faster_mttkrps!(GU, M, Y)
+    #return ntuple(Val(N)) do k
+    #    return rmul!(GU[k], Diagonal(M.λ))
+    #end 
     return ntuple(Val(N)) do k
+        Yk = reshape(PermutedDimsArray(Y, [k; setdiff(1:N, k)]), size(X, k), :)
+        Zk = similar(Yk, prod(size(X)[setdiff(1:N, k)]), ncomponents(M))
+        for j in Base.OneTo(ncomponents(M))
+            Zk[:, j] = reduce(kron, [view(M.U[i], :, j) for i in reverse(setdiff(1:N, k))])
+        end
+        mul!(GU[k], Yk, Zk)
         return rmul!(GU[k], Diagonal(M.λ))
-    end 
+    end
 end
 
 function _gcp(
