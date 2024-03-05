@@ -112,6 +112,7 @@ default_init(X, r, loss, constraints, algorithm) =
 function default_init(rng, X, r, loss, constraints, algorithm)
     # Generate CPD with random factors
     T, N = nonmissingtype(eltype(X)), ndims(X)
+    T = promote_type(T, Float64)
     M = CPD(ones(T, r), rand.(rng, T, size(X), r))
 
     # Normalize
