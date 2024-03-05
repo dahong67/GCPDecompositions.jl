@@ -117,7 +117,7 @@ end
 
 # Objective function and gradient (w.r.t. `M.U`)
 function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
-    return mapreduce(I -> ismissing(X[I]) ? value(loss, X[I], M[I]) : 0, +, CartesianIndices(X))
+    return mapreduce(I -> !ismissing(X[I]) ? value(loss, X[I], M[I]) : 0, +, CartesianIndices(X))
     #return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
 end
 
