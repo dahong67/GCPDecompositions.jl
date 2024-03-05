@@ -17,7 +17,7 @@ struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     λ::Tλ
     U::NTuple{N,TU}
     function CPD{T,N,Tλ,TU}(λ, U) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
-        require_one_based_indexing(λ, U...)
+        Base.require_one_based_indexing(λ, U...)
         for k in Base.OneTo(N)
             size(U[k], 2) == length(λ) || throw(
                 DimensionMismatch(

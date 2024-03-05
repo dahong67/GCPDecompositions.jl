@@ -4,7 +4,6 @@ Generalized CP Decomposition module. Provides approximate CP tensor decompositio
 module GCPDecompositions
 
 # Imports
-import Base: require_one_based_indexing
 import Base: ndims, size, show, summary
 import Base: getindex
 import LinearAlgebra: norm
