@@ -3,6 +3,7 @@
 module GCPLosses
 
 using ..GCPDecompositions
+using ..TensorKernels: mttkrps!
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal
 import ForwardDiff
@@ -75,17 +76,11 @@ function grad_U!(
         ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
         I in CartesianIndices(X)
     ]
-
-    # MTTKRPs (inefficient but simple)
-    return ntuple(Val(N)) do k
-        Yk = reshape(PermutedDimsArray(Y, [k; setdiff(1:N, k)]), size(X, k), :)
-        Zk = similar(Yk, prod(size(X)[setdiff(1:N, k)]), ncomponents(M))
-        for j in Base.OneTo(ncomponents(M))
-            Zk[:, j] = reduce(kron, [view(M.U[i], :, j) for i in reverse(setdiff(1:N, k))])
-        end
-        mul!(GU[k], Yk, Zk)
-        return rmul!(GU[k], Diagonal(M.λ))
+    mttkrps!(GU, Y, M.U)
+    for k in 1:N
+        rmul!(GU[k], Diagonal(M.λ))
     end
+    return GU
 end
 
 # Statistically motivated losses
