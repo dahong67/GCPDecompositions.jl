@@ -74,12 +74,12 @@ function _gcp(
     vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(N))
     function f(u)
         U = map(range -> reshape(view(u, range), :, r), vec_ranges)
-        return gcp_func(CPD(ones(T, r), U), X, loss)
+        return GCPLosses.objective(CPD(ones(T, r), U), X, loss)
     end
     function g!(gu, u)
         U = map(range -> reshape(view(u, range), :, r), vec_ranges)
         GU = map(range -> reshape(view(gu, range), :, r), vec_ranges)
-        gcp_grad_U!(GU, CPD(ones(T, r), U), X, loss)
+        GCPLosses.grad_U!(GU, CPD(ones(T, r), U), X, loss)
         return gu
     end
 
@@ -88,34 +88,4 @@ function _gcp(
     u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
     U = map(range -> reshape(u[range], :, r), vec_ranges)
     return CPD(ones(T, r), U)
-end
-
-# Objective function and gradient (w.r.t. `M.U`)
-function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
-    return sum(
-        GCPLosses.value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I])
-    )
-end
-
-function gcp_grad_U!(
-    GU::NTuple{N,TGU},
-    M::CPD{T,N},
-    X::Array{TX,N},
-    loss,
-) where {T,TX,N,TGU<:AbstractMatrix{T}}
-    Y = [
-        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) :
-        GCPLosses.deriv(loss, X[I], M[I]) for I in CartesianIndices(X)
-    ]
-
-    # MTTKRPs (inefficient but simple)
-    return ntuple(Val(N)) do k
-        Yk = reshape(PermutedDimsArray(Y, [k; setdiff(1:N, k)]), size(X, k), :)
-        Zk = similar(Yk, prod(size(X)[setdiff(1:N, k)]), ncomponents(M))
-        for j in Base.OneTo(ncomponents(M))
-            Zk[:, j] = reduce(kron, [view(M.U[i], :, j) for i in reverse(setdiff(1:N, k))])
-        end
-        mul!(GU[k], Yk, Zk)
-        return rmul!(GU[k], Diagonal(M.λ))
-    end
 end

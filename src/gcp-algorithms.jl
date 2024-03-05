@@ -5,7 +5,7 @@ module GCPAlgorithms
 using ..GCPDecompositions
 using ..TensorKernels: create_mttkrp_buffer, mttkrp!
 using IntervalSets: Interval
-using LinearAlgebra: lu!, mul!, norm, rdiv!, rmul!, Diagonal
+using LinearAlgebra: lu!, norm, rdiv!
 using LBFGSB: lbfgsb
 
 """
