@@ -1,5 +1,10 @@
 ## Loss function types
 
+module GCPLosses
+
+using IntervalSets: Interval
+import ForwardDiff
+
 # Abstract type
 
 """
@@ -306,3 +311,5 @@ end
 value(loss::UserDefinedLoss, x, m) = loss.func(x, m)
 deriv(loss::UserDefinedLoss, x, m) = loss.deriv(x, m)
 domain(loss::UserDefinedLoss) = loss.domain
+
+end

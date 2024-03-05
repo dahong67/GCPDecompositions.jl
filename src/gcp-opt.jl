@@ -2,7 +2,7 @@
 
 # Main fitting function
 """
-    gcp(X::Array, r, loss = LeastSquaresLoss();
+    gcp(X::Array, r, loss = GCPLosses.LeastSquaresLoss();
         constraints = default_constraints(loss),
         algorithm = default_algorithm(X, r, loss, constraints)) -> CPD
 
@@ -13,7 +13,7 @@ Keyword arguments:
 + `constraints` : a `Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
 + `algorithm`   : algorithm to use
 
-Conventional CP corresponds to the default `LeastSquaresLoss()` loss
+Conventional CP corresponds to the default `GCPLosses.LeastSquaresLoss()` loss
 with the default of no constraints (i.e., `constraints = ()`).
 
 If the LossFunctions.jl package is also loaded,
@@ -21,19 +21,19 @@ If the LossFunctions.jl package is also loaded,
 Check `GCPDecompositions.LossFunctionsExt.SupportedLosses`
 to see what losses are supported.
 
-See also: `CPD`, `AbstractLoss`.
+See also: `CPD`, `GCPLosses`.
 """
 gcp(
     X::Array,
     r,
-    loss = LeastSquaresLoss();
+    loss = GCPLosses.LeastSquaresLoss();
     constraints = default_constraints(loss),
     algorithm = default_algorithm(X, r, loss, constraints),
 ) = _gcp(X, r, loss, constraints, algorithm)
 
 # Choose constraints based on the domain of the loss function
 function default_constraints(loss)
-    dom = domain(loss)
+    dom = GCPLosses.domain(loss)
     if dom == Interval(-Inf, +Inf)
         return ()
     elseif dom == Interval(0.0, +Inf)
@@ -46,8 +46,12 @@ function default_constraints(loss)
 end
 
 # Choose default algorithm
-default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
-    GCPAlgorithms.ALS()
+default_algorithm(
+    X::Array{<:Real},
+    r,
+    loss::GCPLosses.LeastSquaresLoss,
+    constraints::Tuple{},
+) = GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 function _gcp(
@@ -64,7 +68,7 @@ function _gcp(
     lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
 
     # Error for unsupported loss/constraint combinations
-    dom = domain(loss)
+    dom = GCPLosses.domain(loss)
     if dom == Interval(-Inf, +Inf)
         lower in (-Inf, 0.0) || error(
             "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
@@ -111,7 +115,9 @@ end
 
 # Objective function and gradient (w.r.t. `M.U`)
 function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
-    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
+    return sum(
+        GCPLosses.value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I])
+    )
 end
 
 function gcp_grad_U!(
@@ -121,8 +127,8 @@ function gcp_grad_U!(
     loss,
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
     Y = [
-        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
-        I in CartesianIndices(X)
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) :
+        GCPLosses.deriv(loss, X[I], M[I]) for I in CartesianIndices(X)
     ]
 
     # MTTKRPs (inefficient but simple)
@@ -140,7 +146,7 @@ end
 function _gcp(
     X::Array{TX,N},
     r,
-    loss::LeastSquaresLoss,
+    loss::GCPLosses.LeastSquaresLoss,
     constraints::Tuple{},
     algorithm::GCPAlgorithms.ALS,
 ) where {TX<:Real,N}

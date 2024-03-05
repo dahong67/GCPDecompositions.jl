@@ -8,7 +8,6 @@ import Base: require_one_based_indexing
 import Base: ndims, size, show, summary
 import Base: getindex
 import LinearAlgebra: norm
-import ForwardDiff
 using Compat
 using IntervalSets
 using LinearAlgebra: lu!, mul!, rdiv!, rmul!, Diagonal
@@ -18,20 +17,7 @@ using LBFGSB: lbfgsb
 export CPD
 export ncomponents
 export gcp
-export AbstractLoss,
-    LeastSquaresLoss,
-    NonnegativeLeastSquaresLoss,
-    PoissonLoss,
-    PoissonLogLoss,
-    GammaLoss,
-    RayleighLoss,
-    BernoulliOddsLoss,
-    BernoulliLogitLoss,
-    NegativeBinomialOddsLoss,
-    HuberLoss,
-    BetaDivergenceLoss,
-    UserDefinedLoss
-export GCPConstraints, GCPAlgorithms
+export GCPLosses, GCPConstraints, GCPAlgorithms
 
 include("type-cpd.jl")
 include("type-losses.jl")
