@@ -1,5 +1,8 @@
 ## Algorithm types
 
+"""
+Algorithms for Generalized CP Decomposition.
+"""
 module GCPAlgorithms
 
 using ..GCPDecompositions

@@ -1,5 +1,8 @@
 ## Tensor Kernels
 
+"""
+Tensor kernels for Generalized CP Decomposition.
+"""
 module TensorKernels
 
 using Compat: allequal

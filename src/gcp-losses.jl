@@ -1,5 +1,8 @@
 ## Loss function types
 
+"""
+Loss functions for Generalized CP Decomposition.
+"""
 module GCPLosses
 
 using ..GCPDecompositions
