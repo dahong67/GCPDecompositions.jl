@@ -54,6 +54,8 @@ default_algorithm(
 ) = GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
+using .TensorKernels: create_mttkrp_buffer, mttkrp!
+
 function _gcp(
     X::Array{TX,N},
     r,

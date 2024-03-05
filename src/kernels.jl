@@ -1,5 +1,11 @@
 ## Tensor Kernels
 
+module TensorKernels
+
+using Compat: allequal
+using LinearAlgebra: mul!
+export create_mttkrp_buffer, mttkrp, mttkrp!, khatrirao, khatrirao!
+
 """
     mttkrp(X, (U1, U2, ..., UN), n)
 
@@ -214,4 +220,6 @@ function _checked_khatrirao_dims(A::Vararg{T,N}) where {T<:AbstractMatrix,N}
         ),
     )
     return size.(A, 1), size(A[1], 2)
+end
+
 end
