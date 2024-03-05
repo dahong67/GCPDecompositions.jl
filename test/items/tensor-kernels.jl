@@ -37,7 +37,7 @@ end
     using Random
     using GCPDecompositions.TensorKernels
 
-    @testset "size=$sz, rank=$r" for sz in [(10,30), (10, 30, 40)], r in [5]
+    @testset "size=$sz, rank=$r" for sz in [(10, 30), (10, 30, 40)], r in [5]
         Random.seed!(0)
         X = randn(sz)
         U = randn.(sz, r)
