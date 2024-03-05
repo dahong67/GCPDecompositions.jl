@@ -154,7 +154,7 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         k = 1.5
-        X = [rand(Gamma(k, M[I]/k)) for I in CartesianIndices(size(M))]
+        X = [rand(Gamma(k, M[I] / k)) for I in CartesianIndices(size(M))]
 
         # Compute reference
         Random.seed!(0)
@@ -184,7 +184,7 @@ end
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
-        X = [rand(Rayleigh(M[I]/(sqrt(pi/2)))) for I in CartesianIndices(size(M))]
+        X = [rand(Rayleigh(M[I] / (sqrt(pi / 2)))) for I in CartesianIndices(size(M))]
 
         # Compute reference
         Random.seed!(0)
@@ -214,7 +214,7 @@ end
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
-        X = [rand(Bernoulli(M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
+        X = [rand(Bernoulli(M[I] / (M[I] + 1))) for I in CartesianIndices(size(M))]
 
         # Compute reference
         Random.seed!(0)
@@ -244,7 +244,9 @@ end
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
-        X = [rand(Bernoulli(exp(M[I])/(exp(M[I]) + 1))) for I in CartesianIndices(size(M))]
+        X = [
+            rand(Bernoulli(exp(M[I]) / (exp(M[I]) + 1))) for I in CartesianIndices(size(M))
+        ]
 
         # Compute reference
         Random.seed!(0)
@@ -275,8 +277,11 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         num_failures = 5
-        X = [rand(NegativeBinomial(num_failures, M[I]/(M[I] + 1))) for I in CartesianIndices(size(M))]
-  
+        X = [
+            rand(NegativeBinomial(num_failures, M[I] / (M[I] + 1))) for
+            I in CartesianIndices(size(M))
+        ]
+
         # Compute reference
         Random.seed!(0)
         Mr = gcp(
@@ -298,7 +303,6 @@ end
     end
 end
 
-
 @testitem "HuberLoss" begin
     using Random, IntervalSets
     using Distributions
@@ -307,7 +311,7 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-  
+
         # Compute reference
         Δ = 1
         Random.seed!(0)
@@ -331,27 +335,29 @@ end
     end
 end
 
-
 @testitem "BetaDivergenceLoss" begin
     using Random, IntervalSets
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2, β in [0, 0.5, 1]
+    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (50, 40, 30)],
+        r in 1:2,
+        β in [0, 0.5, 1]
+
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         # May want to consider other distributions depending on value of β
         X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
 
-        function beta_value(β, x, m) 
+        function beta_value(β, x, m)
             if β == 0
-              return x / (m + 1e-10) + log(m + 1e-10)
+                return x / (m + 1e-10) + log(m + 1e-10)
             elseif β == 1
-              return m - x * log(m + 1e-10)
+                return m - x * log(m + 1e-10)
             else
-              return 1 / β * m^β - 1 / (β - 1) * x * m^(β - 1)
+                return 1 / β * m^β - 1 / (β - 1) * x * m^(β - 1)
             end
-          end
-        function beta_deriv(β, x, m) 
+        end
+        function beta_deriv(β, x, m)
             if β == 0
                 return -x / (m + 1e-10)^2 + 1 / (m + 1e-10)
             elseif β == 1
@@ -381,7 +387,6 @@ end
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
-
 
 @testitem "UserDefinedLoss" begin
     using Random, Distributions, IntervalSets
