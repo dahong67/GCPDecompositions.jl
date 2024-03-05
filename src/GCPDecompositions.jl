@@ -8,6 +8,7 @@ import Base: ndims, size, show, summary
 import Base: getindex
 import LinearAlgebra: norm
 using IntervalSets: Interval
+using Random: default_rng
 
 # Exports
 export CPD
@@ -30,7 +31,8 @@ end
 """
     gcp(X::Array, r, loss = GCPLosses.LeastSquaresLoss();
         constraints = default_constraints(loss),
-        algorithm = default_algorithm(X, r, loss, constraints))
+        algorithm = default_algorithm(X, r, loss, constraints),
+        init = default_init(X, r, loss, constraints, algorithm))
 
 Compute an approximate rank-`r` CP decomposition of the tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
@@ -55,7 +57,8 @@ gcp(
     loss = GCPLosses.LeastSquaresLoss();
     constraints = default_constraints(loss),
     algorithm = default_algorithm(X, r, loss, constraints),
-) = GCPAlgorithms._gcp(X, r, loss, constraints, algorithm)
+    init = default_init(X, r, loss, constraints, algorithm),
+) = GCPAlgorithms._gcp(X, r, loss, constraints, algorithm, init)
 
 # Defaults
 
@@ -94,5 +97,31 @@ default_algorithm(
     constraints::Tuple{},
 ) = GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
+
+"""
+    default_init([rng=default_rng()], X, r, loss, constraints, algorithm)
+
+Return a default initialization for the data tensor `X`, rank `r`,
+loss function `loss`, tuple of constraints `constraints`, and
+algorithm `algorithm`, using the random number generator `rng` if needed.
+
+See also: `gcp`.
+"""
+default_init(X, r, loss, constraints, algorithm) =
+    default_init(default_rng(), X, r, loss, constraints, algorithm)
+function default_init(rng, X, r, loss, constraints, algorithm)
+    # Generate CPD with random factors
+    T, N = nonmissingtype(eltype(X)), ndims(X)
+    M = CPD(ones(T, r), rand.(rng, T, size(X), r))
+
+    # Normalize
+    Mnorm = norm(M)
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M.U[k] .*= (Xnorm / Mnorm)^(1 / N)
+    end
+
+    return M
+end
 
 end

@@ -37,6 +37,7 @@ function _gcp(
     loss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
     algorithm::GCPAlgorithms.LBFGSB,
+    init,
 ) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
@@ -60,13 +61,8 @@ function _gcp(
         )
     end
 
-    # Random initialization
-    M0 = CPD(ones(T, r), rand.(T, size(X), r))
-    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
-    Xnorm = sqrt(sum(abs2, skipmissing(X)))
-    for k in Base.OneTo(N)
-        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
-    end
+    # Initialization
+    M0 = deepcopy(init)
     u0 = vcat(vec.(M0.U)...)
 
     # Setup vectorized objective function and gradient

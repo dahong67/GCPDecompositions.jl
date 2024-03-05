@@ -20,17 +20,10 @@ function _gcp(
     loss::GCPLosses.LeastSquaresLoss,
     constraints::Tuple{},
     algorithm::GCPAlgorithms.ALS,
+    init,
 ) where {TX<:Real,N}
-    T = promote_type(TX, Float64)
-
-    # Random initialization
-    M0 = CPD(ones(T, r), rand.(T, size(X), r))
-    M0norm = norm(M0)
-    Xnorm = sqrt(sum(abs2, skipmissing(X)))
-    for k in Base.OneTo(N)
-        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
-    end
-    M = deepcopy(M0)
+    # Initialization
+    M = deepcopy(init)
 
     # Pre-allocate MTTKRP buffers
     mttkrp_buffers = ntuple(n -> create_mttkrp_buffer(X, M.U, n), N)
