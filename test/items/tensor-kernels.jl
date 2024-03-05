@@ -32,3 +32,25 @@ end
         @test khatrirao(U...) ≈ Zn
     end
 end
+
+@testitem "mttkrps" begin
+    using Random
+    using GCPDecompositions.TensorKernels
+
+    @testset "size=$sz, rank=$r" for sz in [(10,30), (10, 30, 40)], r in [5]
+        Random.seed!(0)
+        X = randn(sz)
+        U = randn.(sz, r)
+        N = length(sz)
+
+        G = map(1:N) do n
+            Xn = reshape(permutedims(X, [n; setdiff(1:N, n)]), size(X, n), :)
+            Zn = reduce(
+                hcat,
+                [reduce(kron, [U[i][:, j] for i in reverse(setdiff(1:N, n))]) for j in 1:r],
+            )
+            return Xn * Zn
+        end
+        @test all(mttkrps(X, U) .≈ G)
+    end
+end
