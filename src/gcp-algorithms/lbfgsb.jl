@@ -30,3 +30,92 @@ Base.@kwdef struct LBFGSB <: AbstractAlgorithm
     maxiter::Int   = 15000
     iprint::Int    = -1
 end
+
+function _gcp(
+    X::Array{TX,N},
+    r,
+    loss,
+    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
+    algorithm::GCPAlgorithms.LBFGSB,
+) where {TX,N}
+    # T = promote_type(nonmissingtype(TX), Float64)
+    T = Float64    # LBFGSB.jl seems to only support Float64
+
+    # Compute lower bound from constraints
+    lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
+
+    # Error for unsupported loss/constraint combinations
+    dom = GCPLosses.domain(loss)
+    if dom == Interval(-Inf, +Inf)
+        lower in (-Inf, 0.0) || error(
+            "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
+        )
+    elseif dom == Interval(0.0, +Inf)
+        lower == 0.0 || error(
+            "only lower bound constraints of `0` are (currently) supported for loss functions with a domain of `0 .. Inf`",
+        )
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+        )
+    end
+
+    # Random initialization
+    M0 = CPD(ones(T, r), rand.(T, size(X), r))
+    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(N)
+        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
+    end
+    u0 = vcat(vec.(M0.U)...)
+
+    # Setup vectorized objective function and gradient
+    vec_cutoffs = (0, cumsum(r .* size(X))...)
+    vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(N))
+    function f(u)
+        U = map(range -> reshape(view(u, range), :, r), vec_ranges)
+        return gcp_func(CPD(ones(T, r), U), X, loss)
+    end
+    function g!(gu, u)
+        U = map(range -> reshape(view(u, range), :, r), vec_ranges)
+        GU = map(range -> reshape(view(gu, range), :, r), vec_ranges)
+        gcp_grad_U!(GU, CPD(ones(T, r), U), X, loss)
+        return gu
+    end
+
+    # Run LBFGSB
+    lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
+    u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
+    U = map(range -> reshape(u[range], :, r), vec_ranges)
+    return CPD(ones(T, r), U)
+end
+
+# Objective function and gradient (w.r.t. `M.U`)
+function gcp_func(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
+    return sum(
+        GCPLosses.value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I])
+    )
+end
+
+function gcp_grad_U!(
+    GU::NTuple{N,TGU},
+    M::CPD{T,N},
+    X::Array{TX,N},
+    loss,
+) where {T,TX,N,TGU<:AbstractMatrix{T}}
+    Y = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) :
+        GCPLosses.deriv(loss, X[I], M[I]) for I in CartesianIndices(X)
+    ]
+
+    # MTTKRPs (inefficient but simple)
+    return ntuple(Val(N)) do k
+        Yk = reshape(PermutedDimsArray(Y, [k; setdiff(1:N, k)]), size(X, k), :)
+        Zk = similar(Yk, prod(size(X)[setdiff(1:N, k)]), ncomponents(M))
+        for j in Base.OneTo(ncomponents(M))
+            Zk[:, j] = reduce(kron, [view(M.U[i], :, j) for i in reverse(setdiff(1:N, k))])
+        end
+        mul!(GU[k], Yk, Zk)
+        return rmul!(GU[k], Diagonal(M.λ))
+    end
+end
