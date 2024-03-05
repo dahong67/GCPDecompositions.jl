@@ -50,15 +50,6 @@ default_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tupl
     GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
-# TODO: remove this `func, grad, lower` signature
-# will require reworking how we do testing
-_gcp(X::Array{TX,N}, r, func, grad, lower, lbfgsopts) where {TX,N} = _gcp(
-    X,
-    r,
-    UserDefinedLoss(func; deriv = grad, domain = Interval(lower, +Inf)),
-    (GCPConstraints.LowerBound(lower),),
-    GCPAlgorithms.LBFGSB(; lbfgsopts...),
-)
 function _gcp(
     X::Array{TX,N},
     r,

@@ -87,7 +87,7 @@ end
 end
 
 @testitem "PoissonLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -97,13 +97,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> m - x * log(m + 1e-10),
-            (x, m) -> 1 - x / (m + 1e-10),
-            0.0,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> m - x * log(m + 1e-10);
+                deriv = (x, m) -> 1 - x / (m + 1e-10),
+                domain = Interval(0.0, +Inf),
+            );
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test
@@ -114,7 +117,7 @@ end
 end
 
 @testitem "PoissonLogLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -124,13 +127,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> exp(m) - x * m,
-            (x, m) -> exp(m) - x,
-            -Inf,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> exp(m) - x * m;
+                deriv = (x, m) -> exp(m) - x,
+                domain = Interval(-Inf, +Inf),
+            );
+            constraints = (),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test
@@ -141,7 +147,7 @@ end
 end
 
 @testitem "GammaLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -152,13 +158,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> log(m + 1e-10) + x / (m + 1e-10),
-            (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
-            0.0,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> log(m + 1e-10) + x / (m + 1e-10);
+                deriv = (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
+                domain = Interval(0.0, +Inf),
+            );
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -169,7 +178,7 @@ end
 end
 
 @testitem "RayleighLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -179,13 +188,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> 2*log(m + 1e-10) + (pi / 4) * ((x/(m + 1e-10))^2),
-            (x, m) -> 2/(m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
-            0.0,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> 2 * log(m + 1e-10) + (pi / 4) * ((x / (m + 1e-10))^2);
+                deriv = (x, m) -> 2 / (m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
+                domain = Interval(0.0, +Inf),
+            );
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -196,7 +208,7 @@ end
 end
 
 @testitem "BernoulliOddsLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -206,13 +218,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> log(m + 1) - x * log(m + 1e-10),
-            (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
-            0.0,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> log(m + 1) - x * log(m + 1e-10);
+                deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
+                domain = Interval(0.0, +Inf),
+            );
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -223,7 +238,7 @@ end
 end
 
 @testitem "BernoulliLogitsLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -233,13 +248,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> log(1 + exp(m)) - x * m,
-            (x, m) -> exp(m) / (1 + exp(m)) - x,
-            -Inf,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> log(1 + exp(m)) - x * m;
+                deriv = (x, m) -> exp(m) / (1 + exp(m)) - x,
+                domain = Interval(-Inf, +Inf),
+            );
+            constraints = (),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -250,7 +268,7 @@ end
 end
 
 @testitem "NegativeBinomialOddsLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -261,13 +279,16 @@ end
   
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10),
-            (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
-            0.0,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10);
+                deriv = (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
+                domain = Interval(0.0, +Inf),
+            );
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -279,7 +300,7 @@ end
 
 
 @testitem "HuberLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
@@ -290,13 +311,17 @@ end
         # Compute reference
         Δ = 1
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2,
-            (x, m) -> abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
-            -Inf,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2;
+                deriv = (x, m) ->
+                    abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
+                domain = Interval(-Inf, +Inf),
+            );
+            constraints = (),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -308,7 +333,7 @@ end
 
 
 @testitem "BetaDivergenceLoss" begin
-    using Random
+    using Random, IntervalSets
     using Distributions
 
     @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2, β in [0, 0.5, 1]
@@ -338,13 +363,16 @@ end
 
         # Compute reference
         Random.seed!(0)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
             r,
-            (x, m) -> beta_value(β, x, m),
-            (x, m) -> beta_deriv(β, x, m),
-            0.0,
-            (;),
+            UserDefinedLoss(
+                (x, m) -> beta_value(β, x, m);
+                deriv = (x, m) -> beta_deriv(β, x, m),
+                domain = Interval(0.0, +Inf),
+            );
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test 
@@ -366,13 +394,16 @@ end
 
             # Compute reference
             Random.seed!(0)
-            Mr = GCPDecompositions._gcp(
+            Mr = gcp(
                 X,
                 r,
-                (x, m) -> (x - m)^2,
-                (x, m) -> 2 * (m - x),
-                -Inf,
-                (;),
+                UserDefinedLoss(
+                    (x, m) -> (x - m)^2;
+                    deriv = (x, m) -> 2 * (m - x),
+                    domain = Interval(-Inf, +Inf),
+                );
+                constraints = (),
+                algorithm = GCPAlgorithms.LBFGSB(),
             )
 
             # Test
@@ -390,13 +421,16 @@ end
 
             # Compute reference
             Random.seed!(0)
-            Mr = GCPDecompositions._gcp(
+            Mr = gcp(
                 X,
                 r,
-                (x, m) -> m - x * log(m + 1e-10),
-                (x, m) -> 1 - x / (m + 1e-10),
-                0.0,
-                (;),
+                UserDefinedLoss(
+                    (x, m) -> m - x * log(m + 1e-10);
+                    deriv = (x, m) -> 1 - x / (m + 1e-10),
+                    domain = Interval(0.0, +Inf),
+                );
+                constraints = (GCPConstraints.LowerBound(0.0),),
+                algorithm = GCPAlgorithms.LBFGSB(),
             )
 
             # Test
