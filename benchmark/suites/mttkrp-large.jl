@@ -1,4 +1,4 @@
-module BenchmarkMTTKRP
+module BenchmarkMTTKRPLarge
 
 using BenchmarkTools, GCPDecompositions
 using Random
@@ -8,30 +8,21 @@ const SUITE = BenchmarkGroup()
 # Collect setups
 const SETUPS = []
 
-## Balanced order-3 tensors
+## Balanced order-4 tensors
 append!(
     SETUPS,
     [
-        (; size = sz, rank = r, mode = n) for
-        sz in [ntuple(n -> In, 3) for In in 50:50:200], r in [10; 50:50:300], n in 1:3
+        (; size = sz, rank = r, mode = n) for sz in [ntuple(n -> In, 4) for In in 20:20:80],
+        r in [10; 20:20:120], n in 1:4
     ],
 )
 
-# ## Balanced order-4 tensors
-# append!(
-#     SETUPS,
-#     [
-#         (; size = sz, rank = r, mode = n) for
-#         sz in [ntuple(n -> In, 4) for In in 30:30:120], r in 30:30:180, n in 1:4
-#     ],
-# )
-
-## Imbalanced tensors
+## Imbalanced order-4 tensors
 append!(
     SETUPS,
     [
-        (; size = sz, rank = r, mode = n) for sz in [(30, 100, 1000), (1000, 100, 30)],
-        r in [10; 100:100:300], n in 1:3
+        (; size = sz, rank = r, mode = n) for sz in [(20, 40, 80, 500), (500, 80, 40, 20)],
+        r in [10; 100:100:300], n in 1:4
     ],
 )
 

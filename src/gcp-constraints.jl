@@ -1,5 +1,8 @@
 ## Constraint types
 
+"""
+Constraints for Generalized CP Decomposition.
+"""
 module GCPConstraints
 
 # Abstract type
