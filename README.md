@@ -7,11 +7,12 @@
 [![PkgEval](https://juliahub.com/docs/GCPDecompositions/pkgeval.svg)](https://juliahub.com/ui/Packages/GCPDecompositions/HR3AK)
 [![Build Status](https://github.com/dahong67/GCPDecompositions.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/dahong67/GCPDecompositions.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/dahong67/GCPDecompositions.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/dahong67/GCPDecompositions.jl)
+<!-- [![GCPDecompositions Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/GCPDecompositions)](https://pkgs.genieframework.com?packages=GCPDecompositions) -->
 
 > 👋 *This package provides research code and work is ongoing.
 > If you are interested in using it in your own research,
 > **I'd love to hear from you and collaborate!**
-> Feel free to write: dahong67@wharton.upenn.edu*
+> Feel free to write: hong@udel.edu*
 
 Please cite the following papers for this technique:
 

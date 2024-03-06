@@ -5,30 +5,34 @@
 
 Tensor decomposition type for the canonical polyadic decompositions (CPD)
 of a tensor (i.e., a multi-dimensional array) `A`.
+This is the return type of `gcp(_)`,
+the corresponding tensor decomposition function.
 
-If `F::CPD` is the decomposition object,
-the weights `λ` and factor matrices `U = (U[1],...,U[N])`
-can be obtained via `F.λ` and `F.U`,
+If `M::CPD` is the decomposition object,
+the weights `λ` and the factor matrices `U = (U[1],...,U[N])`
+can be obtained via `M.λ` and `M.U`,
 such that `A = Σ_j λ[j] U[1][:,j] ∘ ⋯ ∘ U[N][:,j]`.
 """
 struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     λ::Tλ
     U::NTuple{N,TU}
     function CPD{T,N,Tλ,TU}(λ, U) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
-        require_one_based_indexing(λ, U...)
+        Base.require_one_based_indexing(λ, U...)
         for k in Base.OneTo(N)
             size(U[k], 2) == length(λ) || throw(
-                DimensionMismatch("U[$k] has dimensions $(size(U[k])) but λ has length $(length(λ))")
+                DimensionMismatch(
+                    "U[$k] has dimensions $(size(U[k])) but λ has length $(length(λ))",
+                ),
             )
         end
-        new{T,N,Tλ,TU}(λ, U)
+        return new{T,N,Tλ,TU}(λ, U)
     end
 end
 CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} =
     CPD{T,N,Tλ,TU}(λ, U)
 
 """
-    ncomponents(M::CPD) -> Integer
+    ncomponents(M::CPD)
 
 Return the number of components in `M`.
 
@@ -58,16 +62,34 @@ function show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
 end
 
 function summary(io::IO, M::CPD)
-    dimstring = ndims(M) == 0 ? "0-dimensional" :
-                ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
+    dimstring =
+        ndims(M) == 0 ? "0-dimensional" :
+        ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
     ncomps = ncomponents(M)
-    print(io, dimstring, " ", typeof(M),
-        " with ", ncomps, ncomps == 1 ? " component" : " components")
+    return print(
+        io,
+        dimstring,
+        " ",
+        typeof(M),
+        " with ",
+        ncomps,
+        ncomps == 1 ? " component" : " components",
+    )
 end
 
 function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
-    return sum(M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M)))
-               for j in Base.OneTo(ncomponents(M)); init=zero(eltype(T)))
+    return sum(
+        M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M))) for
+        j in Base.OneTo(ncomponents(M));
+        init = zero(eltype(T)),
+    )
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
+
+norm(M::CPD, p::Real = 2) =
+    p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
+function norm2(M::CPD{T,N}) where {T,N}
+    V = reduce(.*, M.U[i]'M.U[i] for i in 1:N)
+    return sqrt(abs(M.λ' * V * M.λ))
+end
