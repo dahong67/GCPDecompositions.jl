@@ -56,6 +56,5 @@ In BibTeX form:
 ```
 
 ```@autodocs
-Modules = [GCPDecompositions]
-Filter = t -> t !== ncomponents
+Modules = [GCPDecompositions, GCPDecompositions.GCPLosses, GCPDecompositions.TensorKernels, GCPDecompositions.GCPConstraints, GCPDecompositions.GCPAlgorithms]
 ```
