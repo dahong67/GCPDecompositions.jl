@@ -17,7 +17,7 @@ struct CPD{T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     λ::Tλ
     U::NTuple{N,TU}
     function CPD{T,N,Tλ,TU}(λ, U) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
-        require_one_based_indexing(λ, U...)
+        Base.require_one_based_indexing(λ, U...)
         for k in Base.OneTo(N)
             size(U[k], 2) == length(λ) || throw(
                 DimensionMismatch(
@@ -32,7 +32,7 @@ CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatr
     CPD{T,N,Tλ,TU}(λ, U)
 
 """
-    ncomponents(M::CPD) -> Integer
+    ncomponents(M::CPD)
 
 Return the number of components in `M`.
 
@@ -88,3 +88,10 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     #)
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
+
+norm(M::CPD, p::Real = 2) =
+    p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
+function norm2(M::CPD{T,N}) where {T,N}
+    V = reduce(.*, M.U[i]'M.U[i] for i in 1:N)
+    return sqrt(abs(M.λ' * V * M.λ))
+end

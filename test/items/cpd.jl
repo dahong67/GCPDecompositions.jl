@@ -121,3 +121,39 @@ end
         @test_throws BoundsError M[size(U1, 1)+1]
     end
 end
+
+@testitem "norm" begin
+    using LinearAlgebra
+
+    @testset "K=$K" for K in 0:2
+        T = Float64
+        λfull = T[1, 100, 10000]
+        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
+        λ = λfull[1:K]
+        U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
+
+        M = CPD(λ, (U1, U2, U3))
+        @test norm(M) ==
+              norm(M, 2) ==
+              sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
+        @test norm(M, 1) == sum(abs, M[I] for I in CartesianIndices(size(M)))
+        @test norm(M, 3) ==
+              (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
+
+        M = CPD(λ, (U1, U2))
+        @test norm(M) ==
+              norm(M, 2) ==
+              sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
+        @test norm(M, 1) == sum(abs, M[I] for I in CartesianIndices(size(M)))
+        @test norm(M, 3) ==
+              (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
+
+        M = CPD(λ, (U1,))
+        @test norm(M) ==
+              norm(M, 2) ==
+              sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
+        @test norm(M, 1) == sum(abs, M[I] for I in CartesianIndices(size(M)))
+        @test norm(M, 3) ==
+              (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
+    end
+end
