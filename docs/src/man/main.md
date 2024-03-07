@@ -1,4 +1,4 @@
-# Main functions and types
+# Overview
 
 ```@docs
 GCPDecompositions

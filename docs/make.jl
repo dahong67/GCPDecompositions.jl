@@ -7,7 +7,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Manual" => [
-            "Main functions and types" => "man/main.md",
+            "Overview" => "man/main.md",
             "Loss functions" => "man/losses.md",
             "Constraints" => "man/constraints.md",
             "Algorithms" => "man/algorithms.md",
