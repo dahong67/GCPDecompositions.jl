@@ -49,12 +49,3 @@ In BibTeX form:
   DOI =          "10.1137/19M1266265",
 }
 ```
-
-## Docstrings
-
-```@index
-```
-
-```@autodocs
-Modules = [GCPDecompositions, GCPDecompositions.GCPLosses, GCPDecompositions.TensorKernels, GCPDecompositions.GCPConstraints, GCPDecompositions.GCPAlgorithms]
-```

@@ -3,7 +3,7 @@ using Documenter, GCPDecompositions
 makedocs(;
     modules = [GCPDecompositions],
     sitename = "GCPDecompositions.jl",
-    pages = ["Home" => "index.md"],
+    pages = ["Home" => "index.md", "API Reference" => "api.md"],
     format = Documenter.HTML(;
         canonical = "https://dahong67.github.io/GCPDecompositions.jl",
     ),
