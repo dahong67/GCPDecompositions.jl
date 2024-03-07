@@ -1,4 +1,5 @@
 using Documenter, GCPDecompositions
+using InteractiveUtils
 
 makedocs(;
     modules = [GCPDecompositions],
