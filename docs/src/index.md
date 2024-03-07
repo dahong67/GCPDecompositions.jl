@@ -1,7 +1,3 @@
-```@meta
-CurrentModule = GCPDecompositions
-```
-
 # GCPDecompositions: Generalized CP Decompositions
 
 Documentation for [GCPDecompositions](https://github.com/dahong67/GCPDecompositions.jl).
