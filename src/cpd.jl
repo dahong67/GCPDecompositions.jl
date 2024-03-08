@@ -79,8 +79,11 @@ end
 
 function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
-    return mapreduce(j -> M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M))),
-             +,  Base.OneTo(ncomponents(M)); init = zero(eltype(T)))
+    val = zero(eltype(T))
+    for j in Base.OneTo(ncomponents(M))
+        val += M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M)))
+    end
+    return val
     #return sum(
     #    M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M))) for
     #    j in Base.OneTo(ncomponents(M));
