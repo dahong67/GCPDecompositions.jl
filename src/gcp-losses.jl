@@ -6,7 +6,7 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!
+using ..TensorKernels: mttkrps!, faster_mttkrps!
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal
 import ForwardDiff
@@ -81,15 +81,10 @@ function grad_U!(
         I in CartesianIndices(X)
     ]
     # Use faster MTTKRPs algorithm
-    #faster_mttkrps!(GU, M, Y)
-    #return ntuple(Val(N)) do k
-    #    return rmul!(GU[k], Diagonal(M.λ))
-    #end 
-    mttkrps!(GU, Y, M.U)
-    for k in 1:N
-        rmul!(GU[k], Diagonal(M.λ))
-    end
-    return GU
+    faster_mttkrps!(GU, M, Y)
+    return ntuple(Val(N)) do k
+        return rmul!(GU[k], Diagonal(M.λ))
+    end 
 end
 
 # Statistically motivated losses

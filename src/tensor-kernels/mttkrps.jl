@@ -24,8 +24,12 @@ function faster_mttkrps!(GU, M, X)
     saved = similar(M.U[1], Jns[n_star], R)
     for n in order
         if n == n_star
-            saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(M.U[reverse(n+1:N)]...)
-            mttkrps_helper!(GU, saved, M, n, "right", N, Jns, Kns)
+            if n == 1
+                mul!(GU[n], reshape(X, (Jns[n], Kns[n])), khatrirao(M.U[reverse(n+1:N)]...))
+            else
+                saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(M.U[reverse(n+1:N)]...)
+                mttkrps_helper!(GU, saved, M, n, "right", N, Jns, Kns)
+            end
         elseif n == n_star + 1
             if n == N
                 mul!(GU[n], reshape(X, (Jns[n-1], Kns[n-1]))', khatrirao(M.U[reverse(1:n-1)]...))
