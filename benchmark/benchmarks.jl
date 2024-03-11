@@ -3,6 +3,7 @@ using BenchmarkTools
 # Benchmark suite modules
 const SUITE_MODULES = Dict(
     "gcp" => :BenchmarkGCP,
+    "gcp-large" => :BenchmarkGCPLarge,
     "mttkrp" => :BenchmarkMTTKRP,
     "mttkrp-large" => :BenchmarkMTTKRPLarge,
     "khatrirao" => :BenchmarkKhatriRao,
