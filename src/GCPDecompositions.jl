@@ -96,7 +96,7 @@ default_algorithm(
     r,
     loss::GCPLosses.LeastSquaresLoss,
     constraints::Tuple{},
-) = GCPAlgorithms.FastALS()
+) = GCPAlgorithms.ALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 """
