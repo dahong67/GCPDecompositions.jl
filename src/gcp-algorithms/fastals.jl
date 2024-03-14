@@ -93,7 +93,7 @@ function FastALS_iter!(X, M, order, Jns, Kns, buffers)
                 end
             else
                 for r in 1:R
-                    mul!(view(buffers.ascending_buffers[n-n_star], :, r), reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))', view(M.U[n-1], :, r))
+                    mul!(view(buffers.ascending_buffers[n-n_star], :, r), reshape(view(buffers.ascending_buffers[n-n_star-1], :, r), (size(X)[n-1], Kns[n-1]))', view(M.U[n-1], :, r))
                 end
                 FastALS_mttkrps_helper!(buffers.ascending_buffers[n-n_star], M.U, n, "left", N, Jns, Kns)
             end
