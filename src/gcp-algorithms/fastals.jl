@@ -28,8 +28,18 @@ function _gcp(
     # Initialization
     M = deepcopy(init)
 
+    # Determine order of modes of MTTKRP to compute
+    Jns = [prod(size(X)[1:n]) for n in 1:N]
+    Kns = [prod(size(X)[n+1:end]) for n in 1:N]
+    Kn_minus_ones = [prod(size(X)[n:end]) for n in 1:N]
+    comp = Jns .<= Kn_minus_ones
+    n_star = maximum(map(x -> comp[x] ? x : 0, 1:N))
+    order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
+
+    buffers = create_FastALS_buffers(M.U, order, Jns, Kns)
+
     for _ in 1:algorithm.maxiters
-        FastALS_iter!(X, M)
+        FastALS_iter!(X, M, order, Jns, Kns, buffers)
     end
 
     return M
@@ -42,53 +52,50 @@ end
     for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
     section III-C.
 """
-function FastALS_iter!(X, M)
+function FastALS_iter!(X, M, order, Jns, Kns, buffers)
 
     N = ndims(X)
     R = size(M.U[1])[2]
 
-    # Determine order of modes of MTTKRP to compute
-    Jns = [prod(size(X)[1:n]) for n in 1:N]
-    Kns = [prod(size(X)[n+1:end]) for n in 1:N]
-    Kn_minus_ones = [prod(size(X)[n:end]) for n in 1:N]
-    comp = Jns .<= Kn_minus_ones
-    n_star = maximum(map(x -> comp[x] ? x : 0, 1:N))
-    order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
-
     # Compute MTTKRPs recursively
-    saved = similar(M.U[1], Jns[n_star], R)
+    n_star = order[1]
     for n in order
         if n == n_star
             if n == 1
                 mul!(M.U[n], reshape(X, (Jns[n], Kns[n])), khatrirao(M.U[reverse(n+1:N)]...))  
             else
-                saved = reshape(X, (Jns[n], Kns[n])) * khatrirao(M.U[reverse(n+1:N)]...)
-                FastALS_mttkrps_helper!(saved, M.U, n, "right", N, Jns, Kns)
+                mul!(buffers.descending_buffers[1], reshape(X, (Jns[n], Kns[n])), khatrirao(M.U[reverse(n+1:N)]...))
+                FastALS_mttkrps_helper!(buffers.descending_buffers[1], M.U, n, "right", N, Jns, Kns)
             end
         elseif n == n_star + 1
             if n == N
                 mul!(M.U[n], reshape(X, (Jns[n-1], Kns[n-1]))', khatrirao(M.U[reverse(1:n-1)]...))
             else
-                saved = (khatrirao(M.U[reverse(1:n-1)]...)' * reshape(X, (Jns[n-1], Kns[n-1])))'
-                FastALS_mttkrps_helper!(saved, M.U, n, "left", N, Jns, Kns)
+                mul!(buffers.ascending_buffers[1], (reshape(X, (Jns[n-1], Kns[n-1])))', khatrirao(M.U[reverse(1:n-1)]...))
+                FastALS_mttkrps_helper!(buffers.ascending_buffers[1], M.U, n, "left", N, Jns, Kns)
             end  
         elseif n < n_star
             if n == 1
                 for r in 1:R
-                    mul!(view(M.U[n], :, r), reshape(view(saved, :, r), (Jns[n], size(X)[n+1])), view(M.U[n+1], :, r))
+                    mul!(view(M.U[n], :, r), reshape(view(buffers.descending_buffers[n_star-n], :, r), (Jns[n], size(X)[n+1])), view(M.U[n+1], :, r))
+                    #mul!(view(M.U[n], :, r), reshape(view(saved, :, r), (Jns[n], size(X)[n+1])), view(M.U[n+1], :, r))
                 end
             else
-                saved = stack(reshape(view(saved, :, r), (Jns[n], size(X)[n+1])) * view(M.U[n+1], :, r) for r in 1:R)
-                FastALS_mttkrps_helper!(saved, M.U, n, "right", N, Jns, Kns)
+                for r in 1:R
+                    mul!(view(buffers.descending_buffers[n_star-n], :, r), reshape(view(saved, :, r), (Jns[n], size(X)[n+1])), view(M.U[n+1], :, r))
+                end
+                FastALS_mttkrps_helper!(buffers.descending_buffers[n_star-n], M.U, n, "right", N, Jns, Kns)
             end
         else
             if n == N
                 for r in 1:R
-                    mul!(view(M.U[n], :, r), reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))', view(M.U[n-1], :, r))
+                    mul!(view(M.U[n], :, r), reshape(view(buffers.ascending_buffers[N-n_star-1], :, r), (size(X)[n-1], Kns[n-1]))', view(M.U[n-1], :, r))
                 end
             else
-                saved = stack(reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))' * view(M.U[n-1], :, r) for r in 1:R)
-                FastALS_mttkrps_helper!(saved. M.U, n, "left", N, Jns, Kns)
+                for r in 1:R
+                    mul!(view(buffers.ascending_buffers[n-n_star], :, r), reshape(view(saved, :, r), (size(X)[n-1], Kns[n-1]))', view(M.U[n-1], :, r))
+                end
+                FastALS_mttkrps_helper!(buffers.ascending_buffers[n-n_star], M.U, n, "left", N, Jns, Kns)
             end
         end
         # Normalization, update weights
@@ -115,4 +122,22 @@ function FastALS_mttkrps_helper!(Zn, U, n, side, N, Jns, Kns)
             U[n][:, r] = reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])) * kr[:, r]
         end
     end
+end
+
+function create_FastALS_buffers(
+    U::NTuple{N,TM},
+    order,
+    Jns, 
+    Kns,
+) where {TM<:AbstractMatrix,N}
+
+    n_star = order[1]
+    r = size(U[1])[2]
+
+    # Allocate buffers 
+    # Number of descending buffers = n_star - 1
+    descending_buffers = n_star < 2 ? nothing : [similar(U[1], (Jns[n], r)) for n in n_star:-1:2]
+    # Number of ascending buffers = N - n_star - 1
+    ascending_buffers = N - n_star - 1 < 1 ? nothing : [similar(U[1], (Kns[n], r)) for n in n_star:N]
+    return(; descending_buffers, ascending_buffers)
 end
