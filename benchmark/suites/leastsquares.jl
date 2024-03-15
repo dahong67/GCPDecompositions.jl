@@ -34,5 +34,4 @@ for sz in [(15, 20, 25, 30, 35), (30, 30, 30, 30, 30)], r in [1, 10, 50]
         @benchmarkable gcp($X, $r, loss = GCPLosses.LeastSquaresLoss())
 end
 
-
 end
