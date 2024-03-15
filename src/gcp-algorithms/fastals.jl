@@ -114,12 +114,12 @@ function FastALS_mttkrps_helper!(Zn, U, n_star, n, side, N, Jns, Kns, buffers)
     if side == "right"
         khatrirao!(buffers.helper_buffers_descending[n_star-n+1], U[reverse(1:n-1)]...)
         for r in 1:size(U[n])[2]
-            U[n][:, r] = reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))' * buffers.helper_buffers_descending[n_star-n+1][:, r]
+            mul!(view(U[n], :, r), reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))', view(buffers.helper_buffers_descending[n_star-n+1], :, r))
         end
     elseif side == "left"
         khatrirao!(buffers.helper_buffers_ascending[n-n_star], U[reverse(n+1:N)]...)
         for r in 1:size(U[n])[2]
-            U[n][:, r] = reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])) * buffers.helper_buffers_ascending[n-n_star][:, r]
+            mul!(view(U[n], :, r), reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])), view(buffers.helper_buffers_ascending[n-n_star], :, r))
         end
     end
 end
