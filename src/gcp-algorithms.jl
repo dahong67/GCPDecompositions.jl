@@ -6,9 +6,10 @@ Algorithms for Generalized CP Decomposition.
 module GCPAlgorithms
 
 using ..GCPDecompositions
-using ..TensorKernels: create_mttkrp_buffer, mttkrp!, khatrirao!, khatrirao
+using ..TensorKernels: create_mttkrp_buffer, mttkrp!
+using ..TensorKernels: khatrirao!, khatrirao
 using IntervalSets: Interval
-using LinearAlgebra: lu!, norm, rdiv!, mul!
+using LinearAlgebra: lu!, mul!, norm, rdiv!
 using LBFGSB: lbfgsb
 
 """

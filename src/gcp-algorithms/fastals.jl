@@ -3,9 +3,14 @@
 """
     FastALS
 
-Fast Alternating Least Squares.
-Faster and more memory-efficient implementation of ALS from "Fast Alternating LS Algorithms
-for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al.
+**Fast** **A**lternating **L**east **S**quares.
+
+Efficient ALS algorithm proposed in:
+> **Fast Alternating LS Algorithms for High Order
+>   CANDECOMP/PARAFAC Tensor Factorizations**.
+> Anh-Huy Phan, Petr Tichavský, Andrzej Cichocki.
+> *IEEE Transactions on Signal Processing*, 2013.
+> DOI: 10.1109/TSP.2013.2269903
 
 Algorithm parameters:
 
@@ -24,7 +29,6 @@ function _gcp(
     algorithm::GCPAlgorithms.FastALS,
     init,
 ) where {TX<:Real,N}
-
     # Initialization
     M = deepcopy(init)
 
@@ -32,8 +36,7 @@ function _gcp(
     Jns = [prod(size(X)[1:n]) for n in 1:N]
     Kns = [prod(size(X)[n+1:end]) for n in 1:N]
     Kn_minus_ones = [prod(size(X)[n:end]) for n in 1:N]
-    comp = Jns .<= Kn_minus_ones
-    n_star = maximum(map(x -> comp[x] ? x : 0, 1:N))
+    n_star = findlast(n -> Jns[n] <= Kn_minus_ones[n], 1:N)
     order = vcat([i for i in n_star:-1:1], [i for i in n_star+1:N])
 
     buffers = create_FastALS_buffers(M.U, order, Jns, Kns)

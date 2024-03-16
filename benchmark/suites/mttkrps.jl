@@ -8,7 +8,7 @@ const SUITE = BenchmarkGroup()
 # Collect setups
 const SETUPS = []
 
-# 3 modes, balanced
+# Balanced order-3 tensors
 append!(
     SETUPS,
     [
@@ -17,7 +17,7 @@ append!(
     ],
 )
 
-# 4 modes, balanced
+# Balanced order-4 tensors
 append!(
     SETUPS,
     [
@@ -26,7 +26,7 @@ append!(
     ],
 )
 
-# 5 modes, balanced
+# Balanced order-5 tensors
 append!(
     SETUPS,
     [
@@ -37,23 +37,12 @@ append!(
 
 # Generate random benchmarks
 for SETUP in SETUPS
-
-    # Setup for ALS, do one iteration of MTTKRPs
     Random.seed!(0)
     X = randn(SETUP.size)
-    T = Float64
-    r = SETUP.rank
-    N = SETUP.modes
-    M0 = GCPDecompositions.CPD(ones(T, r), rand.(T, size(X), r))
-    M0norm = sqrt(sum(abs2, M0[I] for I in CartesianIndices(size(M0))))
-    Xnorm = sqrt(sum(abs2, skipmissing(X)))
-    for k in Base.OneTo(N)
-        M0.U[k] .*= (Xnorm / M0norm)^(1 / N)
-    end
-    λ, U = M0.λ, collect(M0.U)
+    U = Tuple([randn(In, SETUP.rank) for In in SETUP.size])
 
     SUITE["modes=$(SETUP.modes), size=$(SETUP.size), rank=$(SETUP.rank)"] =
-        @benchmarkable(GCPDecompositions.mttkrps!($X, $U, $λ), seconds = 5, samples = 5,)
+        @benchmarkable(GCPDecompositions.mttkrps($X, $U), seconds = 5, samples = 5)
 end
 
 end
