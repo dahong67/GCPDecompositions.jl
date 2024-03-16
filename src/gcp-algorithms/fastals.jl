@@ -61,51 +61,36 @@ function FastALS_iter!(X, M, order, Jns, Kns, buffers)
 
     # Compute MTTKRPs recursively
     n_star = order[1]
+
     for n in order
         if n == n_star
-            if n == 1
-                khatrirao!(buffers.kr_buffer_descending, M.U[reverse(n+1:N)]...)
-                mul!(M.U[n], reshape(X, (Jns[n], Kns[n])), buffers.kr_buffer_descending)
+            kr_right = khatrirao!(buffers.kr_buffer_descending, M.U[reverse(n_star+1:N)]...)
+            if n_star == 1
+                mul!(M.U[n], reshape(X, (Jns[n], Kns[n])), kr_right)
             else
-                khatrirao!(buffers.kr_buffer_descending, M.U[reverse(n+1:N)]...)
-                mul!(
-                    buffers.descending_buffers[1],
-                    reshape(X, (Jns[n], Kns[n])),
-                    buffers.kr_buffer_descending,
-                )
-                FastALS_mttkrps_helper!(
+                mul!(buffers.descending_buffers[1], reshape(X, (Jns[n], Kns[n])), kr_right)
+                _rl_outer_multiplication!(
                     buffers.descending_buffers[1],
                     M.U,
-                    n_star,
+                    buffers.helper_buffers_descending[n_star-n+1],
                     n,
-                    "right",
-                    N,
-                    Jns,
-                    Kns,
-                    buffers,
                 )
             end
         elseif n == n_star + 1
+            kr_left = khatrirao!(buffers.kr_buffer_ascending, M.U[reverse(1:n-1)]...)
             if n == N
-                khatrirao!(buffers.kr_buffer_ascending, M.U[reverse(1:n-1)]...)
-                mul!(M.U[n], reshape(X, (Jns[n-1], Kns[n-1]))', buffers.kr_buffer_ascending)
+                mul!(M.U[n], reshape(X, (Jns[n-1], Kns[n-1]))', kr_left)
             else
-                khatrirao!(buffers.kr_buffer_ascending, M.U[reverse(1:n-1)]...)
                 mul!(
                     buffers.ascending_buffers[1],
                     (reshape(X, (Jns[n-1], Kns[n-1])))',
-                    buffers.kr_buffer_ascending,
+                    kr_left,
                 )
-                FastALS_mttkrps_helper!(
+                _lr_outer_multiplication!(
                     buffers.ascending_buffers[1],
                     M.U,
-                    n_star,
+                    buffers.helper_buffers_ascending[n-n_star],
                     n,
-                    "left",
-                    N,
-                    Jns,
-                    Kns,
-                    buffers,
                 )
             end
         elseif n < n_star
@@ -131,16 +116,11 @@ function FastALS_iter!(X, M, order, Jns, Kns, buffers)
                         view(M.U[n+1], :, r),
                     )
                 end
-                FastALS_mttkrps_helper!(
+                _rl_outer_multiplication!(
                     buffers.descending_buffers[n_star-n+1],
                     M.U,
-                    n_star,
+                    buffers.helper_buffers_descending[n_star-n+1],
                     n,
-                    "right",
-                    N,
-                    Jns,
-                    Kns,
-                    buffers,
                 )
             end
         else
@@ -166,16 +146,11 @@ function FastALS_iter!(X, M, order, Jns, Kns, buffers)
                         view(M.U[n-1], :, r),
                     )
                 end
-                FastALS_mttkrps_helper!(
+                _lr_outer_multiplication!(
                     buffers.ascending_buffers[n-n_star],
                     M.U,
-                    n_star,
+                    buffers.helper_buffers_ascending[n-n_star],
                     n,
-                    "left",
-                    N,
-                    Jns,
-                    Kns,
-                    buffers,
                 )
             end
         end
@@ -187,25 +162,30 @@ function FastALS_iter!(X, M, order, Jns, Kns, buffers)
     end
 end
 
-function FastALS_mttkrps_helper!(Zn, U, n_star, n, side, N, Jns, Kns, buffers)
-    if side == "right"
-        khatrirao!(buffers.helper_buffers_descending[n_star-n+1], U[reverse(1:n-1)]...)
-        for r in 1:size(U[n])[2]
-            mul!(
-                view(U[n], :, r),
-                reshape(view(Zn, :, r), (Jns[n-1], size(U[n])[1]))',
-                view(buffers.helper_buffers_descending[n_star-n+1], :, r),
-            )
-        end
-    elseif side == "left"
-        khatrirao!(buffers.helper_buffers_ascending[n-n_star], U[reverse(n+1:N)]...)
-        for r in 1:size(U[n])[2]
-            mul!(
-                view(U[n], :, r),
-                reshape(view(Zn, :, r), (size(U[n])[1], Kns[n])),
-                view(buffers.helper_buffers_ascending[n-n_star], :, r),
-            )
-        end
+# Helper function for right-to-left outer multiplications
+function _rl_outer_multiplication!(Zn, U, kr_buffer, n)
+    khatrirao!(kr_buffer, U[reverse(1:n-1)]...)
+    for r in 1:size(U[n])[2]
+        mul!(
+            view(U[n], :, r),
+            reshape(view(Zn, :, r), (prod(size(U[i])[1] for i in 1:n-1), size(U[n])[1]))',
+            view(kr_buffer, :, r),
+        )
+    end
+end
+
+# Helper function for left-to-right outer multiplications
+function _lr_outer_multiplication!(Zn, U, kr_buffer, n)
+    khatrirao!(kr_buffer, U[reverse(n+1:length(U))]...)
+    for r in 1:size(U[n])[2]
+        mul!(
+            view(U[n], :, r),
+            reshape(
+                view(Zn, :, r),
+                (size(U[n])[1], prod(size(U[i])[1] for i in n+1:length(U))),
+            ),
+            view(kr_buffer, :, r),
+        )
     end
 end
 
