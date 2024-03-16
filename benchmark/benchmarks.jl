@@ -6,7 +6,6 @@ const SUITE_MODULES = Dict(
     "mttkrp" => :BenchmarkMTTKRP,
     "mttkrp-large" => :BenchmarkMTTKRPLarge,
     "khatrirao" => :BenchmarkKhatriRao,
-    "mttkrps" => :BenchmarkMTTKRPS,
     "leastsquares" => :BenchmarkLeastSquares,
 )
 
