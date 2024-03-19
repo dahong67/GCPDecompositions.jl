@@ -24,6 +24,7 @@ include("gcp-algorithms.jl")
 
 if !isdefined(Base, :get_extension)
     include("../ext/LossFunctionsExt.jl")
+    include("../ext/CUDAExt.jl")
 end
 
 # Main fitting function
@@ -113,7 +114,8 @@ default_init(X, r, loss, constraints, algorithm) =
 function default_init(rng, X, r, loss, constraints, algorithm)
     # Generate CPD with random factors
     T, N = nonmissingtype(eltype(X)), ndims(X)
-    T = promote_type(T, Float64)
+    #T = promote_type(T, Float64)
+    T = promote_type(T, Float32)
     M = CPD(ones(T, r), rand.(rng, T, size(X), r))
 
     # Normalize
