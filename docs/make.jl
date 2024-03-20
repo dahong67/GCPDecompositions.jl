@@ -1,25 +1,31 @@
-using GCPDecompositions
-using Documenter
-
-DocMeta.setdocmeta!(
-    GCPDecompositions,
-    :DocTestSetup,
-    :(using GCPDecompositions);
-    recursive = true,
-)
+using Documenter, GCPDecompositions
+using InteractiveUtils
 
 makedocs(;
     modules = [GCPDecompositions],
-    authors = "David Hong <hong@udel.edu> and contributors",
-    repo = "https://github.com/dahong67/GCPDecompositions.jl/blob/{commit}{path}#{line}",
     sitename = "GCPDecompositions.jl",
+    pages = [
+        "Home" => "index.md",
+        "Quick start guide" => "quickstart.md",
+        "Manual" => [
+            "Overview" => "man/main.md",
+            "Loss functions" => "man/losses.md",
+            "Constraints" => "man/constraints.md",
+            "Algorithms" => "man/algorithms.md",
+        ],
+        "Demos" => [
+            "Social network data" => "demos/uci-social-network.md",
+            "Mouse neuron data" => "demos/mouse-neuron.md",
+            "India rainfall data" => "demos/india-rainfall.md",
+            "Gas sensor data" => "demos/chemo-sensing.md",
+            "Chicago crime data" => "demos/chicago-crime.md",
+        ],
+        "Developer Docs" =>
+            ["Tensor Kernels" => "dev/kernels.md", "Private functions" => "dev/private.md"],
+    ],
     format = Documenter.HTML(;
-        prettyurls = get(ENV, "CI", "false") == "true",
         canonical = "https://dahong67.github.io/GCPDecompositions.jl",
-        edit_link = "master",
-        assets = String[],
     ),
-    pages = ["Home" => "index.md"],
 )
 
-deploydocs(; repo = "github.com/dahong67/GCPDecompositions.jl", devbranch = "master")
+deploydocs(; repo = "github.com/dahong67/GCPDecompositions.jl.git")

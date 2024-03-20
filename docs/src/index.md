@@ -1,7 +1,3 @@
-```@meta
-CurrentModule = GCPDecompositions
-```
-
 # GCPDecompositions: Generalized CP Decompositions
 
 Documentation for [GCPDecompositions](https://github.com/dahong67/GCPDecompositions.jl).
@@ -48,14 +44,4 @@ In BibTeX form:
   pages =        "1066--1095",
   DOI =          "10.1137/19M1266265",
 }
-```
-
-## Docstrings
-
-```@index
-```
-
-```@autodocs
-Modules = [GCPDecompositions]
-Filter = t -> t !== ncomponents
 ```
