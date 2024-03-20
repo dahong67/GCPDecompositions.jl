@@ -69,8 +69,8 @@ end
     end
 
     # 5 way tensor to exercise else case in FastALS
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(10, 15, 20, 25, 30)], r in [2]
-        r=2
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(10, 15, 20, 25, 30), (30, 25, 5, 5, 5)], r in [2]
+        r = 2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
@@ -78,7 +78,7 @@ end
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
-        Xm[1, 1, 1, 1] = missing
+        Xm[1, 1, 1, 1, 1] = missing
         Mm = gcp(Xm, r; loss = GCPLosses.LeastSquaresLoss())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
@@ -86,6 +86,14 @@ end
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 
+    # Test old ALS method
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25)], r in [2]
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [M[I] for I in CartesianIndices(size(M))]
+        Mh = gcp(X, r; loss = GCPLosses.LeastSquaresLoss(), algorithm = GCPAlgorithms.ALS())
+        @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
+    end
 end
 
 @testitem "NonnegativeLeastSquaresLoss" begin
