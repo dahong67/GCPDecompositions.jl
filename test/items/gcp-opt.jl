@@ -69,7 +69,9 @@ end
     end
 
     # 5 way tensor to exercise else case in FastALS
-    @testset "size(X)=$sz, rank(X)=$r" for sz in [(10, 15, 20, 25, 30), (30, 25, 5, 5, 5)], r in [2]
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(10, 15, 20, 25, 30), (30, 25, 5, 5, 5)],
+        r in [2]
+
         r = 2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
