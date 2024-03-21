@@ -14,11 +14,11 @@ makedocs(;
             "Algorithms" => "man/algorithms.md",
         ],
         "Demos" => [
-            "Social network data" => "demos/uci-social-network.md",
-            "Mouse neuron data" => "demos/mouse-neuron.md",
-            "India rainfall data" => "demos/india-rainfall.md",
-            "Gas sensor data" => "demos/chemo-sensing.md",
-            "Chicago crime data" => "demos/chicago-crime.md",
+            hide("Social network data" => "demos/uci-social-network.md"),
+            hide("Mouse neuron data" => "demos/mouse-neuron.md"),
+            hide("India rainfall data" => "demos/india-rainfall.md"),
+            hide("Gas sensor data" => "demos/chemo-sensing.md"),
+            hide("Chicago crime data" => "demos/chicago-crime.md"),
         ],
         "Developer Docs" =>
             ["Tensor Kernels" => "dev/kernels.md", "Private functions" => "dev/private.md"],
