@@ -59,8 +59,8 @@ Pkg.status()
 
 ## Step 3: Run GCPDecompositions
 
-Let's create a simple three-way (a.k.a. order-three)
-data tensor that is approximately rank one!
+Let's create a simple three-way (a.k.a. order-three) data tensor
+that has a rank-one signal plus noise!
 
 ```@repl quickstart
 dims = (10, 20, 30)
@@ -75,7 +75,7 @@ X
 =
 \underbrace{
     \mathbf{1}_{10} \circ \mathbf{1}_{20} \circ \mathbf{1}_{30}
-}_{\text{rank-one ``signal''}}
+}_{\text{rank-one signal}}
 +
 N
 \in
@@ -89,12 +89,13 @@ where
 and
 ``N_{ijk} \overset{iid}{\sim} \mathcal{N}(0,1)``.
 
-Now, to get a rank-one GCP decomposition simply load the package
+Now, to get a rank ``r=1`` GCP decomposition simply load the package
 and run `gcp`.
 
 ```@repl quickstart
 using GCPDecompositions
-M = gcp(X, 1)
+r = 1  # desired rank
+M = gcp(X, r)
 ```
 
 This returns a `CPD` (short for **CP** **D**ecomposition)
@@ -105,9 +106,10 @@ Mathematically, this is the following decomposition
 ```math
 M
 =
-\lambda[1]
+\sum_{i=1}^{r}
+\lambda[i]
 \cdot
-U_1[:,1] \circ U_2[:,1] \circ U_3[:,1]
+U_1[:,i] \circ U_2[:,i] \circ U_3[:,i]
 \in
 \mathbb{R}^{10 \times 20 \times 30}
 .
@@ -121,6 +123,26 @@ M.U[1]
 M.U[2]
 M.U[3]
 ```
+
+Let's check how close
+the factor matrices ``U_1``, ``U_2``, and ``U_3``
+(which were estimated from the noisy data)
+are to the true signal components
+``\mathbf{1}_{10}``, ``\mathbf{1}_{20}``, and ``\mathbf{1}_{30}``.
+We use the angle between the vectors
+since the scale of each factor matrix isn't meaningful on its own
+(read [Overview](@ref) to learn more):
+
+```@repl quickstart
+using LinearAlgebra: normalize
+vecangle(u, v) = acos(normalize(u)'*normalize(v))  # angle between vectors in radians
+vecangle(M.U[1][:,1], ones(10))
+vecangle(M.U[2][:,1], ones(20))
+vecangle(M.U[3][:,1], ones(30))
+```
+
+The decomposition does a pretty good job
+of extracting the signal from the noise!
 
 The power of **Generalized** CP Decomposition
 is that we can fit CP decompositions to data
