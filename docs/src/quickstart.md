@@ -18,30 +18,16 @@ More info: [https://docs.julialang.org/en/v1/manual/getting-started/](https://do
 
 ## Step 2: Install GCPDecompositions
 
-GCPDecompositions can be installed and updated using
+GCPDecompositions can be installed using
 Julia's excellent builtin package manager.
 
-```@setup install
-import Pkg; Pkg.activate(; temp=true)
-```
-
-```@repl install
-import Pkg; Pkg.add("GCPDecompositions")
+```julia-repl
+julia> import Pkg; Pkg.add("GCPDecompositions")
 ```
 
 This downloads, installs, and precompiles GCPDecompositions
 (and all its dependencies).
 Don't worry if it takes a few minutes to complete.
-
-We can see that it's installed by checking the Pkg status:
-
-```@repl install
-Pkg.status()
-```
-
-```@setup install
-Pkg.activate("..")
-```
 
 !!! tip "Tip: Interactive package management with the Pkg REPL mode"
 
