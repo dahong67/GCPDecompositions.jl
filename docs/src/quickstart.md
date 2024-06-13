@@ -39,6 +39,10 @@ We can see that it's installed by checking the Pkg status:
 Pkg.status()
 ```
 
+```@setup install
+Pkg.activate("..")
+```
+
 !!! tip "Tip: Interactive package management with the Pkg REPL mode"
 
     Here we used the [functional API](https://pkgdocs.julialang.org/v1/api/)
