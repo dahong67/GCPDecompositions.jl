@@ -1,5 +1,9 @@
 # Private functions
 
+!!! warning "Work-in-progress"
+
+    This page of the docs is still a work-in-progress. Check back later!
+
 ```@docs
 GCPAlgorithms._gcp
 GCPDecompositions.TensorKernels._checked_khatrirao_dims
