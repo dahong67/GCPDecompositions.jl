@@ -13,38 +13,38 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        loss = GCPLosses.UserDefined((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
     )
 
     # Exercise `_gcp`
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.LeastSquaresLoss(),
+        loss = GCPLosses.LeastSquares(),
         constraints = (GCPConstraints.LowerBound(1),),
     )
-    @test_throws ErrorException gcp(X, r; loss = GCPLosses.PoissonLoss(), constraints = ())
+    @test_throws ErrorException gcp(X, r; loss = GCPLosses.Poisson(), constraints = ())
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        loss = GCPLosses.UserDefined((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
         constraints = (GCPConstraints.LowerBound(1),),
     )
 end
 
-@testitem "LeastSquaresLoss" begin
+@testitem "LeastSquares" begin
     using Random
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquaresLoss())
+        Mh = gcp(X, r; loss = GCPLosses.LeastSquares())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquaresLoss())
+        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquares())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
@@ -56,12 +56,12 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquaresLoss())
+        Mh = gcp(X, r; loss = GCPLosses.LeastSquares())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquaresLoss())
+        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquares())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
@@ -76,12 +76,12 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquaresLoss())
+        Mh = gcp(X, r; loss = GCPLosses.LeastSquares())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquaresLoss())
+        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquares())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
@@ -93,29 +93,29 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquaresLoss(), algorithm = GCPAlgorithms.ALS())
+        Mh = gcp(X, r; loss = GCPLosses.LeastSquares(), algorithm = GCPAlgorithms.ALS())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "NonnegativeLeastSquaresLoss" begin
+@testitem "NonnegativeLeastSquares" begin
     using Random
 
     @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.NonnegativeLeastSquaresLoss())
+        Mh = gcp(X, r; loss = GCPLosses.NonnegativeLeastSquares())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.NonnegativeLeastSquaresLoss())
+        Mm = gcp(Xm, r; loss = GCPLosses.NonnegativeLeastSquares())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "PoissonLoss" begin
+@testitem "Poisson" begin
     using Random, IntervalSets
     using Distributions
 
@@ -129,7 +129,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> m - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
@@ -140,12 +140,12 @@ end
 
         # Test
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.PoissonLoss())
+        Mh = gcp(X, r; loss = GCPLosses.Poisson())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "PoissonLogLoss" begin
+@testitem "PoissonLog" begin
     using Random, IntervalSets
     using Distributions
 
@@ -159,7 +159,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> exp(m) - x * m;
                 deriv = (x, m) -> exp(m) - x,
                 domain = Interval(-Inf, +Inf),
@@ -170,12 +170,12 @@ end
 
         # Test
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.PoissonLogLoss())
+        Mh = gcp(X, r; loss = GCPLosses.PoissonLog())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "GammaLoss" begin
+@testitem "Gamma" begin
     using Random, IntervalSets
     using Distributions
 
@@ -190,7 +190,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> log(m + 1e-10) + x / (m + 1e-10);
                 deriv = (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
@@ -201,12 +201,12 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.GammaLoss())
+        Mh = gcp(X, r; loss = GCPLosses.Gamma())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "RayleighLoss" begin
+@testitem "Rayleigh" begin
     using Random, IntervalSets
     using Distributions
 
@@ -220,7 +220,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> 2 * log(m + 1e-10) + (pi / 4) * ((x / (m + 1e-10))^2);
                 deriv = (x, m) -> 2 / (m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
                 domain = Interval(0.0, +Inf),
@@ -231,12 +231,12 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.RayleighLoss())
+        Mh = gcp(X, r; loss = GCPLosses.Rayleigh())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "BernoulliOddsLoss" begin
+@testitem "BernoulliOdds" begin
     using Random, IntervalSets
     using Distributions
 
@@ -250,7 +250,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> log(m + 1) - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
@@ -261,7 +261,7 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.BernoulliOddsLoss())
+        Mh = gcp(X, r; loss = GCPLosses.BernoulliOdds())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -282,7 +282,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> log(1 + exp(m)) - x * m;
                 deriv = (x, m) -> exp(m) / (1 + exp(m)) - x,
                 domain = Interval(-Inf, +Inf),
@@ -293,12 +293,12 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.BernoulliLogitLoss())
+        Mh = gcp(X, r; loss = GCPLosses.BernoulliLogit())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "NegativeBinomialOddsLoss" begin
+@testitem "NegativeBinomialOdds" begin
     using Random, IntervalSets
     using Distributions
 
@@ -316,7 +316,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10);
                 deriv = (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
@@ -327,12 +327,12 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.NegativeBinomialOddsLoss(num_failures))
+        Mh = gcp(X, r; loss = GCPLosses.NegativeBinomialOdds(num_failures))
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "HuberLoss" begin
+@testitem "Huber" begin
     using Random, IntervalSets
     using Distributions
 
@@ -347,7 +347,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2;
                 deriv = (x, m) ->
                     abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
@@ -359,12 +359,12 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.HuberLoss(Δ))
+        Mh = gcp(X, r; loss = GCPLosses.Huber(Δ))
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "BetaDivergenceLoss" begin
+@testitem "BetaDivergence" begin
     using Random, IntervalSets
     using Distributions
 
@@ -401,7 +401,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> beta_value(β, x, m);
                 deriv = (x, m) -> beta_deriv(β, x, m),
                 domain = Interval(0.0, +Inf),
@@ -412,12 +412,12 @@ end
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.BetaDivergenceLoss(β))
+        Mh = gcp(X, r; loss = GCPLosses.BetaDivergence(β))
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
-@testitem "UserDefinedLoss" begin
+@testitem "UserDefined" begin
     using Random, Distributions, IntervalSets
 
     @testset "Least Squares" begin
@@ -431,7 +431,7 @@ end
             Mr = gcp(
                 X,
                 r;
-                loss = GCPLosses.UserDefinedLoss(
+                loss = GCPLosses.UserDefined(
                     (x, m) -> (x - m)^2;
                     deriv = (x, m) -> 2 * (m - x),
                     domain = Interval(-Inf, +Inf),
@@ -442,7 +442,7 @@ end
 
             # Test
             Random.seed!(0)
-            Mh = gcp(X, r; loss = GCPLosses.UserDefinedLoss((x, m) -> (x - m)^2))
+            Mh = gcp(X, r; loss = GCPLosses.UserDefined((x, m) -> (x - m)^2))
             @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
         end
     end
@@ -458,7 +458,7 @@ end
             Mr = gcp(
                 X,
                 r;
-                loss = GCPLosses.UserDefinedLoss(
+                loss = GCPLosses.UserDefined(
                     (x, m) -> m - x * log(m + 1e-10);
                     deriv = (x, m) -> 1 - x / (m + 1e-10),
                     domain = Interval(0.0, +Inf),
@@ -472,7 +472,7 @@ end
             Mh = gcp(
                 X,
                 r;
-                loss = GCPLosses.UserDefinedLoss(
+                loss = GCPLosses.UserDefined(
                     (x, m) -> m - x * log(m + 1e-10);
                     domain = 0.0 .. Inf,
                 ),

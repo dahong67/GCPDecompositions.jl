@@ -24,7 +24,7 @@ end
 function _gcp(
     X::Array{TX,N},
     r,
-    loss::GCPLosses.LeastSquaresLoss,
+    loss::GCPLosses.LeastSquares,
     constraints::Tuple{},
     algorithm::GCPAlgorithms.FastALS,
     init,

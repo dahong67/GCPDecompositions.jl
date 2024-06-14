@@ -143,7 +143,7 @@ For example,
 to try non-negative least-squares simply run
 
 ```@repl quickstart
-M_nonneg = gcp(X, 1; loss = GCPLosses.NonnegativeLeastSquaresLoss())
+M_nonneg = gcp(X, 1; loss = GCPLosses.NonnegativeLeastSquares())
 ```
 
 !!! tip "Congratulations!"

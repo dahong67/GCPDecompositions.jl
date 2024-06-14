@@ -30,7 +30,7 @@ end
 
 """
     gcp(X::Array, r;
-        loss = GCPLosses.LeastSquaresLoss(),
+        loss = GCPLosses.LeastSquares(),
         constraints = default_constraints(loss),
         algorithm = default_algorithm(X, r, loss, constraints),
         init = default_init(X, r, loss, constraints, algorithm))
@@ -42,7 +42,7 @@ Keyword arguments:
 + `constraints` : a `Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
 + `algorithm`   : algorithm to use
 
-Conventional CP corresponds to the default `GCPLosses.LeastSquaresLoss()` loss
+Conventional CP corresponds to the default `GCPLosses.LeastSquares()` loss
 with the default of no constraints (i.e., `constraints = ()`).
 
 If the LossFunctions.jl package is also loaded,
@@ -55,7 +55,7 @@ See also: `CPD`, `GCPLosses`, `GCPConstraints`, `GCPAlgorithms`.
 gcp(
     X::Array,
     r;
-    loss = GCPLosses.LeastSquaresLoss(),
+    loss = GCPLosses.LeastSquares(),
     constraints = default_constraints(loss),
     algorithm = default_algorithm(X, r, loss, constraints),
     init = default_init(X, r, loss, constraints, algorithm),
@@ -91,12 +91,8 @@ loss function `loss`, and tuple of constraints `constraints`.
 
 See also: `gcp`.
 """
-default_algorithm(
-    X::Array{<:Real},
-    r,
-    loss::GCPLosses.LeastSquaresLoss,
-    constraints::Tuple{},
-) = GCPAlgorithms.FastALS()
+default_algorithm(X::Array{<:Real}, r, loss::GCPLosses.LeastSquares, constraints::Tuple{}) =
+    GCPAlgorithms.FastALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
 
 """

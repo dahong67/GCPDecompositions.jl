@@ -29,7 +29,7 @@ end
         Mr = gcp(
             X,
             1;
-            loss = GCPLosses.UserDefinedLoss(
+            loss = GCPLosses.UserDefined(
                 (x, m) -> exp(-x * m);
                 deriv = (x, m) -> -x * exp(-x * m),
                 domain = Interval(-Inf, +Inf),

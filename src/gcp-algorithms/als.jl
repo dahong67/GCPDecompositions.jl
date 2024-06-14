@@ -4,7 +4,7 @@
     ALS
 
 **A**lternating **L**east **S**quares.
-Workhorse algorithm for `LeastSquaresLoss` with no constraints.
+Workhorse algorithm for `LeastSquares` loss with no constraints.
 
 Algorithm parameters:
 
@@ -17,7 +17,7 @@ end
 function _gcp(
     X::Array{TX,N},
     r,
-    loss::GCPLosses.LeastSquaresLoss,
+    loss::GCPLosses.LeastSquares,
     constraints::Tuple{},
     algorithm::GCPAlgorithms.ALS,
     init,

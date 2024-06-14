@@ -1,13 +1,13 @@
 ## Loss types
 
 @testitem "loss constructors" begin
-    # LeastSquaresLoss
-    @test GCPLosses.LeastSquaresLoss() isa GCPLosses.LeastSquaresLoss
+    # LeastSquares loss
+    @test GCPLosses.LeastSquares() isa GCPLosses.LeastSquares
 
-    # PoissonLoss
-    @test GCPLosses.PoissonLoss() isa GCPLosses.PoissonLoss{Float64}
-    @test GCPLosses.PoissonLoss(1.0f-5) isa GCPLosses.PoissonLoss{Float32}
-    @test_throws DomainError GCPLosses.PoissonLoss(-0.1)
+    # Poisson loss
+    @test GCPLosses.Poisson() isa GCPLosses.Poisson{Float64}
+    @test GCPLosses.Poisson(1.0f-5) isa GCPLosses.Poisson{Float32}
+    @test_throws DomainError GCPLosses.Poisson(-0.1)
 end
 
 @testitem "value/deriv/domain methods" begin
