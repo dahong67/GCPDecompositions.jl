@@ -1,7 +1,7 @@
 name = "GCPDecompositions"
 uuid = "f59fb95b-1bc8-443b-b347-5e445a549f37"
 authors = ["David Hong <hong@udel.edu> and contributors"]
-version = "0.1.2"
+version = "0.2.0"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
