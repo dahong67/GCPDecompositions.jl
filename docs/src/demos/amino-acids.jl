@@ -2,18 +2,21 @@
 # v0.19.42
 
 #> [frontmatter]
-#> title = "Pluto Notebook Test"
+#> title = "Amino Acids"
 
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 254b3223-2221-4614-bc31-b7cc625d777f
-using CairoMakie
+# ╔═╡ c49eb38c-eb28-4bb0-ac21-c93ee8d70f03
+using CairoMakie, GCPDecompositions, LinearAlgebra
 
-# ╔═╡ 41334532-2a03-11ef-1606-edf7ba3991e5
+# ╔═╡ ffe10069-dd12-4b32-98fb-d7a7fc2934ad
+using CacheVariables, MAT, ZipFile
+
+# ╔═╡ 7a5e7efa-2a1c-11ef-23d9-7f2f50eb9a05
 let
 	# DEFINE METADATA
-	TITLE = "Pluto Notebook Demo Test"
+	TITLE = "Amino Acids"
 	AUTHORS = [
 		"David Hong" => "https://dahong.gitlab.io",
 	]
@@ -39,16 +42,163 @@ let
 	""" |> Markdown.parse
 end
 
-# ╔═╡ 52193660-e8e3-4b82-b1f4-3d6c679117c5
-lines(-5:0.1:5, cos)
+# ╔═╡ 4fbecc23-0632-4d2b-a6f9-e3bd5c283fc1
+md"""
+This demo considers a well-known dataset of fluorescence measurements
+for three amino acids.
+
+Website: [`https://ucphchemometrics.com/2023/05/04/amino-acids-fluorescence-data/
+`](https://ucphchemometrics.com/2023/05/04/amino-acids-fluorescence-data/
+)
+
+Analogous tutorial in Tensor Toolbox: [`https://www.tensortoolbox.org/cp_als_doc.html`](https://www.tensortoolbox.org/cp_als_doc.html)
+
+Relevant papers:
+1. Bro, R, Multi-way Analysis in the Food Industry. Models, Algorithms, and Applications. 1998. Ph.D. Thesis, University of Amsterdam (NL) & Royal Veterinary and Agricultural University (DK).
+2. Kiers, H.A.L. (1998) A three-step algorithm for Candecomp/Parafac analysis of large data sets with multicollinearity, Journal of Chemometrics, 12, 155-171.
+"""
+
+# ╔═╡ d679bef8-9908-4314-ad7b-d024b1a88785
+md"""
+## Load data
+
+The following code downloads the data file, extracts the data, and caches it.
+"""
+
+# ╔═╡ 8ae49c7e-f300-4adf-9b52-801da6ef2af2
+data = @cache "amino-acids-cache/data.bson" let
+	# Download file
+	url = "https://ucphchemometrics.com/wp-content/uploads/2023/05/claus.zip"
+	zipname = download(url, tempname(@__DIR__))
+
+	# Extract MAT file
+	zipfile = ZipFile.Reader(zipname)
+	matname = tempname(@__DIR__)
+	write(matname, only(zipfile.files))
+	close(zipfile)
+
+	# Extract data
+	data = matread(matname)
+
+	# Clean up and output data
+	rm(zipname)
+	rm(matname)
+	data
+end
+
+# ╔═╡ e7cc256d-6138-4426-96e6-c12abc8979f5
+X = data["X"]
+
+# ╔═╡ 87dbb90a-6d5b-4af1-969f-1d301b5e5aae
+md"""
+The data tensor `X` is $(join(size(X), '×'))
+and consists of measurements across
+$(size(X, 1)) samples,
+$(size(X, 2)) emissions,
+and
+$(size(X, 3)) excitations.
+"""
+
+# ╔═╡ 322758fd-d469-427e-93ec-87f98d57ec82
+md"""
+The emission and excitation wavelengths are:
+"""
+
+# ╔═╡ b5b8ef77-3bf9-4e79-89f6-dccc84990bbd
+em_wave = dropdims(data["EmAx"]; dims=1)
+
+# ╔═╡ 09983bad-c192-4b3a-b120-cfccc4041ce1
+ex_wave = dropdims(data["ExAx"]; dims=1)
+
+# ╔═╡ fba839a3-4bbb-4ed6-9faf-6d56e304befb
+md"""
+Next, we plot the fluorescence landscape for each sample.
+"""
+
+# ╔═╡ 34ec42fc-0e4d-40ea-a898-da9bd70ee74d
+with_theme() do
+	fig = Figure(; size=(800,500))
+
+	# Loop through samples
+	for i in 1:size(X,1)
+		ax = Axis3(fig[fldmod1(i, 3)...]; title="Sample $i",
+			xlabel="Emission\nWavelength", xticks=250:100:450,
+			ylabel="Excitation\nWavelength", yticks=240:30:300,
+			zlabel=""
+		)
+		surface!(ax, em_wave, ex_wave, X[i,:,:])
+	end
+
+	rowgap!(fig.layout, 40)
+	colgap!(fig.layout, 50)
+	resize_to_layout!(fig)
+	fig
+end
+
+# ╔═╡ e727aaa6-7f0b-4083-9837-7415027c29c7
+md"""
+## Run CP Decomposition
+"""
+
+# ╔═╡ 667fae24-27e5-4079-a1a3-c22375371dc1
+md"""
+Conventional CP decomposition (i.e., with respect to the least-squares loss)
+can be computed using `gcp` with its default arguments.
+"""
+
+# ╔═╡ 06a685a5-c33e-4a68-8b2c-c976ea537b8c
+M = gcp(X, 3)
+
+# ╔═╡ 2d5e2926-e087-4b4e-abfb-7faabecf66eb
+md"""
+Now, we plot the (normalized) factors.
+"""
+
+# ╔═╡ cd0fc733-b2b9-44fd-b9c9-44f730ff1010
+with_theme() do
+	fig = Figure()
+
+	# Plot factors (normalized by max)
+	for row in 1:ncomponents(M)
+		barplot(fig[row,1], 1:size(X,1), normalize(M.U[1][:,row], Inf))
+		lines(fig[row,2], em_wave, normalize(M.U[2][:,row], Inf))
+		lines(fig[row,3], ex_wave, normalize(M.U[3][:,row], Inf))
+	end
+
+	# Link and hide x axes
+	linkxaxes!(contents(fig[:,1])...)
+	linkxaxes!(contents(fig[:,2])...)
+	linkxaxes!(contents(fig[:,3])...)
+	hidexdecorations!.(contents(fig[1:2,:]); ticks=false, grid=false)
+
+	# Link and hide y axes
+	linkyaxes!(contents(fig.layout)...)
+	hideydecorations!.(contents(fig.layout); ticks=false, grid=false)
+
+	# Add labels
+	Label(fig[0,1], "Samples"; tellwidth=false, fontsize=20)
+	Label(fig[0,2], "Emission"; tellwidth=false, fontsize=20)
+	Label(fig[0,3], "Excitation"; tellwidth=false, fontsize=20)
+
+	fig
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+CacheVariables = "9a355d7c-ffe9-11e8-019f-21dae27d1722"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+GCPDecompositions = "f59fb95b-1bc8-443b-b347-5e445a549f37"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [compat]
+CacheVariables = "~0.1.4"
 CairoMakie = "~0.12.2"
+GCPDecompositions = "~0.1.2"
+MAT = "~0.10.7"
+ZipFile = "~0.10.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -57,7 +207,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "55cc59147f8a7551941364fa8b5a6f4039dec661"
+project_hash = "2275c8cd3a87e8d9303cb2ef1677d874a37fbab9"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -122,8 +272,18 @@ git-tree-sha1 = "16351be62963a67ac4083f748fdb3cca58bfd52f"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.7"
 
+[[deps.BSON]]
+git-tree-sha1 = "4c3e506685c527ac6a54ccc0c8c76fd6f91b42fb"
+uuid = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+version = "0.3.9"
+
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.BufferedStreams]]
+git-tree-sha1 = "4ae47f9a4b1dc19897d3743ff13685925c5202ec"
+uuid = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
+version = "1.2.1"
 
 [[deps.Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -144,6 +304,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "e329286945d0cfc04456972ea732551869af1cfc"
 uuid = "4e9b3aee-d8a1-5a3d-ad8b-7d824db253f0"
 version = "1.0.1+0"
+
+[[deps.CacheVariables]]
+deps = ["BSON", "Logging"]
+git-tree-sha1 = "0e74f35a57b1ebd6f622e47a18d92255cbd45b91"
+uuid = "9a355d7c-ffe9-11e8-019f-21dae27d1722"
+version = "0.1.4"
 
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
@@ -179,6 +345,12 @@ weakdeps = ["SparseArrays"]
     [deps.ChainRulesCore.extensions]
     ChainRulesCoreSparseArraysExt = "SparseArrays"
 
+[[deps.CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "59939d8a997469ee05c4b4944560a820f9ba0d73"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.4"
+
 [[deps.ColorBrewer]]
 deps = ["Colors", "JSON", "Test"]
 git-tree-sha1 = "61c5334f33d91e570e1d0c3eb5465835242582c4"
@@ -212,6 +384,12 @@ deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
 git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.11"
+
+[[deps.CommonSubexpressions]]
+deps = ["MacroTools", "Test"]
+git-tree-sha1 = "7b8a93dba8af7e3b42fecabf646260105ac373f7"
+uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
+version = "0.3.0"
 
 [[deps.Compat]]
 deps = ["TOML", "UUIDs"]
@@ -269,6 +447,18 @@ deps = ["EnumX", "ExactPredicates", "Random"]
 git-tree-sha1 = "1755070db557ec2c37df2664c75600298b0c1cfc"
 uuid = "927a84f5-c5f4-47a5-9785-b46e178433df"
 version = "1.0.3"
+
+[[deps.DiffResults]]
+deps = ["StaticArraysCore"]
+git-tree-sha1 = "782dd5f4561f5d267313f23853baaaa4c52ea621"
+uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
+version = "1.1.0"
+
+[[deps.DiffRules]]
+deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "23163d55f885173722d1e4cf0f6110cdbaf7e272"
+uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+version = "1.15.1"
 
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -403,6 +593,16 @@ git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
 uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
 version = "1.3.7"
 
+[[deps.ForwardDiff]]
+deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
+git-tree-sha1 = "cf0fe81336da9fb90944683b8c41984b08793dad"
+uuid = "f6369f11-7733-5829-9624-2563aa707210"
+version = "0.10.36"
+weakdeps = ["StaticArrays"]
+
+    [deps.ForwardDiff.extensions]
+    ForwardDiffStaticArraysExt = "StaticArrays"
+
 [[deps.FreeType]]
 deps = ["CEnum", "FreeType2_jll"]
 git-tree-sha1 = "907369da0f8e80728ab49c1c7e09327bf0d6d999"
@@ -426,6 +626,18 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "1ed150b39aebcc805c26b93a8d0122c940f64ce2"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.14+0"
+
+[[deps.GCPDecompositions]]
+deps = ["ForwardDiff", "LBFGSB", "LinearAlgebra"]
+git-tree-sha1 = "994de61253546641cdcef8fe8bc9667468662299"
+uuid = "f59fb95b-1bc8-443b-b347-5e445a549f37"
+version = "0.1.2"
+
+    [deps.GCPDecompositions.extensions]
+    LossFunctionsExt = "LossFunctions"
+
+    [deps.GCPDecompositions.weakdeps]
+    LossFunctions = "30fc2ffe-d236-52d8-8643-a9d8f7c094a7"
 
 [[deps.GeoInterface]]
 deps = ["Extents"]
@@ -474,11 +686,35 @@ git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
 uuid = "42e2da0e-8278-4e71-bc24-59509adca0fe"
 version = "1.0.2"
 
+[[deps.HDF5]]
+deps = ["Compat", "HDF5_jll", "Libdl", "MPIPreferences", "Mmap", "Preferences", "Printf", "Random", "Requires", "UUIDs"]
+git-tree-sha1 = "e856eef26cf5bf2b0f95f8f4fc37553c72c8641c"
+uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+version = "0.17.2"
+
+    [deps.HDF5.extensions]
+    MPIExt = "MPI"
+
+    [deps.HDF5.weakdeps]
+    MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+
+[[deps.HDF5_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "LibCURL_jll", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "OpenSSL_jll", "TOML", "Zlib_jll", "libaec_jll"]
+git-tree-sha1 = "82a471768b513dc39e471540fdadc84ff80ff997"
+uuid = "0234f1f7-429e-5d53-9886-15a909be8d59"
+version = "1.14.3+3"
+
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
 git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
+
+[[deps.Hwloc_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "ca0f6bf568b4bfc807e7537f081c81e35ceca114"
+uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
+version = "2.10.0+0"
 
 [[deps.HypergeometricFunctions]]
 deps = ["DualNumbers", "LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
@@ -640,6 +876,12 @@ git-tree-sha1 = "170b660facf5df5de098d866564877e119141cbd"
 uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
 version = "3.100.2+0"
 
+[[deps.LBFGSB]]
+deps = ["L_BFGS_B_jll"]
+git-tree-sha1 = "e2e6f53ee20605d0ea2be473480b7480bd5091b5"
+uuid = "5be7bae1-8223-5378-bac3-9e7378a2f6e6"
+version = "0.4.1"
+
 [[deps.LLVMOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "d986ce2d884d49126836ea94ed5bfb0f12679713"
@@ -651,6 +893,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "70c5da094887fd2cae843b8db33920bac4b6f07d"
 uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
 version = "2.10.2+0"
+
+[[deps.L_BFGS_B_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "77feda930ed3f04b2b0fbb5bea89e69d3677c6b0"
+uuid = "81d17ec3-03a1-5e46-b53e-bddc35a13473"
+version = "3.0.1+0"
 
 [[deps.LaTeXStrings]]
 git-tree-sha1 = "50901ebc375ed41dbf8058da26f9de442febbbec"
@@ -752,11 +1000,35 @@ version = "0.3.28"
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[deps.MAT]]
+deps = ["BufferedStreams", "CodecZlib", "HDF5", "SparseArrays"]
+git-tree-sha1 = "1d2dd9b186742b0f317f2530ddcbf00eebb18e96"
+uuid = "23992714-dd62-5051-b70f-ba57cb901cac"
+version = "0.10.7"
+
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "oneTBB_jll"]
 git-tree-sha1 = "80b2833b56d466b3858d565adcd16a4a05f2089b"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
 version = "2024.1.0+0"
+
+[[deps.MPICH_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
+git-tree-sha1 = "4099bb6809ac109bfc17d521dad33763bcf026b7"
+uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
+version = "4.2.1+1"
+
+[[deps.MPIPreferences]]
+deps = ["Libdl", "Preferences"]
+git-tree-sha1 = "c105fe467859e7f6e9a852cb15cb4301126fac07"
+uuid = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
+version = "0.1.11"
+
+[[deps.MPItrampoline_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
+git-tree-sha1 = "8c35d5420193841b2f367e658540e8d9e0601ed0"
+uuid = "f1f71cc9-e9ae-5b93-9b94-4fe0e1ad3748"
+version = "5.4.0+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -795,6 +1067,12 @@ version = "0.6.0"
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.2+1"
+
+[[deps.MicrosoftMPI_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "f12a29c4400ba812841c6ace3f4efbb6dbb3ba01"
+uuid = "9237b28f-5490-5468-be7b-bb81f5f5e6cf"
+version = "10.1.4+2"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -872,6 +1150,12 @@ version = "3.2.4+0"
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
 version = "0.8.1+2"
+
+[[deps.OpenMPI_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
+git-tree-sha1 = "e25c1778a98e34219a00455d6e4384e017ea9762"
+uuid = "fe0851c0-eecd-5654-98d4-656369965a5c"
+version = "4.1.6+0"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1363,6 +1647,12 @@ git-tree-sha1 = "e92a1a012a10506618f10b7047e478403a046c77"
 uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
 version = "1.5.0+0"
 
+[[deps.ZipFile]]
+deps = ["Libdl", "Printf", "Zlib_jll"]
+git-tree-sha1 = "f492b7fe1698e623024e873244f10d89c95c340a"
+uuid = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+version = "0.10.1"
+
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
@@ -1373,6 +1663,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "51b5eeb3f98367157a7a12a1fb0aa5328946c03c"
 uuid = "9a68df92-36a6-505f-a73e-abb412b6bfb4"
 version = "0.2.3+0"
+
+[[deps.libaec_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "46bf7be2917b59b761247be3f317ddf75e50e997"
+uuid = "477f73a3-ac25-53e9-8cc3-50b2fa2566f0"
+version = "1.1.2+0"
 
 [[deps.libaom_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1445,8 +1741,23 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╟─41334532-2a03-11ef-1606-edf7ba3991e5
-# ╠═254b3223-2221-4614-bc31-b7cc625d777f
-# ╠═52193660-e8e3-4b82-b1f4-3d6c679117c5
+# ╟─7a5e7efa-2a1c-11ef-23d9-7f2f50eb9a05
+# ╟─4fbecc23-0632-4d2b-a6f9-e3bd5c283fc1
+# ╠═c49eb38c-eb28-4bb0-ac21-c93ee8d70f03
+# ╟─d679bef8-9908-4314-ad7b-d024b1a88785
+# ╠═ffe10069-dd12-4b32-98fb-d7a7fc2934ad
+# ╠═8ae49c7e-f300-4adf-9b52-801da6ef2af2
+# ╟─87dbb90a-6d5b-4af1-969f-1d301b5e5aae
+# ╠═e7cc256d-6138-4426-96e6-c12abc8979f5
+# ╟─322758fd-d469-427e-93ec-87f98d57ec82
+# ╠═b5b8ef77-3bf9-4e79-89f6-dccc84990bbd
+# ╠═09983bad-c192-4b3a-b120-cfccc4041ce1
+# ╟─fba839a3-4bbb-4ed6-9faf-6d56e304befb
+# ╠═34ec42fc-0e4d-40ea-a898-da9bd70ee74d
+# ╟─e727aaa6-7f0b-4083-9837-7415027c29c7
+# ╟─667fae24-27e5-4079-a1a3-c22375371dc1
+# ╠═06a685a5-c33e-4a68-8b2c-c976ea537b8c
+# ╟─2d5e2926-e087-4b4e-abfb-7faabecf66eb
+# ╠═cd0fc733-b2b9-44fd-b9c9-44f730ff1010
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
