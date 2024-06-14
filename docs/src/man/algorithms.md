@@ -11,5 +11,5 @@ GCPAlgorithms.AbstractAlgorithm
 
 ```@autodocs
 Modules = [GCPAlgorithms]
-Filter = t -> t in subtypes(GCPAlgorithms.AbstractAlgorithm)
+Filter = t -> t in subtypes(GCPAlgorithms.AbstractAlgorithm) || t isa Function
 ```
