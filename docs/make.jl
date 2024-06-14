@@ -1,6 +1,16 @@
 using Documenter, GCPDecompositions
+using PlutoStaticHTML
 using InteractiveUtils
 
+# Render demos
+DEMO_DIR = joinpath(pkgdir(GCPDecompositions), "docs", "src", "demos")
+DEMO_DICT = build_notebooks(
+    BuildOptions(DEMO_DIR; previous_dir = DEMO_DIR, output_format = documenter_output),
+    OutputOptions(; append_build_context = true),
+)
+DEMO_FILES = keys(DEMO_DICT)
+
+# Make docs
 makedocs(;
     modules = [GCPDecompositions],
     sitename = "GCPDecompositions.jl",
@@ -14,11 +24,14 @@ makedocs(;
             "Algorithms" => "man/algorithms.md",
         ],
         "Demos" => [
-            hide("Social network data" => "demos/uci-social-network.md"),
-            hide("Mouse neuron data" => "demos/mouse-neuron.md"),
-            hide("India rainfall data" => "demos/india-rainfall.md"),
-            hide("Gas sensor data" => "demos/chemo-sensing.md"),
-            hide("Chicago crime data" => "demos/chicago-crime.md"),
+            "Overview" => "demos/main.md",
+            [
+                get(
+                    PlutoStaticHTML.Pluto.frontmatter(joinpath(DEMO_DIR, FILE)),
+                    "title",
+                    FILE,
+                ) => joinpath("demos", "$(splitext(FILE)[1]).md") for FILE in DEMO_FILES
+            ]...,
         ],
         "Developer Docs" =>
             ["Tensor Kernels" => "dev/kernels.md", "Private functions" => "dev/private.md"],
@@ -28,4 +41,5 @@ makedocs(;
     ),
 )
 
+# Deploy docs
 deploydocs(; repo = "github.com/dahong67/GCPDecompositions.jl.git")
