@@ -25,57 +25,57 @@ U_1[:,i] \circ U_2[:,i] \circ U_3[:,i]
 \in
 \mathbb{R}^{10 \times 20 \times 30}
 .\]</p><p>We can extract each of these as follows:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.λ    # to write `λ`, type `\lambda` then hit tab</code><code class="nohighlight hljs ansi" style="display:block;">1-element Vector{Float64}:
- 76.75927031034217</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[1]</code><code class="nohighlight hljs ansi" style="display:block;">10×1 Matrix{Float64}:
- 0.310752978963137
- 0.32713262426667544
- 0.30932462812712513
- 0.30274349165829867
- 0.33986647535969816
- 0.32882154547389214
- 0.31213408424338657
- 0.31144809948788715
- 0.31523415747059946
- 0.302734992691554</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[2]</code><code class="nohighlight hljs ansi" style="display:block;">20×1 Matrix{Float64}:
- 0.2238551407772389
- 0.23354127655632634
- 0.2156721660010898
- 0.19522286521159765
- 0.2223622245996549
- 0.2259487574302278
- 0.2595416510762822
- 0.24785872743221574
- 0.21850883838244434
- 0.20299280989988994
- 0.237979808167972
- 0.19872732240562474
- 0.22684198904922712
- 0.2045269514882981
- 0.2271935537952971
- 0.20129934439021221
- 0.20646119387582373
- 0.22478792948719384
- 0.24352794347512716
- 0.24178410514689877</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[3]</code><code class="nohighlight hljs ansi" style="display:block;">30×1 Matrix{Float64}:
- 0.1926559467631958
- 0.160487683648533
- 0.1721606158946293
- 0.19473858154214607
- 0.2139981802096812
- 0.18229717337081208
- 0.17490495697227865
- 0.1715476796347638
- 0.18975384715247073
- 0.16749265635376887
+ 77.5914989341606</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[1]</code><code class="nohighlight hljs ansi" style="display:block;">10×1 Matrix{Float64}:
+ 0.3122197388481964
+ 0.3335235863064808
+ 0.31810420486035285
+ 0.3365764844808427
+ 0.3176770983688962
+ 0.328633959280547
+ 0.3081066795350176
+ 0.3078652309331893
+ 0.300605011257006
+ 0.29633379792145365</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[2]</code><code class="nohighlight hljs ansi" style="display:block;">20×1 Matrix{Float64}:
+ 0.22624340535318735
+ 0.23386183292306872
+ 0.19863441208473548
+ 0.22864473431239174
+ 0.19891951283947462
+ 0.22341691279807133
+ 0.24375878470576728
+ 0.20264100160339846
+ 0.22568581525014605
+ 0.22036057686545937
+ 0.22761998079126
+ 0.2191099332406937
+ 0.25061867409760147
+ 0.2207186268571073
+ 0.22996059575908698
+ 0.22320768598927948
+ 0.21434433685656026
+ 0.23783723994975345
+ 0.21370076938397853
+ 0.22517054806813</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[3]</code><code class="nohighlight hljs ansi" style="display:block;">30×1 Matrix{Float64}:
+ 0.1775386288721477
+ 0.1749026179348701
+ 0.18813579690583387
+ 0.17811537709685396
+ 0.18619603580981378
+ 0.18004976279903548
+ 0.16521007850557676
+ 0.1672560766611624
+ 0.18433031853112303
+ 0.18764761737633992
  ⋮
- 0.19373885077464628
- 0.18549244834742695
- 0.17325820712032763
- 0.1745570907602657
- 0.19864427622623881
- 0.1935246803658731
- 0.17431316825565052
- 0.1814216094326709
- 0.17093417688289494</code></pre><p>Let&#39;s check how close the factor matrices <span>$U_1$</span>, <span>$U_2$</span>, and <span>$U_3$</span> (which were estimated from the noisy data) are to the true signal components <span>$\mathbf{1}_{10}$</span>, <span>$\mathbf{1}_{20}$</span>, and <span>$\mathbf{1}_{30}$</span>. We use the angle between the vectors since the scale of each factor matrix isn&#39;t meaningful on its own (read <a href="../man/main/#Overview">Overview</a> to learn more):</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using LinearAlgebra: normalize</code><code class="nohighlight hljs ansi" style="display:block;"></code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(u, v) = acos(normalize(u)&#39;*normalize(v))  # angle between vectors in radians</code><code class="nohighlight hljs ansi" style="display:block;">vecangle (generic function with 1 method)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[1][:,1], ones(10))</code><code class="nohighlight hljs ansi" style="display:block;">0.03631185154070675</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[2][:,1], ones(20))</code><code class="nohighlight hljs ansi" style="display:block;">0.0777240675497008</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[3][:,1], ones(30))</code><code class="nohighlight hljs ansi" style="display:block;">0.06544675200217101</code></pre><p>The decomposition does a pretty good job of extracting the signal from the noise!</p><p>The power of <strong>Generalized</strong> CP Decomposition is that we can fit CP decompositions to data using different losses (i.e., different notions of fit). By default, <code>gcp</code> uses the (conventional) least-squares loss, but we can easily try another! For example, to try non-negative least-squares simply run</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; M_nonneg = gcp(X, 1; loss = GCPLosses.NonnegativeLeastSquaresLoss())</code><code class="nohighlight hljs ansi" style="display:block;">10×20×30 CPD{Float64, 3, Vector{Float64}, Matrix{Float64}} with 1 component
+ 0.19265643067880456
+ 0.1902947207229845
+ 0.20176035239985882
+ 0.17154959335559222
+ 0.18220159766937652
+ 0.17173217640579802
+ 0.16764161654530416
+ 0.20738347870207136
+ 0.18493503819719267</code></pre><p>Let&#39;s check how close the factor matrices <span>$U_1$</span>, <span>$U_2$</span>, and <span>$U_3$</span> (which were estimated from the noisy data) are to the true signal components <span>$\mathbf{1}_{10}$</span>, <span>$\mathbf{1}_{20}$</span>, and <span>$\mathbf{1}_{30}$</span>. We use the angle between the vectors since the scale of each factor matrix isn&#39;t meaningful on its own (read <a href="../man/main/#Overview">Overview</a> to learn more):</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using LinearAlgebra: normalize</code><code class="nohighlight hljs ansi" style="display:block;"></code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(u, v) = acos(normalize(u)&#39;*normalize(v))  # angle between vectors in radians</code><code class="nohighlight hljs ansi" style="display:block;">vecangle (generic function with 1 method)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[1][:,1], ones(10))</code><code class="nohighlight hljs ansi" style="display:block;">0.04080160115157532</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[2][:,1], ones(20))</code><code class="nohighlight hljs ansi" style="display:block;">0.05861605002045093</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[3][:,1], ones(30))</code><code class="nohighlight hljs ansi" style="display:block;">0.06383084883004053</code></pre><p>The decomposition does a pretty good job of extracting the signal from the noise!</p><p>The power of <strong>Generalized</strong> CP Decomposition is that we can fit CP decompositions to data using different losses (i.e., different notions of fit). By default, <code>gcp</code> uses the (conventional) least-squares loss, but we can easily try another! For example, to try non-negative least-squares simply run</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; M_nonneg = gcp(X, 1; loss = GCPLosses.NonnegativeLeastSquares())</code><code class="nohighlight hljs ansi" style="display:block;">10×20×30 CPD{Float64, 3, Vector{Float64}, Matrix{Float64}} with 1 component
 λ weights:
 1-element Vector{Float64}: …
 U[1] factor matrix:
@@ -83,4 +83,4 @@ U[1] factor matrix:
 U[2] factor matrix:
 20×1 Matrix{Float64}: …
 U[3] factor matrix:
-30×1 Matrix{Float64}: …</code></pre><div class="admonition is-success"><header class="admonition-header">Congratulations!</header><div class="admonition-body"><p>Congratulations! You have successfully installed GCPDecompositions and run some Generalized CP decompositions!</p></div></div><h2 id="Next-steps"><a class="docs-heading-anchor" href="#Next-steps">Next steps</a><a id="Next-steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-steps" title="Permalink"></a></h2><p>Ready to learn more?</p><ul><li>If you are new to tensor decompositions (or to GCP decompositions in particular), check out the <a href="../man/main/#Overview">Overview</a> page in the manual. Also check out some of the demos!</li><li>To learn about all the different loss functions you can use or about how to add your own, check out the <a href="../man/losses/#Loss-functions">Loss functions</a> page in the manual.</li><li>To learn about different constraints you can add, check out the <a href="../man/constraints/#Constraints">Constraints</a> page in the manual.</li><li>To learn about different algorithms you can choose, check out the <a href="../man/algorithms/#Algorithms">Algorithms</a> page in the manual.</li></ul><p>Want to understand the internals and possibly contribute? Check out the developer docs.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../man/main/">Overview »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Friday 14 June 2024 09:24">Friday 14 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+30×1 Matrix{Float64}: …</code></pre><div class="admonition is-success"><header class="admonition-header">Congratulations!</header><div class="admonition-body"><p>Congratulations! You have successfully installed GCPDecompositions and run some Generalized CP decompositions!</p></div></div><h2 id="Next-steps"><a class="docs-heading-anchor" href="#Next-steps">Next steps</a><a id="Next-steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-steps" title="Permalink"></a></h2><p>Ready to learn more?</p><ul><li>If you are new to tensor decompositions (or to GCP decompositions in particular), check out the <a href="../man/main/#Overview">Overview</a> page in the manual. Also check out some of the demos!</li><li>To learn about all the different loss functions you can use or about how to add your own, check out the <a href="../man/losses/#Loss-functions">Loss functions</a> page in the manual.</li><li>To learn about different constraints you can add, check out the <a href="../man/constraints/#Constraints">Constraints</a> page in the manual.</li><li>To learn about different algorithms you can choose, check out the <a href="../man/algorithms/#Algorithms">Algorithms</a> page in the manual.</li></ul><p>Want to understand the internals and possibly contribute? Check out the developer docs.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../man/main/">Overview »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Friday 14 June 2024 11:53">Friday 14 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
