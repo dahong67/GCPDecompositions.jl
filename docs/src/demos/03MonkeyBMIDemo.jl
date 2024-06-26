@@ -217,7 +217,7 @@ NM = gcp(X, 10; loss = GCPLosses.NonnegativeLeastSquares());
 
 # ╔═╡ 09b91268-7365-4cae-88ce-21ab78e0ce8c
 with_theme() do
-    fig = Figure(size = (2000, 2000))
+    fig = Figure(size = (800, 800))
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -229,14 +229,14 @@ with_theme() do
         barplot!(ax1, 1:size(X, 1), normalize(M.U[1][:, row], Inf);
 		color = (:orange,.67))
 
-        ax2 = Axis(fig[row+1, 2], width = 425)
+        ax2 = Axis(fig[row+1, 2])
         lines!(ax2, 1:size(X, 2), normalize(M.U[2][:, row], Inf);
 		color = :springgreen, linewidth = 3)
 		
         ax3 = Axis(fig[row+1, 3])
         for trial in 1:size(X, 3)
             scatter!(ax3, trial, normalize(M.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial], markersize = 10)
+                color = list_of_colors[trial])
         end
     end
 
@@ -262,19 +262,19 @@ with_theme() do
     labels = ["Neuron", "Time", "Trial"]
     
 	for i in 1:3
-        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 35,
+        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 20,
 		font = "Bold Arial")
     end
 	
     fig[0, 1:3] = Label(fig, "Monkey BMI Default Tensor Decomposition",
-		fontsize = 60, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
+		fontsize = 25, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
 
     fig
 end
 
 # ╔═╡ 447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 with_theme() do
-    fig = Figure(size = (2000, 2000))
+    fig = Figure(size = (800, 800))
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -286,14 +286,14 @@ with_theme() do
         barplot!(ax1, 1:size(X, 1), normalize(NM.U[1][:, row], Inf);
 		color = (:orange,.67))
 
-        ax2 = Axis(fig[row+1, 2], width = 425)
+        ax2 = Axis(fig[row+1, 2])
         lines!(ax2, 1:size(X, 2), normalize(NM.U[2][:, row], Inf);
 		color = :springgreen, linewidth = 3)
 		
         ax3 = Axis(fig[row+1, 3])
         for trial in 1:size(X, 3)
             scatter!(ax3, trial, normalize(NM.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial], markersize = 10)
+                color = list_of_colors[trial])
         end
     end
 
@@ -319,11 +319,11 @@ with_theme() do
     labels = ["Neuron", "Time", "Trial"]
     
 	for i in 1:3
-        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 35,
+        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 20,
 		font = "Bold Arial")
     end
 	
-    fig[0, 1:3] = Label(fig, "Monkey BMI Tensor Decomposition", fontsize = 60,
+    fig[0, 1:3] = Label(fig, "Monkey BMI Tensor Decomposition", fontsize = 25,
 	halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
 
     fig
@@ -371,7 +371,7 @@ MAT = "~0.10.7"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.2"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "3a08ced7fd15938252c40bb2c3a111ac81741dd5"
 
@@ -559,7 +559,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.1.0+0"
+version = "1.1.1+0"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
