@@ -102,7 +102,7 @@ md"""
 # ╔═╡ 14a0cf26-0003-45fe-b03c-8ad0140d26b2
 
 with_theme() do
-	fig = Figure(size = (1000, 1050))
+	fig = Figure(size = (800, 900))
 	
 	# Plot parameters
 	angle_colors = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -111,12 +111,12 @@ with_theme() do
 	colgap! = 0
 	
 	# Set super title
-	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 30, halign = :center,tellwidth = false, tellheight = false, font = "Bold Arial")
+	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 20, halign = :center,tellwidth = false, tellheight = true, font = "Bold Arial")
 	
 	# Loop through the neurons
 	for (idx, data) in enumerate(eachslice(X; dims=1))
 		ax = Axis(fig[fldmod1(idx, n_cols)...], xticks = 0:100:200;
-			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 13, yticklabelsize = 11)
+			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 10, yticklabelsize = 5, xticklabelsize = 5, ylabelsize = 9, xlabelsize = 9)
 		
 		# Loop through angles
 		for a in [0, 90, 180, -90]
@@ -125,12 +125,12 @@ with_theme() do
 			# Plot individual traces
 			for trace in eachcol(angle_data)
 				lines!(ax, trace;
-					linewidth = 0.3, color = (angle_colors[a], 0.7))
+					linewidth = 0.2, color = (angle_colors[a], 0.7))
 			end
 
 			# Plot the mean trace
 			lines!(ax, vec(mean(angle_data; dims=2));
-				linewidth = 2, color = angle_colors[a], label = "$(a)°")
+				linewidth = 1.5, color = angle_colors[a], label = "$(a)°")
 		end
 
 		# Make middle graphs unlabeled
@@ -156,7 +156,7 @@ with_theme() do
 		end
 		# Add legend
 		fig[7,2:n_cols] = Legend(fig, ax, ["Target Path Trajectory"];
-			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (100,25), labelsize = 20, titlesize=15)
+			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (50,25), labelsize = 10, titlesize=12, titlefont = "Bold Arial")
 	end
 	resize_to_layout!(fig)
 	fig
@@ -164,7 +164,7 @@ end
 
 # ╔═╡ 83160388-70a5-466f-a82f-e4a6df260346
 with_theme() do
-	fig = Figure(size = (1000, 1050))
+	fig = Figure(size = (750, 800))
 	axes = []
 	
 	# Plot parameters
@@ -173,12 +173,12 @@ with_theme() do
 	rowgap! = 0
 	colgap! = 0
 	# Set super title
-	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 30, halign = :center,tellwidth = false, tellheight = false, font = "Bold Arial")
+	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 20, halign = :center,tellwidth = false, tellheight = true, font = "Bold Arial")
 	
 	# Loop through the neurons
 	for (idx, data) in enumerate(eachslice(X; dims=1))
 		ax = Axis(fig[fldmod1(idx, n_cols)...], xticks = 0:100:200;
-			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 13)
+			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 10, yticklabelsize = 5, xticklabelsize = 5, ylabelsize = 9, xlabelsize = 9)
 		push!(axes,ax)
 		
 		# Loop through angles
@@ -188,12 +188,12 @@ with_theme() do
 			# Plot individual traces
 			for trace in eachcol(angle_data)
 				lines!(ax, trace;
-					linewidth = 0.3, color = (angle_colors[a], 0.7))
+					linewidth = 0.2, color = (angle_colors[a], 0.7))
 			end
 
 			# Plot the mean trace
 			lines!(ax, vec(mean(angle_data; dims=2));
-				linewidth = 2, color = angle_colors[a], label = "$(a)°")
+				linewidth = 1.2, color = angle_colors[a], label = "$(a)°")
 		end
 
 		# Make middle graphs unlabeled
@@ -220,15 +220,17 @@ with_theme() do
 		
 		# Add legend
 		fig[7,2:n_cols] = Legend(fig, ax, ["Target Path Trajectory"];
-			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (100,25), labelsize = 20, titlesize=15)
+			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (100,30), labelsize = 10, titlesize=14,font = "Bold Arial")
 
 		# Link axes of subplots
 		linkxaxes!(axes...)
 		linkyaxes!(axes...)
+
 	end
 	resize_to_layout!(fig)
 	fig
 end
+
 
 # ╔═╡ 9cc4dfb7-ceb7-4d0f-99f6-dc48825c93e1
 md"""
@@ -248,7 +250,7 @@ NM = gcp(X, 10; loss = GCPLosses.NonnegativeLeastSquares());
 
 # ╔═╡ 09b91268-7365-4cae-88ce-21ab78e0ce8c
 with_theme() do
-    fig = Figure(size = (900, 1200))
+    fig = Figure(size = (700, 1000))
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -262,12 +264,12 @@ with_theme() do
 
         ax2 = Axis(fig[row+1, 2])
         lines!(ax2, 1:size(X, 2), normalize(M.U[2][:, row], Inf);
-		color = :springgreen, linewidth = 3)
+		color = :springgreen, linewidth = 2)
 		
         ax3 = Axis(fig[row+1, 3])
         for trial in 1:size(X, 3)
             scatter!(ax3, trial, normalize(M.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial], markersize = 7)
+                color = list_of_colors[trial], markersize = 4)
         end
     end
 	colsize!(fig.layout,2,Relative(1/4))
@@ -291,19 +293,19 @@ with_theme() do
     labels = ["Neuron", "Time", "Trial"]
     
 	for i in 1:3
-        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 20,
+        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 15,
 		font = "Bold Arial")
     end
 	
     fig[0, 1:3] = Label(fig, "Monkey BMI Default Tensor Decomposition",
-		fontsize = 25, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
+		fontsize = 20, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
 
     fig
 end
 
 # ╔═╡ 447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 with_theme() do
-    fig = Figure(size = (900, 1200))
+    fig = Figure(size = (700, 1000))
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -317,12 +319,12 @@ with_theme() do
 
         ax2 = Axis(fig[row+1, 2])
         lines!(ax2, 1:size(X, 2), normalize(NM.U[2][:, row], Inf);
-		color = :springgreen, linewidth = 3)
+		color = :springgreen, linewidth = 2)
 		
         ax3 = Axis(fig[row+1, 3])
         for trial in 1:size(X, 3)
             scatter!(ax3, trial, normalize(NM.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial], markersize = 7)
+                color = list_of_colors[trial], markersize = 4)
         end
     end
 	colsize!(fig.layout,2,Relative(1/4))
@@ -346,11 +348,11 @@ with_theme() do
     labels = ["Neuron", "Time", "Trial"]
     
 	for i in 1:3
-        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 20,
+        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 15,
 		font = "Bold Arial")
     end
 	
-    fig[0, 1:3] = Label(fig, "Monkey BMI Tensor Decomposition", fontsize = 25,
+    fig[0, 1:3] = Label(fig, "Monkey BMI Tensor Decomposition", fontsize = 20,
 	halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
 
     fig
@@ -1931,14 +1933,14 @@ version = "3.5.0+0"
 # ╟─038c9c6a-a369-4504-8783-2a4c56c051ae
 # ╟─52d5d6d5-f331-4d4b-a150-577706b3f87a
 # ╟─1f95ecf2-f166-4e24-b124-d950cf4942d9
-# ╟─14a0cf26-0003-45fe-b03c-8ad0140d26b2
+# ╠═14a0cf26-0003-45fe-b03c-8ad0140d26b2
 # ╠═83160388-70a5-466f-a82f-e4a6df260346
 # ╟─9cc4dfb7-ceb7-4d0f-99f6-dc48825c93e1
 # ╟─f1266f66-0baf-45fa-aa20-a6279bff5cd8
 # ╠═0d23f2ab-6e67-4aa1-aa58-4ced0da1d26e
 # ╠═2017d76d-1a5e-447d-b569-9edbb5c2cd13
 # ╠═09b91268-7365-4cae-88ce-21ab78e0ce8c
-# ╟─447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
+# ╠═447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 # ╟─00ce15cd-404a-458e-b557-e1b5c55c41c2
 # ╟─cf2fb43c-09eb-4543-9fc9-872aa44ba1e7
 # ╟─00000000-0000-0000-0000-000000000001
