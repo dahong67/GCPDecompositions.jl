@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.42
+# v0.19.43
 
 using Markdown
 using InteractiveUtils
@@ -100,21 +100,23 @@ md"""
 """
 
 # ╔═╡ 14a0cf26-0003-45fe-b03c-8ad0140d26b2
+
 with_theme() do
-	fig = Figure(size = (2000, 2000))
+	fig = Figure(size = (1000, 1050))
 	
 	# Plot parameters
 	angle_colors = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
 	n_cols = 7
-
+	rowgap! = 0
+	colgap! = 0
+	
 	# Set super title
-	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 60, halign = :center,tellwidth = false, tellheight = false, font = "Bold Arial")
-
+	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 30, halign = :center,tellwidth = false, tellheight = false, font = "Bold Arial")
+	
 	# Loop through the neurons
 	for (idx, data) in enumerate(eachslice(X; dims=1))
-		ax = Axis(fig[fldmod1(idx, n_cols)...];
-			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity")
-		
+		ax = Axis(fig[fldmod1(idx, n_cols)...], xticks = 0:100:200;
+			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 13, yticklabelsize = 11)
 		
 		# Loop through angles
 		for a in [0, 90, 180, -90]
@@ -123,38 +125,60 @@ with_theme() do
 			# Plot individual traces
 			for trace in eachcol(angle_data)
 				lines!(ax, trace;
-					linewidth = 0.5, color = (angle_colors[a], 0.7))
+					linewidth = 0.3, color = (angle_colors[a], 0.7))
 			end
 
 			# Plot the mean trace
 			lines!(ax, vec(mean(angle_data; dims=2));
-				linewidth = 4, color = angle_colors[a], label = "$(a)°")
+				linewidth = 2, color = angle_colors[a], label = "$(a)°")
 		end
 
+		# Make middle graphs unlabeled
+		if fldmod1(idx, n_cols)[2] != 1 && fldmod1(idx, n_cols)[2] != n_cols
+			ax.ylabelvisible = false
+			
+        end
+
+		if fldmod1(idx, n_cols)[1] != 6 && fldmod1(idx, n_cols)[1] != n_cols
+			ax.xlabelvisible = false
+			
+        end
+
+		if fldmod1(idx, n_cols) == (6,1)
+			ax.xlabelvisible = false
+			
+        end
+		
+		# Flip and switch y-axis of last column
+		if fldmod1(idx, n_cols)[2] == n_cols
+			ax.yaxisposition = :right
+			ax.ylabelrotation = 3pi/2
+		end
 		# Add legend
 		fig[7,2:n_cols] = Legend(fig, ax, ["Target Path Trajectory"];
-			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (300,100), labelsize = 40, titlesize=35)
+			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (100,25), labelsize = 20, titlesize=15)
 	end
-	
+	resize_to_layout!(fig)
 	fig
 end
 
 # ╔═╡ 83160388-70a5-466f-a82f-e4a6df260346
 with_theme() do
-	fig = Figure(size = (2000, 2000))
+	fig = Figure(size = (1000, 1050))
 	axes = []
 	
 	# Plot parameters
 	angle_colors = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
 	n_cols = 7
-
+	rowgap! = 0
+	colgap! = 0
 	# Set super title
-	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 60, halign = :center,tellwidth = false, tellheight = false, font = "Bold Arial")
-
+	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 30, halign = :center,tellwidth = false, tellheight = false, font = "Bold Arial")
+	
 	# Loop through the neurons
 	for (idx, data) in enumerate(eachslice(X; dims=1))
-		ax = Axis(fig[fldmod1(idx, n_cols)...];
-			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity")
+		ax = Axis(fig[fldmod1(idx, n_cols)...], xticks = 0:100:200;
+			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 13)
 		push!(axes,ax)
 		
 		# Loop through angles
@@ -164,23 +188,30 @@ with_theme() do
 			# Plot individual traces
 			for trace in eachcol(angle_data)
 				lines!(ax, trace;
-					linewidth = 0.5, color = (angle_colors[a], 0.7))
+					linewidth = 0.3, color = (angle_colors[a], 0.7))
 			end
 
 			# Plot the mean trace
 			lines!(ax, vec(mean(angle_data; dims=2));
-				linewidth = 4, color = angle_colors[a], label = "$(a)°")
+				linewidth = 2, color = angle_colors[a], label = "$(a)°")
 		end
 
 		# Make middle graphs unlabeled
 		if fldmod1(idx, n_cols)[2] != 1 && fldmod1(idx, n_cols)[2] != n_cols
 			ax.ylabelvisible = false
+			ax.yticklabelsvisible = false
         end
 
 		if fldmod1(idx, n_cols)[1] != 6 && fldmod1(idx, n_cols)[1] != n_cols
 			ax.xlabelvisible = false
+			ax.xticklabelsvisible = false
         end
 
+		if fldmod1(idx, n_cols) == (6,1)
+			ax.xlabelvisible = false
+			ax.xticklabelsvisible = false
+        end
+		
 		# Flip and switch y-axis of last column
 		if fldmod1(idx, n_cols)[2] == n_cols
 			ax.yaxisposition = :right
@@ -189,13 +220,13 @@ with_theme() do
 		
 		# Add legend
 		fig[7,2:n_cols] = Legend(fig, ax, ["Target Path Trajectory"];
-			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (300,100), labelsize = 40, titlesize=35)
+			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (100,25), labelsize = 20, titlesize=15)
 
 		# Link axes of subplots
 		linkxaxes!(axes...)
 		linkyaxes!(axes...)
 	end
-	
+	resize_to_layout!(fig)
 	fig
 end
 
@@ -217,7 +248,7 @@ NM = gcp(X, 10; loss = GCPLosses.NonnegativeLeastSquares());
 
 # ╔═╡ 09b91268-7365-4cae-88ce-21ab78e0ce8c
 with_theme() do
-    fig = Figure(size = (800, 800))
+    fig = Figure(size = (900, 1200))
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -236,18 +267,16 @@ with_theme() do
         ax3 = Axis(fig[row+1, 3])
         for trial in 1:size(X, 3)
             scatter!(ax3, trial, normalize(M.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial])
+                color = list_of_colors[trial], markersize = 7)
         end
     end
-
+	colsize!(fig.layout,2,Relative(1/4))
     # Create legends
-    elements = [MarkerElement(color = c, marker = :circle, markersize = 15)
-				for c in values(color_map)]
+    elements = [MarkerElement(color = c, marker = :circle, markersize = 10)
+		for c in values(color_map)]
 	
-    for i in 2:11
-        Legend(fig[i, 4], elements, ["0°", "90°", "180°", "-90°"],
-		tellheight = false)
-    end
+        Legend(fig[6, 4], elements, ["0°", "90°", "180°", "-90°"])
+   
 
     # Link and hide axes
     for axis in 1:3
@@ -274,7 +303,7 @@ end
 
 # ╔═╡ 447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 with_theme() do
-    fig = Figure(size = (800, 800))
+    fig = Figure(size = (900, 1200))
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
@@ -293,18 +322,16 @@ with_theme() do
         ax3 = Axis(fig[row+1, 3])
         for trial in 1:size(X, 3)
             scatter!(ax3, trial, normalize(NM.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial])
+                color = list_of_colors[trial], markersize = 7)
         end
     end
-
+	colsize!(fig.layout,2,Relative(1/4))
     # Create legends
-    elements = [MarkerElement(color = c, marker = :circle, markersize = 15)
-				for c in values(color_map)]
+    elements = [MarkerElement(color = c, marker = :circle, markersize = 10)
+		for c in values(color_map)]
 	
-    for i in 2:11
-        Legend(fig[i, 4], elements, ["0°", "90°", "180°", "-90°"],
-		tellheight = false)
-    end
+        Legend(fig[6, 4], elements, ["0°", "90°", "180°", "-90°"])
+   
 
     # Link and hide axes
     for axis in 1:3
@@ -1904,14 +1931,14 @@ version = "3.5.0+0"
 # ╟─038c9c6a-a369-4504-8783-2a4c56c051ae
 # ╟─52d5d6d5-f331-4d4b-a150-577706b3f87a
 # ╟─1f95ecf2-f166-4e24-b124-d950cf4942d9
-# ╠═14a0cf26-0003-45fe-b03c-8ad0140d26b2
+# ╟─14a0cf26-0003-45fe-b03c-8ad0140d26b2
 # ╠═83160388-70a5-466f-a82f-e4a6df260346
 # ╟─9cc4dfb7-ceb7-4d0f-99f6-dc48825c93e1
 # ╟─f1266f66-0baf-45fa-aa20-a6279bff5cd8
 # ╠═0d23f2ab-6e67-4aa1-aa58-4ced0da1d26e
 # ╠═2017d76d-1a5e-447d-b569-9edbb5c2cd13
 # ╠═09b91268-7365-4cae-88ce-21ab78e0ce8c
-# ╠═447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
+# ╟─447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 # ╟─00ce15cd-404a-458e-b557-e1b5c55c41c2
 # ╟─cf2fb43c-09eb-4543-9fc9-872aa44ba1e7
 # ╟─00000000-0000-0000-0000-000000000001
