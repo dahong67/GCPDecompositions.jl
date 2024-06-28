@@ -1,5 +1,8 @@
 ### A Pluto.jl notebook ###
-# v0.19.43
+# v0.19.42
+
+#> [frontmatter]
+#> title = "Monkey BMI"
 
 using Markdown
 using InteractiveUtils
@@ -7,9 +10,51 @@ using InteractiveUtils
 # ╔═╡ fdfb1464-908f-437b-aaa4-5a9e32dd2feb
 using CairoMakie, MAT, Statistics, GCPDecompositions, LinearAlgebra, Downloads
 
+# ╔═╡ f9d70766-96c9-4d06-bc78-a2b1761cb9f6
+let
+	# DEFINE METADATA
+	TITLE = "Monkey Brain Machine Interface"
+	AUTHORS = [
+		"Gianna Baker" => "",
+	]
+	CREATED = "28 June 2024"
+	FILENAME = replace(basename(@__FILE__), r"#==#.*" => "")
+
+	# CREATE MARKDOWN WITH BADGES
+	function badge_md((label, message); color="blue")
+		label_esc   = replace(label,   " " => "%20", "_" => "__", "-" => "--")
+		message_esc = replace(message, " " => "%20", "_" => "__", "-" => "--")
+		"![$label](https://img.shields.io/badge/$label_esc-$message_esc-$color)"
+	end
+	function badge_md(lblmsg, url; color="gold")
+		badge = badge_md(lblmsg; color)
+		return isempty(url) ? badge : "[$(badge)]($url)"
+	end
+	"""
+	# $TITLE
+
+	$(badge_md(
+		"Download Notebook" => FILENAME, joinpath("..", FILENAME);
+		color="blue"
+	))
+	$(join([badge_md("Author" => NAME, URL) for (NAME, URL) in AUTHORS], '\n'))
+	$(badge_md("Created" => CREATED; color="floralwhite"))
+	""" |> Markdown.parse
+end
+
 # ╔═╡ 5c7c55d4-36b5-4703-9018-c334c9465d50
 md"""
-# Monkey BMI Tensor Dataset
+This demo is based on and uses data from the following Tensor Toolbox demo: [`https://gitlab.com/tensors/tensor_data_monkey_bmi`](https://gitlab.com/tensors/tensor_data_monkey_bmi)
+
+Please see license here:
+[`https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE`](https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE).
+
+Relevant papers:
+1. S. Vyas, N. Even-Chen, S. D. Stavisky, S. I. Ryu, P. Nuyujukian, and K. V. Shenoy, Neural Population Dynamics Underlying Motor Learning Transfer, Elsevier BV, Vol. 97, No. 5, pp. 1177-1186.e3, March 2018, [`https://doi.org/10.1016/j.neuron.2018.01.040`](https://doi.org/10.1016/j.neuron.2018.01.040).
+
+2. S. Vyas, D. J. O'Shea, S. I. Ryu, and K. V. Shenoy, Causal Role of Motor Preparation during Error-Driven Learning, Neuron, Elsevier BV, Vol. 106, No. 2, pp. 329-339.e4, April 2020, [`https://doi.org/10.1016/j.neuron.2020.01.019`](https://doi.org/10.1016/j.neuron.2020.01.019).
+
+3. A. H. Williams, T. H. Kim, F. Wang, S. Vyas, S. I. Ryu, K. V. Shenoy, M. Schnitzer, T. G. Kolda, S. Ganguli, Unsupervised Discovery of Demixed, Low-dimensional Neural Dynamics across Multiple Timescales through Tensor Components Analysis, Neuron, 98(6):1099-1115, 2018, [`https://doi.org/10.1016/j.neuron.2018.05.015`](https://doi.org/10.1016/j.neuron.2018.05.015).
 """
 
 # ╔═╡ 9210e64a-6939-4ed5-b6d1-41685535b2c8
@@ -361,23 +406,6 @@ end
 # ╔═╡ 00ce15cd-404a-458e-b557-e1b5c55c41c2
 md"""
 From this breakdown we confirm our perceived trend that neurons in the lower index range show higher activity more frequently than those in the higher range, meaning they are more commonly involved in the assigned motor task.  We notice that neural activity is more evenly spread over the two groupings of time, which could be revealing a pattern or simply due to a loss of data when downsizing to a low dimensional subspace.  We do notice that generally after a neural activity peak the signal is not sustained or prolonged, as it tends to significantly diminish.  Most intriguingly, we see the development of certain clusters sorted by angle in our trial plot, which could allude to condition-specific responses with associated high probabilities.    
-"""
-
-# ╔═╡ cf2fb43c-09eb-4543-9fc9-872aa44ba1e7
-md"""
-## References
-
-1. T. G. Kolda, Monkey BMI Tensor Dataset, [GitLab](https://gitlab.com/tensors/tensor_data_monkey_bmi), 2021.
-
-2. S. Vyas, N. Even-Chen, S. D. Stavisky, S. I. Ryu, P. Nuyujukian, and K. V. Shenoy,
-   Neural Population Dynamics Underlying Motor Learning Transfer,
-   Elsevier BV, Vol. 97, No. 5, pp. 1177-1186.e3, March 2018,
-   [DOI: 10.1016/j.neuron.2018.01.040](https://doi.org/10.1016/j.neuron.2018.01.040).
-
-3. S. Vyas, D. J. O'Shea, S. I. Ryu, and K. V. Shenoy,
-   Causal Role of Motor Preparation during Error-Driven Learning,
-   Neuron, Elsevier BV, Vol. 106, No. 2, pp. 329-339.e4, April 2020,
-   [DOI: 10.1016/j.neuron.2020.01.019](https://doi.org/10.1016/j.neuron.2020.01.019).
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1919,6 +1947,7 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
+# ╟─f9d70766-96c9-4d06-bc78-a2b1761cb9f6
 # ╟─5c7c55d4-36b5-4703-9018-c334c9465d50
 # ╠═fdfb1464-908f-437b-aaa4-5a9e32dd2feb
 # ╟─9210e64a-6939-4ed5-b6d1-41685535b2c8
@@ -1942,6 +1971,5 @@ version = "3.5.0+0"
 # ╠═09b91268-7365-4cae-88ce-21ab78e0ce8c
 # ╠═447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 # ╟─00ce15cd-404a-458e-b557-e1b5c55c41c2
-# ╟─cf2fb43c-09eb-4543-9fc9-872aa44ba1e7
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
