@@ -46,8 +46,7 @@ end
 md"""
 This demo is based on and uses data from the following Tensor Toolbox demo: [`https://gitlab.com/tensors/tensor_data_monkey_bmi`](https://gitlab.com/tensors/tensor_data_monkey_bmi)
 
-Please see license here:
-[`https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE`](https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE).
+Please see license here: [`https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE`](https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE).
 
 Relevant papers:
 1. S. Vyas, N. Even-Chen, S. D. Stavisky, S. I. Ryu, P. Nuyujukian, and K. V. Shenoy, Neural Population Dynamics Underlying Motor Learning Transfer, Elsevier BV, Vol. 97, No. 5, pp. 1177-1186.e3, March 2018, [`https://doi.org/10.1016/j.neuron.2018.01.040`](https://doi.org/10.1016/j.neuron.2018.01.040).
