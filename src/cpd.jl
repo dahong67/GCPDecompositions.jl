@@ -93,3 +93,19 @@ function norm2(M::CPD{T,N}) where {T,N}
     V = reduce(.*, M.U[i]'M.U[i] for i in 1:N)
     return sqrt(abs(M.λ' * V * M.λ))
 end
+
+function cpd_normalize(M::CPD, p::Real = 2)
+    weights = M.λ[:]
+
+    for matrix in 1:ndims(M)
+        scaling = [norm(M.U[matrix][:, col], p) for col in 1:ncomponents(M)]
+
+        weights .*= scaling
+
+        M.U[matrix] .= M.U[matrix] ./ scaling'
+    end
+
+    M.λ[:] = weights
+
+    return M
+end
