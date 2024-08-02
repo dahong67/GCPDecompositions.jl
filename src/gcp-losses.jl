@@ -86,6 +86,24 @@ function grad_U!(
     return GU
 end
 
+function stoc_grad(X::Array{},M::CPD,s::Int64,loss)
+	w = length(X)
+	Y = zeros(size(X))
+	
+	for c in 1:s
+		
+		multi_index = [rand(1:size(X,k)) for k in 1:ndims(X)]
+		
+		m = getindex(M,multi_index...)
+		x = X[multi_index...]
+		
+		Y[multi_index...] += ((w/s)*(GCPLosses.deriv(loss,x,m)))
+		
+	end
+	G = [mttkrp(Y,M.U,k) for k in 1:ndims(X)]
+return G
+end
+
 # Statistically motivated losses
 
 """
