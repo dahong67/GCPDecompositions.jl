@@ -8,7 +8,13 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ fdfb1464-908f-437b-aaa4-5a9e32dd2feb
-using CairoMakie, MAT, Statistics, GCPDecompositions, LinearAlgebra, Downloads
+using CairoMakie, GCPDecompositions, LinearAlgebra, Statistics
+
+# ╔═╡ a1db5ffd-620a-4a70-b859-e90c9d6aa5fb
+using Downloads: download
+
+# ╔═╡ 066b6f99-5135-49d2-a7de-cfb22ed72a3d
+using CacheVariables, MAT
 
 # ╔═╡ f9d70766-96c9-4d06-bc78-a2b1761cb9f6
 let
@@ -46,7 +52,7 @@ end
 md"""
 This demo is based on and uses data from the following Tensor Toolbox demo: [`https://gitlab.com/tensors/tensor_data_monkey_bmi`](https://gitlab.com/tensors/tensor_data_monkey_bmi)
 
-Please see license here: [`https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE`](https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE).
+Please see the license here: [`https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE`](https://gitlab.com/tensors/tensor_data_monkey_bmi/-/blob/4870db135b362b2de499c63b48533abdd5185228/LICENSE).
 
 Relevant papers:
 1. S. Vyas, N. Even-Chen, S. D. Stavisky, S. I. Ryu, P. Nuyujukian, and K. V. Shenoy, Neural Population Dynamics Underlying Motor Learning Transfer, Elsevier BV, Vol. 97, No. 5, pp. 1177-1186.e3, March 2018, [`https://doi.org/10.1016/j.neuron.2018.01.040`](https://doi.org/10.1016/j.neuron.2018.01.040).
@@ -58,52 +64,45 @@ Relevant papers:
 
 # ╔═╡ 9210e64a-6939-4ed5-b6d1-41685535b2c8
 md"""
-## Load and Download data
+## Loading the data
+
+The following code downloads the data file, extracts the data, and caches it.
 """
 
 # ╔═╡ 2c945712-cbee-4a34-9a3b-ba602aa5fac0
-function download()
-    
-    cache_folder = joinpath("monkey-bmi-cache")
-    cache_file = joinpath(cache_folder, "data.mat")
-    
-    # Create folder if it does not exist
-    if !isdir(cache_folder)
-        mkpath(cache_folder)
-    end
-    
-    # Check if data is already downloaded
-    if !isfile(cache_file)
-		
-        # Download data
-        url = "https://gitlab.com/tensors/tensor_data_monkey_bmi/-/raw/main/data.mat"
-        Downloads.download(url, cache_file)
-    end
-    
-    # Read the MAT file
-    data = matread(cache_file)
-    
-    # Return the file
-    return data
+data = cache(joinpath("monkey-bmi-cache", "data.bson")) do
+	# Download file
+	url = "https://gitlab.com/tensors/tensor_data_monkey_bmi/-/raw/main/data.mat"
+	path = download(url, tempname(@__DIR__))
+
+	# Extract data
+	data = matread(path)
+
+	# Clean up and output data
+	rm(path)
+	data
 end
 
-# ╔═╡ 2ef670c1-41f4-4da4-b8b9-6480cb654929
-file = download()
-
 # ╔═╡ 712c91c0-0e41-4661-99ca-a17e50ce4f80
-X = file["X"];
+X = data["X"]
+
+# ╔═╡ 224e7904-1004-4d9a-aec9-4dae9e797e3a
+md"""
+The data tensor `X` is $(join(size(X), '×'))
+and consists of measurements across
+$(size(X, 1)) neurons,
+$(size(X, 2)) time steps,
+and
+$(size(X, 3)) trials.
+"""
+
+# ╔═╡ 7e86d631-195c-4647-a99a-7fb2da4e79ff
+md"""
+Each trial has an associated angle (described more below).
+"""
 
 # ╔═╡ 62c3f1b5-5cf7-4b69-8db4-9f380067667b
-angle = vec(file["angle"]);
-
-# ╔═╡ f30fdfd1-1ecc-4419-b98c-13bd76372bf4
-angle_list = vec(file["angle_list"]);
-
-# ╔═╡ 37e16313-e5c8-45c7-9e3b-b8bc48645f90
-angle_xy = file["angle_xyloc"];
-
-# ╔═╡ c0357086-02d5-4223-9bf6-b69b4d5efab4
-loc = file["loc"];
+angle = dropdims(data["angle"]; dims=2)
 
 # ╔═╡ c2de9482-7a09-4540-83d3-8d434200683a
 md"""
@@ -410,6 +409,7 @@ From this breakdown we confirm our perceived trend that neurons in the lower ind
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+CacheVariables = "9a355d7c-ffe9-11e8-019f-21dae27d1722"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 GCPDecompositions = "f59fb95b-1bc8-443b-b347-5e445a549f37"
@@ -418,6 +418,7 @@ MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+CacheVariables = "~0.1.4"
 CairoMakie = "~0.12.2"
 GCPDecompositions = "~0.2.0"
 MAT = "~0.10.7"
@@ -429,7 +430,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "3a08ced7fd15938252c40bb2c3a111ac81741dd5"
+project_hash = "7e76945b51e60943527a8dbe1a791b7134dd1807"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -494,6 +495,11 @@ git-tree-sha1 = "16351be62963a67ac4083f748fdb3cca58bfd52f"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.7"
 
+[[deps.BSON]]
+git-tree-sha1 = "4c3e506685c527ac6a54ccc0c8c76fd6f91b42fb"
+uuid = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+version = "0.3.9"
+
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
@@ -521,6 +527,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "e329286945d0cfc04456972ea732551869af1cfc"
 uuid = "4e9b3aee-d8a1-5a3d-ad8b-7d824db253f0"
 version = "1.0.1+0"
+
+[[deps.CacheVariables]]
+deps = ["BSON", "Logging"]
+git-tree-sha1 = "0e74f35a57b1ebd6f622e47a18d92255cbd45b91"
+uuid = "9a355d7c-ffe9-11e8-019f-21dae27d1722"
+version = "0.1.4"
 
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
@@ -1950,13 +1962,13 @@ version = "3.5.0+0"
 # ╟─5c7c55d4-36b5-4703-9018-c334c9465d50
 # ╠═fdfb1464-908f-437b-aaa4-5a9e32dd2feb
 # ╟─9210e64a-6939-4ed5-b6d1-41685535b2c8
+# ╠═a1db5ffd-620a-4a70-b859-e90c9d6aa5fb
+# ╠═066b6f99-5135-49d2-a7de-cfb22ed72a3d
 # ╠═2c945712-cbee-4a34-9a3b-ba602aa5fac0
-# ╠═2ef670c1-41f4-4da4-b8b9-6480cb654929
+# ╟─224e7904-1004-4d9a-aec9-4dae9e797e3a
 # ╠═712c91c0-0e41-4661-99ca-a17e50ce4f80
+# ╟─7e86d631-195c-4647-a99a-7fb2da4e79ff
 # ╠═62c3f1b5-5cf7-4b69-8db4-9f380067667b
-# ╠═f30fdfd1-1ecc-4419-b98c-13bd76372bf4
-# ╠═37e16313-e5c8-45c7-9e3b-b8bc48645f90
-# ╠═c0357086-02d5-4223-9bf6-b69b4d5efab4
 # ╟─c2de9482-7a09-4540-83d3-8d434200683a
 # ╟─038c9c6a-a369-4504-8783-2a4c56c051ae
 # ╟─52d5d6d5-f331-4d4b-a150-577706b3f87a
