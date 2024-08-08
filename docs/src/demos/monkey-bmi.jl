@@ -102,182 +102,120 @@ Each trial has an associated angle (described more below).
 """
 
 # ╔═╡ 62c3f1b5-5cf7-4b69-8db4-9f380067667b
-angle = dropdims(data["angle"]; dims=2)
+angles = dropdims(data["angle"]; dims=2)
 
 # ╔═╡ c2de9482-7a09-4540-83d3-8d434200683a
 md"""
-## Description and Interpretation
+## Understanding and visualizing the data
 """
 
 # ╔═╡ 038c9c6a-a369-4504-8783-2a4c56c051ae
 html"""
-<div style="display: flex; justify-content: space-around;">
-    <figure style="position: relative; width: 45%; margin: 0;">
-        <img src="https://gitlab.com/tensors/tensor_data_monkey_bmi/-/raw/main/graphics/monkey_bmi_graphic.png" alt="Monkey BMI Graphic" style="width: 100%; display: block;">
-        
-    </figure>
-    
-    <figure style="position: relative; width: 45%; margin: 0;">
-        <img src="https://gitlab.com/tensors/tensor_data_monkey_bmi/-/raw/main/graphics/monkey_bmi_cursors.png" alt="Monkey BMI Cursors" style="width: 100%; display: block;">
-        <figcaption style="position: bottom: 5px; right: 5px; text-align: right; font-style: italic; font-size: 12px;">
-            Source: T. G. Kolda, Monkey BMI Tensor Dataset, 
-            <a href="https://gitlab.com/tensors/tensor_data_monkey_bmi">GitLab</a>, 2021.
-        </figcaption>
-    </figure>
-</div>
+<figure style="margin:0">
+	<img
+		src="https://gitlab.com/tensors/tensor_data_monkey_bmi/-/raw/main/graphics/monkey_bmi_graphic.png"
+		alt="Monkey BMI Graphic"
+		style="width: 50%;float:left"
+	/>
+	<img
+		src="https://gitlab.com/tensors/tensor_data_monkey_bmi/-/raw/main/graphics/monkey_bmi_cursors.png"
+		alt="Monkey BMI Cursors"
+		style="width: 50%;float:left"
+	/>
+	<figcaption style="text-align:center">
+		Image Credit:
+		<a href="https://gitlab.com/tensors/tensor_data_monkey_bmi">
+			https://gitlab.com/tensors/tensor_data_monkey_bmi
+		</a>
+	</figcaption>
+</figure>
 """
 
 # ╔═╡ 52d5d6d5-f331-4d4b-a150-577706b3f87a
 md"""
-In this experiment, the test subject (Monkey) is connected to a Brain-Machine Interface that measures neural activity during its assigned task of moving the cursor to one of four possible targets.  Each target is identified with its position in degrees on the envisioned circle: 0, 90, 180, and -90.  The electrodes within the BMI capture the neural impulses and electrical signals sent through the aquisition of a target until the monkey picks a target and holds the signal for 500ms (dashed lines).  These two halves of the experiment correspond to the first and second 100 time steps in the data.  The overall goal of this research is to gain insight into which regions within the motor cortex are more predominantly engaged in order to further understand the functionality of association areas.  Ultimately, this could lead to developing BMIs and devices to aid those with motor impairments.      
+The data tensor is (pre-processed) neural data
+from a Brain-Machine Interface (BMI) experiment (illustrated above).
+In this experiment, a monkey uses the BMI to:
+1. move the cursor to one of the four targets, then
+2. hold the cursor on the target.
+The targets are identified by their positions along a circle:
+0, 90, 180, and -90 degrees.
 
+While the monkey does these two tasks,
+the BMI records neural spike data for many neurons over time.
+This is then repeated for many trials.
+After pre-processing,
+the result is a
+$(join(size(X), '×')) data tensor
+of measurements across
+$(size(X, 1)) neurons,
+$(size(X, 2)) time steps,
+and
+$(size(X, 3)) trials.
 
-
-With this dataset, we are analyzing a 43x200x88 high-dimensional tensor that contains the numbered neuron, time steps, and the numbered trial respectively.  Our goal is to be able to represent this data in lower dimensions and break it down in order to reveal patterns that we otherwise would not have recognized.  We will do this through data visualization: first of the whole high-ordered tensor, then implementing CP decomposition to finish it out.
-
+The first 100 time steps correspond to the first task (acquire a target)
+and the second 100 time steps correspond to the second task (hold the target).
 """
 
 # ╔═╡ 1f95ecf2-f166-4e24-b124-d950cf4942d9
 md"""
-## Data Visualization
+The following figure plots the time series in the data tensor.
+Each subplot shows the time series from a single neuron
+(each thin curve is the time series for a single trial, colored by target).
+The thick curves show the average time series for each target.
 """
 
 # ╔═╡ 14a0cf26-0003-45fe-b03c-8ad0140d26b2
+angle_colors = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3);
 
+# ╔═╡ 92ac6f39-7946-49dd-bc8c-b7f7ee430d66
 with_theme() do
-	fig = Figure(size = (800, 900))
-	
-	# Plot parameters
-	angle_colors = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
-	n_cols = 7
-	rowgap! = 0
-	colgap! = 0
-	
-	# Set super title
-	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 20, halign = :center,tellwidth = false, tellheight = true, font = "Bold Arial")
-	
-	# Loop through the neurons
+	fig = Figure(; size = (800, 800))
+
+	# Plot time series
 	for (idx, data) in enumerate(eachslice(X; dims=1))
-		ax = Axis(fig[fldmod1(idx, n_cols)...], xticks = 0:100:200;
-			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 10, yticklabelsize = 5, xticklabelsize = 5, ylabelsize = 9, xlabelsize = 9)
-		
-		# Loop through angles
-		for a in [0, 90, 180, -90]
-			angle_data = data[:, a .== angle]
+		ax = Axis(fig[fldmod1(idx < 4 ? idx : idx+2, 5)...]; title="Neuron $idx",
+			xlabel="Time Steps", xticks=0:100:200,
+			ylabel="Activity", yticks=LinearTicks(3)
+		)
 
-			# Plot individual traces
-			for trace in eachcol(angle_data)
-				lines!(ax, trace;
-					linewidth = 0.2, color = (angle_colors[a], 0.7))
-			end
+		# Individual time series
+		series!(ax, permutedims(data);
+			color=[(angle_colors[angle], 0.7) for angle in angles], linewidth=0.2)
 
-			# Plot the mean trace
-			lines!(ax, vec(mean(angle_data; dims=2));
-				linewidth = 1.5, color = angle_colors[a], label = "$(a)°")
+		# Average time series
+		for angle in -90:90:180
+			lines!(ax, mean(eachcol(data)[angles .== angle]);
+				color=angle_colors[angle], linewidth=1.5)
 		end
-
-		# Make middle graphs unlabeled
-		if fldmod1(idx, n_cols)[2] != 1 && fldmod1(idx, n_cols)[2] != n_cols
-			ax.ylabelvisible = false
-			
-        end
-
-		if fldmod1(idx, n_cols)[1] != 6 && fldmod1(idx, n_cols)[1] != n_cols
-			ax.xlabelvisible = false
-			
-        end
-
-		if fldmod1(idx, n_cols) == (6,1)
-			ax.xlabelvisible = false
-			
-        end
-		
-		# Flip and switch y-axis of last column
-		if fldmod1(idx, n_cols)[2] == n_cols
-			ax.yaxisposition = :right
-			ax.ylabelrotation = 3pi/2
-		end
-		# Add legend
-		fig[7,2:n_cols] = Legend(fig, ax, ["Target Path Trajectory"];
-			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (50,25), labelsize = 10, titlesize=12, titlefont = "Bold Arial")
 	end
-	resize_to_layout!(fig)
+
+	# Tweak formatting
+	linkxaxes!(contents(fig.layout)...)
+	hidexdecorations!.(contents(fig[1:end-1, :]); ticks=false, grid=false)
+	hideydecorations!.(contents(fig[:, 2:end]);
+		ticklabels=false, ticks=false, grid=false)
+	rowgap!(fig.layout, 10)
+	colgap!(fig.layout, 10)
+
+	# Add legend
+	Legend(fig[1, 4:5],
+		[LineElement(; color=angle_colors[angle]) for angle in [0, 90, 180, -90]],
+		["$(angle)°" for angle in [0, 90, 180, -90]],
+		"Target Path Trajectory";
+		orientation = :horizontal
+	)
+
 	fig
 end
-
-# ╔═╡ 83160388-70a5-466f-a82f-e4a6df260346
-with_theme() do
-	fig = Figure(size = (750, 800))
-	axes = []
-	
-	# Plot parameters
-	angle_colors = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
-	n_cols = 7
-	rowgap! = 0
-	colgap! = 0
-	# Set super title
-	fig[0, 1:n_cols] = Label(fig,"Neural Activity", fontsize = 20, halign = :center,tellwidth = false, tellheight = true, font = "Bold Arial")
-	
-	# Loop through the neurons
-	for (idx, data) in enumerate(eachslice(X; dims=1))
-		ax = Axis(fig[fldmod1(idx, n_cols)...], xticks = 0:100:200;
-			title = "Neuron $idx", xlabel = "Time Steps", ylabel = "Activity", titlesize = 10, yticklabelsize = 5, xticklabelsize = 5, ylabelsize = 9, xlabelsize = 9)
-		push!(axes,ax)
-		
-		# Loop through angles
-		for a in [0, 90, 180, -90]
-			angle_data = data[:, a .== angle]
-
-			# Plot individual traces
-			for trace in eachcol(angle_data)
-				lines!(ax, trace;
-					linewidth = 0.2, color = (angle_colors[a], 0.7))
-			end
-
-			# Plot the mean trace
-			lines!(ax, vec(mean(angle_data; dims=2));
-				linewidth = 1.2, color = angle_colors[a], label = "$(a)°")
-		end
-
-		# Make middle graphs unlabeled
-		if fldmod1(idx, n_cols)[2] != 1 && fldmod1(idx, n_cols)[2] != n_cols
-			ax.ylabelvisible = false
-			ax.yticklabelsvisible = false
-        end
-
-		if fldmod1(idx, n_cols)[1] != 6 && fldmod1(idx, n_cols)[1] != n_cols
-			ax.xlabelvisible = false
-			ax.xticklabelsvisible = false
-        end
-
-		if fldmod1(idx, n_cols) == (6,1)
-			ax.xlabelvisible = false
-			ax.xticklabelsvisible = false
-        end
-		
-		# Flip and switch y-axis of last column
-		if fldmod1(idx, n_cols)[2] == n_cols
-			ax.yaxisposition = :right
-			ax.ylabelrotation = 3pi/2
-		end
-		
-		# Add legend
-		fig[7,2:n_cols] = Legend(fig, ax, ["Target Path Trajectory"];
-			titleposition = :top, tellwidth = false, tellheight = false, orientation = :horizontal, patchsize = (100,30), labelsize = 10, titlesize=14,font = "Bold Arial")
-
-		# Link axes of subplots
-		linkxaxes!(axes...)
-		linkyaxes!(axes...)
-
-	end
-	resize_to_layout!(fig)
-	fig
-end
-
 
 # ╔═╡ 9cc4dfb7-ceb7-4d0f-99f6-dc48825c93e1
 md"""
-We notice that neural activity dwindles as the numbered neuron increases as well as the acquisition of the target (first 100 steps) takes more neural activity than holding the cursor on the target.  We also start to see a more discrete general pattern where the choice of either 90 or 180 degrees contributes to more neural activity.
+Note that the neurons have significantly varying overall levels of activity
+(e.g., neuron 1 and neuron 43 differ by roughly a factor of four).
+Likewise, there appears to generally be more activity
+when acquiring the target (the first 100 time steps)
+than when holding it (the second 100 time steps).
 """
 
 # ╔═╡ f1266f66-0baf-45fa-aa20-a6279bff5cd8
@@ -297,7 +235,7 @@ with_theme() do
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
-    list_of_colors = [color_map[a] for a in angle]
+    list_of_colors = [color_map[a] for a in angles]
 
     # Set up axes and plot
     for row in 1:ncomponents(M)
@@ -352,7 +290,7 @@ with_theme() do
 
     # Create an array of the colors
     color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
-    list_of_colors = [color_map[a] for a in angle]
+    list_of_colors = [color_map[a] for a in angles]
 
     # Set up axes and plot
     for row in 1:ncomponents(NM)
@@ -1974,7 +1912,7 @@ version = "3.5.0+0"
 # ╟─52d5d6d5-f331-4d4b-a150-577706b3f87a
 # ╟─1f95ecf2-f166-4e24-b124-d950cf4942d9
 # ╠═14a0cf26-0003-45fe-b03c-8ad0140d26b2
-# ╠═83160388-70a5-466f-a82f-e4a6df260346
+# ╠═92ac6f39-7946-49dd-bc8c-b7f7ee430d66
 # ╟─9cc4dfb7-ceb7-4d0f-99f6-dc48825c93e1
 # ╟─f1266f66-0baf-45fa-aa20-a6279bff5cd8
 # ╠═0d23f2ab-6e67-4aa1-aa58-4ced0da1d26e
