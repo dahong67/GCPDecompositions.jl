@@ -94,40 +94,46 @@ function norm2(M::CPD{T,N}) where {T,N}
     return sqrt(abs(M.λ' * V * M.λ))
 end
 
-function plot_factors(M::CPD, X::Array{}, plot_types::Vector{Symbol}; graphsize::Tuple{Int, Int}=(800,600), titlesize::Int64=30, labelsize::Int64=20, colors::Vector{Symbol}=[:steelblue])
-
+function plot_factors(M::CPD, X::Array{}, plot_types::Vector{Symbol}; graphsize::Tuple{Int, Int}=(800,600), titlesize::Int64=30, labelsize::Int64=20, colors::Vector{Symbol}=[:steelblue], title::String="GCP Tensor Decomposition", factor_names::Vector{String}=["Mode"])
+	
     fig = Figure(size = graphsize)
 
-    if length(colors) < ndims(M)
+	if length(colors) < ndims(M)
         colors = vcat(colors, fill(colors[end], length(plot_types) - length(colors)))
     end
     # Set up axes and plot each factor matrix
     for row in 1:ncomponents(M)
-
-        for matrix in 1:ndims(M)
-            ax = Axis(fig[row+1, matrix])
-            if plot_types[matrix] == :barplot
-                barplot!(ax, 1:size(X, matrix), LinearAlgebra.normalize(M.U[matrix][:, row], Inf); color = colors[matrix])
-            elseif plot_types[matrix] == :lines
-                lines!(ax, 1:size(X, matrix), LinearAlgebra.normalize(M.U[matrix][:, row], Inf); color = colors[matrix])
-            elseif plot_types[matrix] == :scatter
-                scatter!(ax, 1:size(X, matrix), LinearAlgebra.normalize(M.U[matrix][:, row], Inf); color = colors[matrix])
-            end
-        end
-    end
+		
+		for matrix in 1:ndims(M)
+			ax = Axis(fig[row+1, matrix])
+			if plot_types[matrix] == :barplot
+				barplot!(ax, 1:size(X, matrix), LinearAlgebra.normalize(M.U[matrix][:, row], Inf); color = colors[matrix])
+			elseif plot_types[matrix] == :lines
+				lines!(ax, 1:size(X, matrix), LinearAlgebra.normalize(M.U[matrix][:, row], Inf); color = colors[matrix])
+			elseif plot_types[matrix] == :scatter
+				scatter!(ax, 1:size(X, matrix), LinearAlgebra.normalize(M.U[matrix][:, row], Inf); color = colors[matrix])
+			end	
+		end
+	end
     # Link and hide axes
     for axis in 1:ndims(M)
-
+		
         linkxaxes!(contents(fig[:, axis])...)
         linkyaxes!(contents(fig[:, axis])...)
     end
 
     # Add labels and super title
-    for i in 1:ndims(M)
-        Label(fig[1, i], "Mode $i"; tellwidth = false, fontsize = labelsize, font = "Bold Arial")
-    end
+	for i in 1:ndims(M)
+		if factor_names == ["Mode"]
+			Label(fig[1, i], "$(factor_names[1]) $i"; tellwidth = false, fontsize = labelsize, font = "Bold Arial")
+		else	
+			Label(fig[1, i], "$(factor_names[i])"; tellwidth = false, fontsize = labelsize, font = "Bold Arial")
+		end
+	end
+				
+	
 
-    fig[0, 1:ndims(M)] = Label(fig, "GCP Tensor Decomposition", fontsize = titlesize, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
-    fig
-
+	fig[0, 1:ndims(M)] = Label(fig, title, fontsize = titlesize, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
+	fig
+    
 end
