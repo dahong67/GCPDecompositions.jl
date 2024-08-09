@@ -22,6 +22,7 @@ let
 	TITLE = "Monkey Brain Machine Interface"
 	AUTHORS = [
 		"Gianna Baker" => "",
+		"David Hong" => "https://dahong.gitlab.io/",
 	]
 	CREATED = "28 June 2024"
 	FILENAME = replace(basename(@__FILE__), r"#==#.*" => "")
