@@ -220,128 +220,68 @@ than when holding it (the second 100 time steps).
 
 # ╔═╡ f1266f66-0baf-45fa-aa20-a6279bff5cd8
 md"""
-## GCP Decomposition
+## Run GCP Decomposition
+
+Generalized CP decomposition with respect to non-negative least-squares
+can be computed using `gcp` by setting the `loss` keyword argument.
 """
 
-# ╔═╡ 0d23f2ab-6e67-4aa1-aa58-4ced0da1d26e
-M = gcp(X,10)
-
 # ╔═╡ 2017d76d-1a5e-447d-b569-9edbb5c2cd13
-NM = gcp(X, 10; loss = GCPLosses.NonnegativeLeastSquares());
+M = gcp(X, 10; loss = GCPLosses.NonnegativeLeastSquares())
+
+# ╔═╡ 401afd52-247f-4159-88c9-91b9ff75e925
+md"""
+Now, we plot the (normalized) factors.
+"""
 
 # ╔═╡ 09b91268-7365-4cae-88ce-21ab78e0ce8c
 with_theme() do
-    fig = Figure(size = (700, 1000))
+	fig = Figure(; size = (700, 700))
 
-    # Create an array of the colors
-    color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
-    list_of_colors = [color_map[a] for a in angles]
+	# Plot factors (normalized by max)
+	for row in 1:ncomponents(M)
+		barplot(fig[row,1], normalize(M.U[1][:,row], Inf); color = :orange)
+		lines(fig[row,2], normalize(M.U[2][:,row], Inf); linewidth = 4)
+		scatter(fig[row,3], normalize(M.U[3][:,row], Inf);
+			color = [angle_colors[angle] for angle in angles])
+	end
 
-    # Set up axes and plot
-    for row in 1:ncomponents(M)
-        ax1 = Axis(fig[row+1, 1])
-        barplot!(ax1, 1:size(X, 1), normalize(M.U[1][:, row], Inf);
-		color = (:orange,.67))
+	# Link and hide x axes
+	linkxaxes!(contents(fig[:,1])...)
+	linkxaxes!(contents(fig[:,2])...)
+	linkxaxes!(contents(fig[:,3])...)
+	hidexdecorations!.(contents(fig[1:end-1,:]); ticks=false, grid=false)
 
-        ax2 = Axis(fig[row+1, 2])
-        lines!(ax2, 1:size(X, 2), normalize(M.U[2][:, row], Inf);
-		color = :springgreen, linewidth = 2)
-		
-        ax3 = Axis(fig[row+1, 3])
-        for trial in 1:size(X, 3)
-            scatter!(ax3, trial, normalize(M.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial], markersize = 4)
-        end
-    end
-	colsize!(fig.layout,2,Relative(1/4))
-    # Create legends
-    elements = [MarkerElement(color = c, marker = :circle, markersize = 10)
-		for c in values(color_map)]
-	
-        Legend(fig[6, 4], elements, ["0°", "90°", "180°", "-90°"])
-   
+	# Link and hide y axes
+	linkyaxes!(contents(fig.layout)...)
+	hideydecorations!.(contents(fig.layout); ticks=false, grid=false)
 
-    # Link and hide axes
-    for axis in 1:3
-        linkxaxes!(contents(fig[:, axis])...)
-        linkyaxes!(contents(fig[:, axis])...)
-    end
-    
-	hidexdecorations!.(contents(fig[2:10, 1:3]); ticks=false, grid=false)
-    hideydecorations!.(contents(fig[2:11, 1:3]); ticks=false, grid=false)
+	# Add legend
+	Legend(fig[:, 4],
+		[MarkerElement(; color=angle_colors[angle], marker=:circle)
+			for angle in [0, 90, 180, -90]],
+		["$(angle)°" for angle in [0, 90, 180, -90]],
+	)
 
-    # Add labels and super title
-    labels = ["Neuron", "Time", "Trial"]
-    
-	for i in 1:3
-        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 15,
-		font = "Bold Arial")
-    end
-	
-    fig[0, 1:3] = Label(fig, "Monkey BMI Default Tensor Decomposition",
-		fontsize = 20, halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
+	# Add labels
+	Label(fig[0,1], "Neurons"; tellwidth=false, fontsize=20)
+	Label(fig[0,2], "Time"; tellwidth=false, fontsize=20)
+	Label(fig[0,3], "Trials"; tellwidth=false, fontsize=20)
 
-    fig
-end
+	# Tweak layout
+	rowgap!(fig.layout, 10)
+	colgap!(fig.layout, 10)
+	colsize!(fig.layout, 2, Relative(1/4))
 
-# ╔═╡ 447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
-with_theme() do
-    fig = Figure(size = (700, 1000))
-
-    # Create an array of the colors
-    color_map = Dict(0 => :tomato1, 90 => :gold, 180 => :darkorchid3, -90 => :cyan3)
-    list_of_colors = [color_map[a] for a in angles]
-
-    # Set up axes and plot
-    for row in 1:ncomponents(NM)
-        ax1 = Axis(fig[row+1, 1])
-        barplot!(ax1, 1:size(X, 1), normalize(NM.U[1][:, row], Inf);
-		color = (:orange,.67))
-
-        ax2 = Axis(fig[row+1, 2])
-        lines!(ax2, 1:size(X, 2), normalize(NM.U[2][:, row], Inf);
-		color = :springgreen, linewidth = 2)
-		
-        ax3 = Axis(fig[row+1, 3])
-        for trial in 1:size(X, 3)
-            scatter!(ax3, trial, normalize(NM.U[3][:, row], Inf)[trial];
-                color = list_of_colors[trial], markersize = 4)
-        end
-    end
-	colsize!(fig.layout,2,Relative(1/4))
-    # Create legends
-    elements = [MarkerElement(color = c, marker = :circle, markersize = 10)
-		for c in values(color_map)]
-	
-        Legend(fig[6, 4], elements, ["0°", "90°", "180°", "-90°"])
-   
-
-    # Link and hide axes
-    for axis in 1:3
-        linkxaxes!(contents(fig[:, axis])...)
-        linkyaxes!(contents(fig[:, axis])...)
-    end
-    
-	hidexdecorations!.(contents(fig[2:10, 1:3]); ticks=false, grid=false)
-    hideydecorations!.(contents(fig[2:11, 1:3]); ticks=false, grid=false)
-
-    # Add labels and super title
-    labels = ["Neuron", "Time", "Trial"]
-    
-	for i in 1:3
-        Label(fig[1, i], labels[i]; tellwidth = false, fontsize = 15,
-		font = "Bold Arial")
-    end
-	
-    fig[0, 1:3] = Label(fig, "Monkey BMI Tensor Decomposition", fontsize = 20,
-	halign = :center, valign = :bottom, tellwidth = false, font = "Bold Arial")
-
-    fig
+	fig
 end
 
 # ╔═╡ 00ce15cd-404a-458e-b557-e1b5c55c41c2
 md"""
-From this breakdown we confirm our perceived trend that neurons in the lower index range show higher activity more frequently than those in the higher range, meaning they are more commonly involved in the assigned motor task.  We notice that neural activity is more evenly spread over the two groupings of time, which could be revealing a pattern or simply due to a loss of data when downsizing to a low dimensional subspace.  We do notice that generally after a neural activity peak the signal is not sustained or prolonged, as it tends to significantly diminish.  Most intriguingly, we see the development of certain clusters sorted by angle in our trial plot, which could allude to condition-specific responses with associated high probabilities.    
+Note that the factors in the neuron mode reflect our earlier observation
+that the neurons are roughly in decreasing order of activity.
+Moreover, several factors in the trial mode reflect which target was selected
+even though the tensor decomposition was not given that information.
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1915,10 +1855,9 @@ version = "3.5.0+0"
 # ╠═92ac6f39-7946-49dd-bc8c-b7f7ee430d66
 # ╟─9cc4dfb7-ceb7-4d0f-99f6-dc48825c93e1
 # ╟─f1266f66-0baf-45fa-aa20-a6279bff5cd8
-# ╠═0d23f2ab-6e67-4aa1-aa58-4ced0da1d26e
 # ╠═2017d76d-1a5e-447d-b569-9edbb5c2cd13
+# ╟─401afd52-247f-4159-88c9-91b9ff75e925
 # ╠═09b91268-7365-4cae-88ce-21ab78e0ce8c
-# ╠═447abdef-4d8e-45ce-b7c3-2c7bfc8f0ae3
 # ╟─00ce15cd-404a-458e-b557-e1b5c55c41c2
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
