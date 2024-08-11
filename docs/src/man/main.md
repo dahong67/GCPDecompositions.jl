@@ -8,7 +8,7 @@
 GCPDecompositions
 gcp
 CPD
-ncomponents
+ncomps
 GCPDecompositions.default_constraints
 GCPDecompositions.default_algorithm
 GCPDecompositions.default_init

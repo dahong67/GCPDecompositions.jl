@@ -159,7 +159,7 @@ with_theme() do
 	fig = Figure()
 
 	# Plot factors (normalized by max)
-	for row in 1:ncomponents(M)
+	for row in 1:ncomps(M)
 		barplot(fig[row,1], 1:size(X,1), normalize(M.U[1][:,row], Inf))
 		lines(fig[row,2], em_wave, normalize(M.U[2][:,row], Inf))
 		lines(fig[row,3], ex_wave, normalize(M.U[3][:,row], Inf))

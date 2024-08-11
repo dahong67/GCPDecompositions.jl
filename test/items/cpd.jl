@@ -27,25 +27,25 @@
     end
 end
 
-@testitem "ncomponents" begin
+@testitem "ncomps" begin
     λ = [1, 100, 10000]
     U1, U2, U3 = [1 2 3; 4 5 6], [-1 0 1], [1 2 3; 4 5 6; 7 8 9]
 
-    @test ncomponents(CPD(λ, (U1,))) ==
-          ncomponents(CPD(λ, (U1, U2))) ==
-          ncomponents(CPD(λ, (U1, U2, U3))) ==
+    @test ncomps(CPD(λ, (U1,))) ==
+          ncomps(CPD(λ, (U1, U2))) ==
+          ncomps(CPD(λ, (U1, U2, U3))) ==
           3
-    @test ncomponents(CPD(λ[1:2], (U1[:, 1:2],))) ==
-          ncomponents(CPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2]))) ==
-          ncomponents(CPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2], U3[:, 1:2]))) ==
+    @test ncomps(CPD(λ[1:2], (U1[:, 1:2],))) ==
+          ncomps(CPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2]))) ==
+          ncomps(CPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2], U3[:, 1:2]))) ==
           2
-    @test ncomponents(CPD(λ[1:1], (U1[:, 1:1],))) ==
-          ncomponents(CPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1]))) ==
-          ncomponents(CPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1], U3[:, 1:1]))) ==
+    @test ncomps(CPD(λ[1:1], (U1[:, 1:1],))) ==
+          ncomps(CPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1]))) ==
+          ncomps(CPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1], U3[:, 1:1]))) ==
           1
-    @test ncomponents(CPD(λ[1:0], (U1[:, 1:0],))) ==
-          ncomponents(CPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0]))) ==
-          ncomponents(CPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0], U3[:, 1:0]))) ==
+    @test ncomps(CPD(λ[1:0], (U1[:, 1:0],))) ==
+          ncomps(CPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0]))) ==
+          ncomps(CPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0], U3[:, 1:0]))) ==
           0
 end
 
