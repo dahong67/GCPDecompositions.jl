@@ -240,7 +240,7 @@ with_theme() do
 	fig = Figure(; size = (700, 700))
 
 	# Plot factors (normalized by max)
-	for row in 1:ncomponents(M)
+	for row in 1:ncomps(M)
 		barplot(fig[row,1], normalize(M.U[1][:,row], Inf); color = :orange)
 		lines(fig[row,2], normalize(M.U[2][:,row], Inf); linewidth = 4)
 		scatter(fig[row,3], normalize(M.U[3][:,row], Inf);
