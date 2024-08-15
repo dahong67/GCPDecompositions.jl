@@ -167,7 +167,7 @@ end
         U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
         M = CPD(λ, U)
 
-        X = Array(M, λfull)
+        X = CPD_to_Array(M, λfull)
         @test all(I -> M[I] == X[I], CartesianIndices(X))
     end
 end
