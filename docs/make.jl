@@ -38,7 +38,7 @@ makedocs(;
     ],
     format = Documenter.HTML(;
         canonical = "https://dahong67.github.io/GCPDecompositions.jl",
-        size_threshold = 2^20
+        size_threshold = 2^21
     ),
 )
 
