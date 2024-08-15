@@ -94,7 +94,7 @@ function norm2(M::CPD{T,N}) where {T,N}
     return sqrt(abs(M.λ' * V * M.λ))
 end
 
-function cpd_normalize(M::CPD, p::Real = 2)
+function normalizecomps(M::CPD, p::Real = 2)
     weights = M.λ[:]
 
     for matrix in 1:ndims(M)
