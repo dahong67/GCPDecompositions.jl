@@ -94,9 +94,10 @@ function norm2(M::CPD{T,N}) where {T,N}
     return sqrt(abs(M.λ' * V * M.λ))
 end
 
-function CPD_to_Array(A::CPD, λ)
-    K = TensorKernels.khatrirao(reverse(A)...)
+function Base.Array(A::CPD)
+    λ = A.λ
+    K = TensorKernels.khatrirao(reverse(A.U)...)
     vecM = K * λ
-    reshaped_result = reshape(vecM, sz...)
+    reshaped_result = reshape(vecM, size(A)...)
     return reshaped_result
 end;
