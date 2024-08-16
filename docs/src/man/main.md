@@ -9,6 +9,8 @@ GCPDecompositions
 gcp
 CPD
 ncomps
+normalizecomps
+normalizecomps!
 GCPDecompositions.default_constraints
 GCPDecompositions.default_algorithm
 GCPDecompositions.default_init

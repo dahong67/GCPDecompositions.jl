@@ -93,3 +93,32 @@ function norm2(M::CPD{T,N}) where {T,N}
     V = reduce(.*, M.U[i]'M.U[i] for i in 1:N)
     return sqrt(abs(M.λ' * V * M.λ))
 end
+
+"""
+    normalizecomps(M::CPD, p::Real = 2)
+
+Normalize the components of `M` so that the columns of all its factor matrices
+all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
+`k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+
+See also: `normalizecomps!`.
+"""
+normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
+
+"""
+    normalizecomps!(M::CPD, p::Real = 2)
+
+Normalize the components of `M` in-place so that the columns of all its factor matrices
+all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
+`k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+
+See also: `normalizecomps`.
+"""
+function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
+    for k in 1:N
+        norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+        M.U[k] ./= norms
+        M.λ .*= dropdims(norms; dims = 1)
+    end
+    return M
+end
