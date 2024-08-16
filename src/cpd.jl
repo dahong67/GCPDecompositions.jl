@@ -100,6 +100,8 @@ end
 Normalize the components of `M` so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+
+See also: `normalizecomps!`.
 """
 normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
 
@@ -109,6 +111,8 @@ normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
 Normalize the components of `M` in-place so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+
+See also: `normalizecomps`.
 """
 function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
     for k in 1:N
