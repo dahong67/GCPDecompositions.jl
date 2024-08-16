@@ -110,18 +110,11 @@ Normalize the components of `M` in-place so that the columns of all its factor m
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
 """
-function normalizecomps!(M::CPD, p::Real = 2)
-    weights = M.λ[:]
-
-    for matrix in 1:ndims(M)
-        scaling = [norm(M.U[matrix][:, col], p) for col in 1:ncomps(M)]
-
-        weights .*= scaling
-
-        M.U[matrix] .= M.U[matrix] ./ scaling'
+function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
+    for k in 1:N
+        norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+        M.U[k] ./= norms
+        M.λ .*= dropdims(norms; dims = 1)
     end
-
-    M.λ[:] = weights
-
     return M
 end
