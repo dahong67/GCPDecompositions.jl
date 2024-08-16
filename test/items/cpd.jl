@@ -157,3 +157,41 @@ end
               (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
     end
 end
+
+@testitem "normalizecomps" begin
+    using LinearAlgebra
+
+    @testset "K=$K" for K in 1:3
+        T = Float64
+        λfull = T[1, 100, 10000]
+        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 2 1], T[1 2 3; 4 5 6; 7 8 9]
+        λ = λfull[1:K]
+        U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
+
+        @testset "p=$p" for p in [1, 2, Inf]
+            M = CPD(λ, (U1, U2, U3))
+            Mback = deepcopy(M)
+            Mnorm = normalizecomps(M, p)
+
+            # Check for mutation
+            @test M.λ == Mback.λ
+            @test M.U == Mback.U
+
+            # Check factors
+            @test all(1:ndims(Mnorm)) do k
+                all(1:ncomps(Mnorm)) do j
+                    return norm(Mnorm.U[k][:, j], p) ≈ 1.0
+                end
+            end
+
+            # Check weights
+            scalings = dropdims.(mapslices.(x -> norm(x, p), M.U; dims = 1); dims = 1)
+            @test Mnorm.λ ≈ M.λ .* reduce(.*, scalings)
+
+            # Check in-place version
+            normalizecomps!(M, p)
+            @test M.λ == Mnorm.λ
+            @test M.U == Mnorm.U
+        end
+    end
+end
