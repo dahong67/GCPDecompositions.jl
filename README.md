@@ -1,10 +1,10 @@
 # GCPDecompositions: Generalized CP Decompositions
 
-[![Version](https://juliahub.com/docs/GCPDecompositions/version.svg)](https://juliahub.com/ui/Packages/GCPDecompositions/HR3AK)
+[![version](https://juliahub.com/docs/General/GCPDecompositions/stable/version.svg)](https://juliahub.com/ui/Packages/General/GCPDecompositions)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://dahong67.github.io/GCPDecompositions.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://dahong67.github.io/GCPDecompositions.jl/dev/)
 [![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
-[![PkgEval](https://juliahub.com/docs/GCPDecompositions/pkgeval.svg)](https://juliahub.com/ui/Packages/GCPDecompositions/HR3AK)
+[![PkgEval](https://juliahub.com/docs/General/GCPDecompositions/stable/pkgeval.svg)](https://juliahub.com/ui/Packages/General/GCPDecompositions)
 [![Build Status](https://github.com/dahong67/GCPDecompositions.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/dahong67/GCPDecompositions.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/dahong67/GCPDecompositions.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/dahong67/GCPDecompositions.jl)
 <!-- [![GCPDecompositions Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/GCPDecompositions)](https://pkgs.genieframework.com?packages=GCPDecompositions) -->
