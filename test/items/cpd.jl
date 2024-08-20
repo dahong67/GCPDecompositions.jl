@@ -122,6 +122,20 @@ end
     end
 end
 
+@testitem "Array" begin
+    @testset "N=$N, K=$K" for N in 1:3, K in 1:3
+        T = Float64
+        λfull = T[1, 100, 10000]
+        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
+        λ = λfull[1:K]
+        U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
+        M = CPD(λ, U)
+
+        X = Array(M)
+        @test all(I -> M[I] == X[I], CartesianIndices(X))
+    end
+end
+
 @testitem "norm" begin
     using LinearAlgebra
 
@@ -155,20 +169,6 @@ end
         @test norm(M, 1) == sum(abs, M[I] for I in CartesianIndices(size(M)))
         @test norm(M, 3) ==
               (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
-    end
-end
-
-@testitem "Array" begin
-    @testset "N=$N, K=$K" for N in 1:3, K in 1:3
-        T = Float64
-        λfull = T[1, 100, 10000]
-        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
-        λ = λfull[1:K]
-        U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
-        M = CPD(λ, U)
-
-        X = Array(M)
-        @test all(I -> M[I] == X[I], CartesianIndices(X))
     end
 end
 
