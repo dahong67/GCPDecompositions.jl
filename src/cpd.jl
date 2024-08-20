@@ -32,13 +32,13 @@ CPD(λ::Tλ, U::NTuple{N,TU}) where {T,N,Tλ<:AbstractVector{T},TU<:AbstractMatr
     CPD{T,N,Tλ,TU}(λ, U)
 
 """
-    ncomponents(M::CPD)
+    ncomps(M::CPD)
 
 Return the number of components in `M`.
 
 See also: `ndims`, `size`.
 """
-ncomponents(M::CPD) = length(M.λ)
+ncomps(M::CPD) = length(M.λ)
 ndims(::CPD{T,N}) where {T,N} = N
 
 size(M::CPD{T,N}, dim::Integer) where {T,N} = dim <= N ? size(M.U[dim], 1) : 1
@@ -65,22 +65,22 @@ function summary(io::IO, M::CPD)
     dimstring =
         ndims(M) == 0 ? "0-dimensional" :
         ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
-    ncomps = ncomponents(M)
+    _ncomps = ncomps(M)
     return print(
         io,
         dimstring,
         " ",
         typeof(M),
         " with ",
-        ncomps,
-        ncomps == 1 ? " component" : " components",
+        _ncomps,
+        _ncomps == 1 ? " component" : " components",
     )
 end
 
 function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
     val = zero(eltype(T))
-    for j in Base.OneTo(ncomponents(M))
+    for j in Base.OneTo(ncomps(M))
         val += M.λ[j] * prod(M.U[k][I[k], j] for k in Base.OneTo(ndims(M)))
     end
     return val
@@ -101,3 +101,32 @@ function Base.Array(A::CPD)
     reshaped_result = reshape(vecM, size(A)...)
     return reshaped_result
 end;
+
+"""
+    normalizecomps(M::CPD, p::Real = 2)
+
+Normalize the components of `M` so that the columns of all its factor matrices
+all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
+`k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+
+See also: `normalizecomps!`.
+"""
+normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
+
+"""
+    normalizecomps!(M::CPD, p::Real = 2)
+
+Normalize the components of `M` in-place so that the columns of all its factor matrices
+all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
+`k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+
+See also: `normalizecomps`.
+"""
+function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
+    for k in 1:N
+        norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+        M.U[k] ./= norms
+        M.λ .*= dropdims(norms; dims = 1)
+    end
+    return M
+end

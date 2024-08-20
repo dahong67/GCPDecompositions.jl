@@ -12,7 +12,7 @@ using Random: default_rng
 
 # Exports
 export CPD
-export ncomponents
+export ncomps, normalizecomps, normalizecomps!
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
