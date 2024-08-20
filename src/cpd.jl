@@ -118,10 +118,12 @@ all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 See also: `normalizecomps`.
 """
 function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
+    excess = ones(T, 1, ncomps(M))
     for k in 1:N
         norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
         M.U[k] ./= norms
-        M.λ .*= dropdims(norms; dims = 1)
+        excess .*= norms
     end
+    M.λ .*= dropdims(excess; dims = 1)
     return M
 end
