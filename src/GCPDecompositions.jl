@@ -6,6 +6,7 @@ module GCPDecompositions
 # Imports
 import Base: ndims, size, show, summary
 import Base: getindex
+import Base: Array
 import LinearAlgebra: norm
 using IntervalSets: Interval
 using Random: default_rng

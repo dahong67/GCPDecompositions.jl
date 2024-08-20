@@ -87,7 +87,7 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-function Base.Array(A::CPD)
+function Array(A::CPD)
     λ = A.λ
     K = TensorKernels.khatrirao(reverse(A.U)...)
     vecM = K * λ
