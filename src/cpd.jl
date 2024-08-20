@@ -87,13 +87,7 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-function Array(A::CPD)
-    λ = A.λ
-    K = TensorKernels.khatrirao(reverse(A.U)...)
-    vecM = K * λ
-    reshaped_result = reshape(vecM, size(A)...)
-    return reshaped_result
-end;
+Array(A::CPD) = reshape(TensorKernels.khatrirao(reverse(A.U)...) * A.λ, size(A))
 
 norm(M::CPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
