@@ -104,9 +104,14 @@ Normalize the components of `M` so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
 
+The following keyword arguments can be used to modify this behavior:
+- `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
+- `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+
 See also: `normalizecomps!`.
 """
-normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
+normalizecomps(M::CPD, p::Real = 2; dims = [:λ; 1:ndims(M)], distribute_to = :λ) =
+    normalizecomps!(deepcopy(M), p; dims, distribute_to)
 
 """
     normalizecomps!(M::CPD, p::Real = 2)
@@ -115,15 +120,66 @@ Normalize the components of `M` in-place so that the columns of all its factor m
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
 
+The following keyword arguments can be used to modify this behavior:
+- `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
+- `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+
 See also: `normalizecomps`.
 """
-function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
+function normalizecomps!(
+    M::CPD{T,N},
+    p::Real = 2;
+    dims = [:λ; 1:N],
+    distribute_to = :λ,
+) where {T,N}
+    # Put keyword arguments into standard form
+    dims_λ, dims_U = _dims_list(dims, N)
+    dist_λ, dist_U = _dims_list(distribute_to, N)
+
+    # Normalize components and collect excess weight
     excess = ones(T, 1, ncomps(M))
-    for k in 1:N
+    if dims_λ
+        norms = map(abs, M.λ)
+        M.λ ./= norms
+        excess .*= reshape(norms, 1, ncomps(M))
+    end
+    for k in dims_U
         norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
         M.U[k] ./= norms
         excess .*= norms
     end
-    M.λ .*= dropdims(excess; dims = 1)
+
+    # Distribute excess weight (uniformly across specified parts)
+    excess .= excess .^ (1 / (length(dist_U) + (dist_λ ? 1 : 0)))
+    if dist_λ
+        M.λ .*= dropdims(excess; dims = 1)
+    end
+    for k in dist_U
+        M.U[k] .*= excess
+    end
+
+    # Return normalized CPD
     return M
+end
+
+"""
+    _dims_list(dims, N)
+
+Make sure `dims` specifies the weights `:λ` or one of the modes (or a list of them)
+and return them in a standardized form.
+"""
+_dims_list(dims::Symbol, N) = _dims_list([dims], N)
+_dims_list(dims::Integer, N) = _dims_list([dims], N)
+function _dims_list(dims, N)
+    # Check dims
+    for d in dims
+        (d === :λ || (d isa Integer && d in 1:N)) || throw(
+            ArgumentError(
+                "dimension must be either :λ or an integer specifying a mode, got $d",
+            ),
+        )
+    end
+
+    # Return standardized forms
+    return (:λ in dims, filter(in(dims), 1:N))
 end
