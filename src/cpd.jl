@@ -132,10 +132,34 @@ function normalizecomps!(
     dims = [:λ; 1:N],
     distribute_to = :λ,
 ) where {T,N}
-    # Put keyword arguments into standard (mask) form
-    dims_λ, dims_U = _dims_mask(dims, N)
-    dist_λ, dist_U = _dims_mask(distribute_to, N)
+    # Check dims and put into standard (mask) form
+    dims_iterable = dims isa Symbol ? (dims,) : dims
+    all(d -> d === :λ || (d isa Integer && d in 1:N), dims_iterable) || throw(
+        ArgumentError(
+            "`dims` must be `:λ`, an integer specifying a mode, or a collection, got $dims",
+        ),
+    )
+    dims_mask = (in(dims_iterable)(:λ), ntuple(in(dims_iterable), N))
 
+    # Check distribute_to and put into standard (mask) form
+    dist_iterable = distribute_to isa Symbol ? (distribute_to,) : distribute_to
+    all(d -> d === :λ || (d isa Integer && d in 1:N), dist_iterable) || throw(
+        ArgumentError(
+            "`distribute_to` must be `:λ`, an integer specifying a mode, or a collection, got $distribute_to",
+        ),
+    )
+    dist_mask = (in(dist_iterable)(:λ), ntuple(in(dist_iterable), N))
+
+    # Call inner function
+    return _normalizecomps!(M, p, dims_mask, dist_mask)
+end
+
+function _normalizecomps!(
+    M::CPD{T,N},
+    p::Real,
+    (dims_λ, dims_U)::Tuple{Bool,NTuple{N,Bool}},
+    (dist_λ, dist_U)::Tuple{Bool,NTuple{N,Bool}},
+) where {T,N}
     # Normalize components and collect excess weight
     excess = ones(T, 1, ncomps(M))
     if dims_λ
@@ -164,26 +188,4 @@ function normalizecomps!(
 
     # Return normalized CPD
     return M
-end
-
-"""
-    _dims_mask(dims, N)
-
-Make sure `dims` specifies the weights `:λ` or one of the modes (or a list of them)
-and return them in a standardized form.
-"""
-function _dims_mask(dims, N)
-    dims_iterable = dims isa Symbol ? (dims,) : dims
-
-    # Check dims
-    for d in dims_iterable
-        (d === :λ || (d isa Integer && d in 1:N)) || throw(
-            ArgumentError(
-                "dimension must be either :λ or an integer specifying a mode, got $d",
-            ),
-        )
-    end
-
-    # Return standardized forms
-    return (:λ in dims_iterable, map(in(dims_iterable), 1:N))
 end
