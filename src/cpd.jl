@@ -132,9 +132,9 @@ function normalizecomps!(
     dims = [:λ; 1:N],
     distribute_to = :λ,
 ) where {T,N}
-    # Put keyword arguments into standard form
-    dims_λ, dims_U = _dims_list(dims, N)
-    dist_λ, dist_U = _dims_list(distribute_to, N)
+    # Put keyword arguments into standard (mask) form
+    dims_λ, dims_U = _dims_mask(dims, N)
+    dist_λ, dist_U = _dims_mask(distribute_to, N)
 
     # Normalize components and collect excess weight
     excess = ones(T, 1, ncomps(M))
@@ -143,19 +143,23 @@ function normalizecomps!(
         M.λ ./= norms
         excess .*= reshape(norms, 1, ncomps(M))
     end
-    for k in dims_U
-        norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
-        M.U[k] ./= norms
-        excess .*= norms
+    for k in Base.OneTo(N)
+        if dims_U[k]
+            norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+            M.U[k] ./= norms
+            excess .*= norms
+        end
     end
 
     # Distribute excess weight (uniformly across specified parts)
-    excess .= excess .^ (1 / (length(dist_U) + (dist_λ ? 1 : 0)))
+    excess .= excess .^ (1 / count((dist_λ, dist_U...)))
     if dist_λ
         M.λ .*= dropdims(excess; dims = 1)
     end
-    for k in dist_U
-        M.U[k] .*= excess
+    for k in Base.OneTo(N)
+        if dist_U[k]
+            M.U[k] .*= excess
+        end
     end
 
     # Return normalized CPD
@@ -163,16 +167,16 @@ function normalizecomps!(
 end
 
 """
-    _dims_list(dims, N)
+    _dims_mask(dims, N)
 
 Make sure `dims` specifies the weights `:λ` or one of the modes (or a list of them)
 and return them in a standardized form.
 """
-_dims_list(dims::Symbol, N) = _dims_list([dims], N)
-_dims_list(dims::Integer, N) = _dims_list([dims], N)
-function _dims_list(dims, N)
+function _dims_mask(dims, N)
+    dims_iterable = dims isa Symbol ? (dims,) : dims
+
     # Check dims
-    for d in dims
+    for d in dims_iterable
         (d === :λ || (d isa Integer && d in 1:N)) || throw(
             ArgumentError(
                 "dimension must be either :λ or an integer specifying a mode, got $d",
@@ -181,5 +185,5 @@ function _dims_list(dims, N)
     end
 
     # Return standardized forms
-    return (:λ in dims, filter(in(dims), 1:N))
+    return (:λ in dims_iterable, map(in(dims_iterable), 1:N))
 end
