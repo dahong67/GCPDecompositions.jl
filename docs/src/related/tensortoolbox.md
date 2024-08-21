@@ -25,11 +25,12 @@
 ### `normalizecomps` v.s. `NORMALIZE` in Tensor Toolbox
 
 - `normalizecomps` does not fix the signs of the weights to be positive.
-- `normalizecomps` supports normalizing any subset of the weight vector and factor matrices
-  with respect to any $\ell_p$ norm
-  and distributing the excess weight into any subset of the weight vector and factor matrices.
-  `NORMALIZE` in Tensor Toolbox only supports a few particular combinations.
-- `normalizecomps!` normalizes the `CPD` in-place wherease `normalizecomps` makes a new copy.
-  `NORMALIZE` in Tensor Toolbox is in-place only.
+- `normalizecomps` supports
+  - normalizing any subset of the weight vector and factor matrices,
+  - with respect to any $\ell_p$ norm, and
+  - distributing the excess weight into any subset of the weight vector and factor matrices.
+- `normalizecomps` comes in two varieties:
+  - `normalizecomps!` normalizes the `CPD` in-place.
+  - `normalizecomps` makes a new copy.
 
 Ref: [`https://gitlab.com/tensors/tensor_toolbox/-/blob/v3.6/@ktensor/normalize.m`](https://gitlab.com/tensors/tensor_toolbox/-/blob/v3.6/@ktensor/normalize.m)
