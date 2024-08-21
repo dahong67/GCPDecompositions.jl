@@ -32,4 +32,4 @@
 - `normalizecomps!` normalizes the `CPD` in-place wherease `normalizecomps` makes a new copy.
   `NORMALIZE` in Tensor Toolbox is in-place only.
 
-Ref: [`https://gitlab.com/tensors/tensor_toolbox/-/blob/4153122dea82ee4e387e4524080282972c2357f9/@ktensor/normalize.m`](https://gitlab.com/tensors/tensor_toolbox/-/blob/4153122dea82ee4e387e4524080282972c2357f9/@ktensor/normalize.m)
+Ref: [`https://gitlab.com/tensors/tensor_toolbox/-/blob/v3.6/@ktensor/normalize.m`](https://gitlab.com/tensors/tensor_toolbox/-/blob/v3.6/@ktensor/normalize.m)
