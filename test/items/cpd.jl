@@ -210,7 +210,7 @@ end
             # Check non-default options
             M = deepcopy(Mback)
             dim_combs = [
-                [(λmask ? [:λ] : []); findall(Umask)] for (Umask..., λmask) in
+                [(λmask ? [:λ] : []); findall(Umask)] for (λmask, Umask...) in
                 Iterators.product(fill((false, true), 1 + ndims(M))...)
             ]
             dim_combs = [:λ; 1:ndims(M); vec(dim_combs); [[2, 1, 2], [:λ, 3, :λ]]]
