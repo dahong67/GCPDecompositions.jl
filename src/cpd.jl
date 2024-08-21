@@ -103,6 +103,7 @@ end
 Normalize the components of `M` so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+Norms equal to zero are ignored (i.e., treated as though they were equal to one).
 
 The following keyword arguments can be used to modify this behavior:
 - `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
@@ -121,6 +122,7 @@ normalizecomps(M::CPD, p::Real = 2; dims = [:λ; 1:ndims(M)], distribute_to = :�
 Normalize the components of `M` in-place so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+Norms equal to zero are ignored (i.e., treated as though they were equal to one).
 
 The following keyword arguments can be used to modify this behavior:
 - `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
@@ -168,16 +170,19 @@ function _normalizecomps!(
     dist_λ::Bool,
     dist_U::NTuple{N,Bool},
 ) where {T,N}
+    # Utility function to handle zero weights and norms
+    zero_to_one(x) = iszero(x) ? oneunit(x) : x
+
     # Normalize components and collect excess weight
     excess = ones(T, 1, ncomps(M))
     if dims_λ
-        norms = map(abs, M.λ)
+        norms = map(zero_to_one ∘ abs, M.λ)
         M.λ ./= norms
         excess .*= reshape(norms, 1, ncomps(M))
     end
     for k in Base.OneTo(N)
         if dims_U[k]
-            norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+            norms = mapslices(zero_to_one ∘ Base.Fix2(norm, p), M.U[k]; dims = 1)
             M.U[k] ./= norms
             excess .*= norms
         end

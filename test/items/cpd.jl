@@ -174,11 +174,12 @@ end
 
 @testitem "normalizecomps" begin
     using LinearAlgebra
+    zero_to_one(x) = iszero(x) ? oneunit(x) : x
 
     @testset "K=$K" for K in 1:3
         T = Float64
         λfull = T[1, 100, 10000]
-        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 2 1], T[1 2 3; 4 5 6; 7 8 9]
+        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 2 0], T[1 2 3; 4 5 6; 7 8 9]
         λ = λfull[1:K]
         U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
 
@@ -194,12 +195,17 @@ end
             # Check factors
             @test all(1:ndims(Mnorm)) do k
                 all(1:ncomps(Mnorm)) do j
-                    return norm(Mnorm.U[k][:, j], p) ≈ 1.0
+                    if iszero(norm(M.U[k][:, j], p))
+                        return iszero(norm(Mnorm.U[k][:, j], p))
+                    else
+                        return norm(Mnorm.U[k][:, j], p) ≈ 1.0
+                    end
                 end
             end
 
             # Check weights
-            scalings = dropdims.(mapslices.(x -> norm(x, p), M.U; dims = 1); dims = 1)
+            scalings =
+                dropdims.(mapslices.(x -> zero_to_one(norm(x, p)), M.U; dims = 1); dims = 1)
             @test Mnorm.λ ≈ M.λ .* reduce(.*, scalings)
 
             # Check in-place version
@@ -223,11 +229,12 @@ end
                     dist_list = distribute_to isa Vector ? distribute_to : [distribute_to]
                     excess = ones(T, 1, ncomps(M))
                     if :λ in dims_list
-                        excess .*= reshape(M.λ, 1, ncomps(M))
+                        excess .*= zero_to_one.(abs.(reshape(M.λ, 1, ncomps(M))))
                     end
                     for k in 1:ndims(M)
                         if k in dims_list
-                            excess .*= mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+                            excess .*=
+                                mapslices(x -> zero_to_one(norm(x, p)), M.U[k]; dims = 1)
                         end
                     end
                     excess .= excess .^ (1 / length(unique(dist_list)))
@@ -235,16 +242,28 @@ end
                     # Check factors
                     @test all(1:ndims(Mnorm)) do k
                         all(1:ncomps(Mnorm)) do j
-                            return norm(Mnorm.U[k][:, j], p) ≈
-                                   (k in dims_list ? one(T) : norm(M.U[k][:, j], p)) *
-                                   (k in dist_list ? excess[j] : one(T))
+                            norm_u = norm(M.U[k][:, j], p)
+                            if iszero(norm_u)
+                                return iszero(norm(Mnorm.U[k][:, j], p))
+                            else
+                                return norm(Mnorm.U[k][:, j], p) ≈
+                                       (k in dims_list ? one(T) : norm_u) *
+                                       (k in dist_list ? excess[j] : one(T))
+                            end
                         end
                     end
 
                     # Check weights
-                    @test abs.(Mnorm.λ) ≈
-                          (:λ in dims_list ? ones(T, ncomps(M)) : abs.(M.λ)) .*
-                          (:λ in dist_list ? vec(excess) : ones(T, ncomps(M)))
+                    @test all(1:ncomps(Mnorm)) do j
+                        norm_λ = abs(M.λ[j])
+                        if iszero(norm_λ)
+                            return iszero(abs(Mnorm.λ[j]))
+                        else
+                            return abs(Mnorm.λ[j]) ≈
+                                   (:λ in dims_list ? one(T) : norm_λ) *
+                                   (:λ in dist_list ? excess[j] : one(T))
+                        end
+                    end
                 end
             end
         end
