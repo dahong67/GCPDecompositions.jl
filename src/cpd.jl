@@ -111,7 +111,7 @@ The following keyword arguments can be used to modify this behavior:
 Valid options for these arguments are the symbol `:λ`, an integer in `1:ndims(M)`,
 or a collection of these.
 
-See also: `normalizecomps!`.
+See also: `normalizecomps!`, `norm`.
 """
 normalizecomps(M::CPD, p::Real = 2; dims = [:λ; 1:ndims(M)], distribute_to = :λ) =
     normalizecomps!(deepcopy(M), p; dims, distribute_to)
@@ -130,7 +130,7 @@ The following keyword arguments can be used to modify this behavior:
 Valid options for these arguments are the symbol `:λ`, an integer in `1:ndims(M)`,
 or a collection of these.
 
-See also: `normalizecomps`.
+See also: `normalizecomps`, `norm`.
 """
 function normalizecomps!(
     M::CPD{T,N},
