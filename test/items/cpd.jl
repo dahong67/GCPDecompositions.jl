@@ -178,7 +178,7 @@ end
 
     @testset "K=$K" for K in 1:3
         T = Float64
-        λfull = T[1, 100, 10000]
+        λfull = T[-1, 100, 10000]
         U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 2 0], T[1 2 3; 4 5 6; 7 8 9]
         λ = λfull[1:K]
         U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
@@ -247,8 +247,8 @@ end
                                 return iszero(norm(Mnorm.U[k][:, j], p))
                             else
                                 return norm(Mnorm.U[k][:, j], p) ≈
-                                       (k in dims_list ? one(T) : norm_u) *
-                                       (k in dist_list ? excess[j] : one(T))
+                                       (k in dims_list ? oneunit(T) : norm_u) *
+                                       (k in dist_list ? excess[j] : oneunit(T))
                             end
                         end
                     end
@@ -260,8 +260,8 @@ end
                             return iszero(abs(Mnorm.λ[j]))
                         else
                             return abs(Mnorm.λ[j]) ≈
-                                   (:λ in dims_list ? one(T) : norm_λ) *
-                                   (:λ in dist_list ? excess[j] : one(T))
+                                   (:λ in dims_list ? oneunit(T) : norm_λ) *
+                                   (:λ in dist_list ? excess[j] : oneunit(T))
                         end
                     end
                 end
