@@ -143,7 +143,8 @@ function normalizecomps!(
             "`dims` must be `:λ`, an integer specifying a mode, or a collection, got $dims",
         ),
     )
-    dims_mask = (in(dims_iterable)(:λ), ntuple(in(dims_iterable), N))
+    dims_λ = :λ in dims_iterable
+    dims_U = ntuple(in(dims_iterable), N)
 
     # Check distribute_to and put into standard (mask) form
     dist_iterable = distribute_to isa Symbol ? (distribute_to,) : distribute_to
@@ -152,17 +153,20 @@ function normalizecomps!(
             "`distribute_to` must be `:λ`, an integer specifying a mode, or a collection, got $distribute_to",
         ),
     )
-    dist_mask = (in(dist_iterable)(:λ), ntuple(in(dist_iterable), N))
+    dist_λ = :λ in dist_iterable
+    dist_U = ntuple(in(dist_iterable), N)
 
     # Call inner function
-    return _normalizecomps!(M, p, dims_mask, dist_mask)
+    return _normalizecomps!(M, p, dims_λ, dims_U, dist_λ, dist_U)
 end
 
 function _normalizecomps!(
     M::CPD{T,N},
     p::Real,
-    (dims_λ, dims_U)::Tuple{Bool,NTuple{N,Bool}},
-    (dist_λ, dist_U)::Tuple{Bool,NTuple{N,Bool}},
+    dims_λ::Bool,
+    dims_U::NTuple{N,Bool},
+    dist_λ::Bool,
+    dist_U::NTuple{N,Bool},
 ) where {T,N}
     # Normalize components and collect excess weight
     excess = ones(T, 1, ncomps(M))
