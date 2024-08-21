@@ -107,6 +107,8 @@ all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 The following keyword arguments can be used to modify this behavior:
 - `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
 - `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+Valid options for these arguments are the symbol `:λ`, an integer in `1:ndims(M)`,
+or a collection of these.
 
 See also: `normalizecomps!`.
 """
@@ -123,6 +125,8 @@ all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 The following keyword arguments can be used to modify this behavior:
 - `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
 - `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+Valid options for these arguments are the symbol `:λ`, an integer in `1:ndims(M)`,
+or a collection of these.
 
 See also: `normalizecomps`.
 """
