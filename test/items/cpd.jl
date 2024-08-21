@@ -206,6 +206,47 @@ end
             normalizecomps!(M, p)
             @test M.λ == Mnorm.λ
             @test M.U == Mnorm.U
+
+            # Check non-default options
+            M = deepcopy(Mback)
+            dim_combs = [
+                [(λmask ? [:λ] : []); findall(Umask)] for (Umask..., λmask) in
+                Iterators.product(fill((false, true), 1 + ndims(M))...)
+            ]
+            dim_combs = [:λ; 1:ndims(M); vec(dim_combs); [[2, 1, 2], [:λ, 3, :λ]]]
+            @testset "dims=$dims" for dims in dim_combs
+                @testset "distribute_to=$distribute_to" for distribute_to in dim_combs
+                    Mnorm = normalizecomps(M, p; dims, distribute_to)
+
+                    # Compute excess weights
+                    dims_list = dims isa Vector ? dims : [dims]
+                    dist_list = distribute_to isa Vector ? distribute_to : [distribute_to]
+                    excess = ones(T, 1, ncomps(M))
+                    if :λ in dims_list
+                        excess .*= reshape(M.λ, 1, ncomps(M))
+                    end
+                    for k in 1:ndims(M)
+                        if k in dims_list
+                            excess .*= mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
+                        end
+                    end
+                    excess .= excess .^ (1 / length(unique(dist_list)))
+
+                    # Check factors
+                    @test all(1:ndims(Mnorm)) do k
+                        all(1:ncomps(Mnorm)) do j
+                            return norm(Mnorm.U[k][:, j], p) ≈
+                                   (k in dims_list ? one(T) : norm(M.U[k][:, j], p)) *
+                                   (k in dist_list ? excess[j] : one(T))
+                        end
+                    end
+
+                    # Check weights
+                    @test abs.(Mnorm.λ) ≈
+                          (:λ in dims_list ? ones(T, ncomps(M)) : abs.(M.λ)) .*
+                          (:λ in dist_list ? vec(excess) : ones(T, ncomps(M)))
+                end
+            end
         end
     end
 end
