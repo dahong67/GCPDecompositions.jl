@@ -209,7 +209,7 @@ end
 Permute the components of `M`.
 `perm` is a vector or a tuple of length `ncomps(M)` specifying the permutation.
 
-See also: `permutecomps!`.
+See also: `permutecomps!`, `sortcomps`, `sortcomps!`.
 """
 permutecomps(M::CPD, perm) = permutecomps!(deepcopy(M), perm)
 
@@ -219,7 +219,7 @@ permutecomps(M::CPD, perm) = permutecomps!(deepcopy(M), perm)
 Permute the components of `M` in-place.
 `perm` is a vector or a tuple of length `ncomps(M)` specifying the permutation.
 
-See also: `permutecomps`.
+See also: `permutecomps`, `sortcomps`, `sortcomps!`.
 """
 permutecomps!(M::CPD, perm) = permutecomps!(M, collect(perm))
 function permutecomps!(M::CPD, perm::Vector)
@@ -237,8 +237,29 @@ function permutecomps!(M::CPD, perm::Vector)
     return M
 end
 
+"""
+    sortcomps(M::CPD; dims=:λ, alg::Algorithm=DEFAULT_UNSTABLE, lt=isless, by=identity, rev::Bool=false, order::Ordering=Reverse)
+
+Sort the components of `M`. `dims` specifies what part to sort by;
+it must be the symbol `:λ`, an integer in `1:ndims(M)`, or a collection of these.
+
+For the remaining keyword arguments, see the documentation of `sort!`.
+
+See also: `sortcomps!`, `sort`, `sort!`.
+"""
 sortcomps(M::CPD; dims = :λ, order::Ordering = Reverse, kwargs...) =
     permutecomps(M, sortperm(_sortvals(M, dims); order, kwargs...))
+
+"""
+    sortcomps!(M::CPD; dims=:λ, alg::Algorithm=DEFAULT_UNSTABLE, lt=isless, by=identity, rev::Bool=false, order::Ordering=Reverse)
+
+Sort the components of `M` in-place. `dims` specifies what part to sort by;
+it must be the symbol `:λ`, an integer in `1:ndims(M)`, or a collection of these.
+
+For the remaining keyword arguments, see the documentation of `sort!`.
+
+See also: `sortcomps`, `sort`, `sort!`.
+"""
 sortcomps!(M::CPD; dims = :λ, order::Ordering = Reverse, kwargs...) =
     permutecomps!(M, sortperm(_sortvals(M, dims); order, kwargs...))
 

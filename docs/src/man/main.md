@@ -13,6 +13,8 @@ normalizecomps
 normalizecomps!
 permutecomps
 permutecomps!
+sortcomps
+sortcomps!
 GCPDecompositions.default_constraints
 GCPDecompositions.default_algorithm
 GCPDecompositions.default_init
