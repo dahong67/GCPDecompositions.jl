@@ -269,3 +269,34 @@ end
         end
     end
 end
+
+@testitem "permutecomps" begin
+    using Combinatorics
+
+    @testset "N=$N, K=$K" for N in 1:3, K in 1:3
+        T = Float64
+        λfull = T[1, 100, 10000]
+        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
+        λ = λfull[1:K]
+        U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
+        M = CPD(λ, U)
+
+        @testset "perm=$perm" for perm in permutations(1:K)
+            Mback = deepcopy(M)
+            Mperm = permutecomps(M, perm)
+
+            # Check for mutation
+            @test M.λ == Mback.λ
+            @test M.U == Mback.U
+
+            # Check weights and factors
+            @test Mperm.λ == M.λ[perm]
+            @test all(k -> Mperm.U[k] == M.U[k][:, perm], 1:ndims(Mperm))
+
+            # Check in-place version
+            permutecomps!(M, perm)
+            @test M.λ == Mperm.λ
+            @test M.U == Mperm.U
+        end
+    end
+end
