@@ -202,3 +202,21 @@ function _normalizecomps!(
     # Return normalized CPD
     return M
 end
+
+permutecomps(M::CPD, perm) = permutecomps!(deepcopy(M), perm)
+
+permutecomps!(M::CPD, perm) = permutecomps!(M, collect(perm))
+function permutecomps!(M::CPD, perm::Vector)
+    # Check that perm is a valid permutation
+    (length(perm) == ncomps(M) && isperm(perm)) ||
+        throw(ArgumentError("`perm` is not a valid permutation of the components"))
+
+    # Permute weights and factor matrices
+    M.λ .= M.λ[perm]
+    for k in Base.OneTo(ndims(M))
+        M.U[k] .= M.U[k][:, perm]
+    end
+
+    # Return CPD with permuted components
+    return M
+end
