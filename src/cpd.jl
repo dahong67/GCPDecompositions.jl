@@ -103,10 +103,18 @@ end
 Normalize the components of `M` so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+Norms equal to zero are ignored (i.e., treated as though they were equal to one).
 
-See also: `normalizecomps!`.
+The following keyword arguments can be used to modify this behavior:
+- `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
+- `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+Valid options for these arguments are the symbol `:λ`, an integer in `1:ndims(M)`,
+or a collection of these.
+
+See also: `normalizecomps!`, `norm`.
 """
-normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
+normalizecomps(M::CPD, p::Real = 2; dims = [:λ; 1:ndims(M)], distribute_to = :λ) =
+    normalizecomps!(deepcopy(M), p; dims, distribute_to)
 
 """
     normalizecomps!(M::CPD, p::Real = 2)
@@ -114,14 +122,83 @@ normalizecomps(M::CPD, p::Real = 2) = normalizecomps!(deepcopy(M), p)
 Normalize the components of `M` in-place so that the columns of all its factor matrices
 all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
 `k ∈ 1:ndims(M)` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+Norms equal to zero are ignored (i.e., treated as though they were equal to one).
 
-See also: `normalizecomps`.
+The following keyword arguments can be used to modify this behavior:
+- `dims` specifies what to normalize (default: `[:λ; 1:ndims(M)]`)
+- `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+Valid options for these arguments are the symbol `:λ`, an integer in `1:ndims(M)`,
+or a collection of these.
+
+See also: `normalizecomps`, `norm`.
 """
-function normalizecomps!(M::CPD{T,N}, p::Real = 2) where {T,N}
-    for k in 1:N
-        norms = mapslices(Base.Fix2(norm, p), M.U[k]; dims = 1)
-        M.U[k] ./= norms
-        M.λ .*= dropdims(norms; dims = 1)
+function normalizecomps!(
+    M::CPD{T,N},
+    p::Real = 2;
+    dims = [:λ; 1:N],
+    distribute_to = :λ,
+) where {T,N}
+    # Check dims and put into standard (mask) form
+    dims_iterable = dims isa Symbol ? (dims,) : dims
+    all(d -> d === :λ || (d isa Integer && d in 1:N), dims_iterable) || throw(
+        ArgumentError(
+            "`dims` must be `:λ`, an integer specifying a mode, or a collection, got $dims",
+        ),
+    )
+    dims_λ = :λ in dims_iterable
+    dims_U = ntuple(in(dims_iterable), N)
+
+    # Check distribute_to and put into standard (mask) form
+    dist_iterable = distribute_to isa Symbol ? (distribute_to,) : distribute_to
+    all(d -> d === :λ || (d isa Integer && d in 1:N), dist_iterable) || throw(
+        ArgumentError(
+            "`distribute_to` must be `:λ`, an integer specifying a mode, or a collection, got $distribute_to",
+        ),
+    )
+    dist_λ = :λ in dist_iterable
+    dist_U = ntuple(in(dist_iterable), N)
+
+    # Call inner function
+    return _normalizecomps!(M, p, dims_λ, dims_U, dist_λ, dist_U)
+end
+
+function _normalizecomps!(
+    M::CPD{T,N},
+    p::Real,
+    dims_λ::Bool,
+    dims_U::NTuple{N,Bool},
+    dist_λ::Bool,
+    dist_U::NTuple{N,Bool},
+) where {T,N}
+    # Utility function to handle zero weights and norms
+    zero_to_one(x) = iszero(x) ? oneunit(x) : x
+
+    # Normalize components and collect excess weight
+    excess = ones(T, 1, ncomps(M))
+    if dims_λ
+        norms = map(zero_to_one ∘ abs, M.λ)
+        M.λ ./= norms
+        excess .*= reshape(norms, 1, ncomps(M))
     end
+    for k in Base.OneTo(N)
+        if dims_U[k]
+            norms = mapslices(zero_to_one ∘ Base.Fix2(norm, p), M.U[k]; dims = 1)
+            M.U[k] ./= norms
+            excess .*= norms
+        end
+    end
+
+    # Distribute excess weight (uniformly across specified parts)
+    excess .= excess .^ (1 / count((dist_λ, dist_U...)))
+    if dist_λ
+        M.λ .*= dropdims(excess; dims = 1)
+    end
+    for k in Base.OneTo(N)
+        if dist_U[k]
+            M.U[k] .*= excess
+        end
+    end
+
+    # Return normalized CPD
     return M
 end

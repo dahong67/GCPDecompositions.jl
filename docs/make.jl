@@ -33,6 +33,10 @@ makedocs(;
                 ) => joinpath("demos", "$(splitext(FILE)[1]).md") for FILE in DEMO_FILES
             ]...,
         ],
+        "Related packages" => [
+            "Tensor Toolbox (MATLAB)" => "related/tensortoolbox.md",
+            "TensorLy (Python)" => "related/tensorly.md",
+        ],
         "Developer Docs" =>
             ["Tensor Kernels" => "dev/kernels.md", "Private functions" => "dev/private.md"],
     ],
