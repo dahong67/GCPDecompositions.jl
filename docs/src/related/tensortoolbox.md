@@ -19,6 +19,7 @@
 | `NORMALIZE(X,'sort',1)` | TODO |
 | `NORMALIZE(X,[],1,I)` | `normalizecomps(X, 1; dims=I)` |
 | `NORMALIZE(X,[],2,I)` | `normalizecomps(X, 2; dims=I)` |
+| `X = ARRANGE(X,P)` where `P` is a permutation | `permutecomps!(X, P)` |
 
 ## Noteworthy differences
 
