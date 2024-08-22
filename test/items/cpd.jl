@@ -283,7 +283,7 @@ end
 
         @testset "perm=$perm" for perm in permutations(1:K)
             Mback = deepcopy(M)
-            Mperm = permutecomps(M, perm)
+            Mperm = permutecomps(M, Tuple(perm))
 
             # Check for mutation
             @test M.λ == Mback.λ
@@ -294,7 +294,7 @@ end
             @test all(k -> Mperm.U[k] == M.U[k][:, perm], 1:ndims(Mperm))
 
             # Check in-place version
-            permutecomps!(M, perm)
+            permutecomps!(M, Tuple(perm))
             @test M.λ == Mperm.λ
             @test M.U == Mperm.U
         end
