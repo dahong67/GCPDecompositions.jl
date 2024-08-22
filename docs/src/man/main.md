@@ -11,6 +11,8 @@ CPD
 ncomps
 normalizecomps
 normalizecomps!
+permutecomps
+permutecomps!
 GCPDecompositions.default_constraints
 GCPDecompositions.default_algorithm
 GCPDecompositions.default_init
