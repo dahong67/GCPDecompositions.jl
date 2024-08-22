@@ -236,3 +236,22 @@ function permutecomps!(M::CPD, perm::Vector)
     # Return CPD with permuted components
     return M
 end
+
+sortcomps(M::CPD; dims = :λ, order::Ordering = Reverse, kwargs...) =
+    permutecomps(M, sortperm(_sortvals(M, dims); order, kwargs...))
+sortcomps!(M::CPD; dims = :λ, order::Ordering = Reverse, kwargs...) =
+    permutecomps!(M, sortperm(_sortvals(M, dims); order, kwargs...))
+
+function _sortvals(M::CPD, dims)
+    # Check dims
+    dims_iterable = dims isa Symbol ? (dims,) : dims
+    all(d -> d === :λ || (d isa Integer && d in 1:ndims(M)), dims_iterable) || throw(
+        ArgumentError(
+            "`dims` must be `:λ`, an integer specifying a mode, or a collection, got $dims",
+        ),
+    )
+
+    # Return vector of values to sort by
+    return dims === :λ ? M.λ :
+           [map(d -> d === :λ ? M.λ[j] : view(M.U[d], :, j), dims) for j in 1:ncomps(M)]
+end
