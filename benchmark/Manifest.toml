@@ -191,7 +191,7 @@ weakdeps = ["StaticArrays"]
     ForwardDiffStaticArraysExt = "StaticArrays"
 
 [[deps.GCPDecompositions]]
-deps = ["ForwardDiff", "IntervalSets", "LBFGSB", "LinearAlgebra"]
+deps = ["Compat", "ForwardDiff", "IntervalSets", "LBFGSB", "LinearAlgebra", "Random"]
 path = ".."
 uuid = "f59fb95b-1bc8-443b-b347-5e445a549f37"
 version = "0.1.2"

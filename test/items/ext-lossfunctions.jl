@@ -9,14 +9,14 @@
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r, L2DistLoss())
+        Mh = gcp(X, r; loss = L2DistLoss())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
 
 # MarginLoss
 @testitem "LossFunctions: MarginLoss" begin
-    using Random
+    using Random, IntervalSets
     using LossFunctions
 
     @testset "size(X)=$sz" for sz in [(15, 20, 25), (30, 40, 50)]
@@ -26,18 +26,21 @@ end
 
         # Compute reference
         Random.seed!(10)
-        Mr = GCPDecompositions._gcp(
+        Mr = gcp(
             X,
-            1,
-            (x, m) -> exp(-x * m),
-            (x, m) -> -x * exp(-x * m),
-            -Inf,
-            (;),
+            1;
+            loss = GCPLosses.UserDefined(
+                (x, m) -> exp(-x * m);
+                deriv = (x, m) -> -x * exp(-x * m),
+                domain = Interval(-Inf, +Inf),
+            ),
+            constraints = (),
+            algorithm = GCPAlgorithms.LBFGSB(),
         )
 
         # Test
         Random.seed!(10)
-        Mh = gcp(X, 1, ExpLoss())
+        Mh = gcp(X, 1; loss = ExpLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end

@@ -13,7 +13,7 @@ append!(
     SETUPS,
     [
         (; size = sz, rank = r, mode = n) for
-        sz in [ntuple(n -> In, 3) for In in 50:50:200], r in 50:50:300, n in 1:3
+        sz in [ntuple(n -> In, 3) for In in 50:50:200], r in [10; 50:50:300], n in 1:3
     ],
 )
 
@@ -31,7 +31,7 @@ append!(
     SETUPS,
     [
         (; size = sz, rank = r, mode = n) for sz in [(30, 100, 1000), (1000, 100, 30)],
-        r in 100:100:300, n in 1:3
+        r in [10; 100:100:300], n in 1:3
     ],
 )
 
@@ -39,9 +39,9 @@ append!(
 for SETUP in SETUPS
     Random.seed!(0)
     X = randn(SETUP.size)
-    U = [randn(In, SETUP.rank) for In in SETUP.size]
+    U = Tuple([randn(In, SETUP.rank) for In in SETUP.size])
     SUITE["size=$(SETUP.size), rank=$(SETUP.rank), mode=$(SETUP.mode)"] = @benchmarkable(
-        GCPDecompositions.mttkrp($X, $U, $(SETUP.mode)),
+        GCPDecompositions.TensorKernels.mttkrp($X, $U, $(SETUP.mode)),
         seconds = 2,
         samples = 5,
     )
