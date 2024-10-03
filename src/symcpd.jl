@@ -60,3 +60,150 @@ function getindex(M::SymCPD{T,N,K}, I::Vararg{Int,N}) where {T,N,K}
     return val
 end
 getindex(M::SymCPD{T,N,K}, I::CartesianIndex{N}) where {T,N,K} = getindex(M, Tuple(I)...)
+
+norm(M::SymCPD, p::Real = 2) =
+    p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
+function norm2(M::SymCPD{T,N,K}) where {T,N,K}
+    V = reduce(.*, M.U[i]'M.U[i] for i in 1:K)
+    return sqrt(abs(M.λ' * V * M.λ))
+end
+
+"""
+    normalizecomps(M::SymCPD, p::Real = 2)
+
+Normalize the components of `M` so that the columns of all its factor matrices
+all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
+`k ∈ 1:K` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+Norms equal to zero are ignored (i.e., treated as though they were equal to one).
+
+The following keyword arguments can be used to modify this behavior:
+- `dims` specifies what to normalize (default: `[:λ; 1:K]`)
+- `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+Valid options for these arguments are the symbol `:λ`, an integer in `1:K`,
+or a collection of these.
+
+See also: `normalizecomps!`, `norm`.
+"""
+normalizecomps(M::SymCPD, p::Real = 2; dims = [:λ; 1:length(M.U)], distribute_to = :λ) =
+    normalizecomps!(deepcopy(M), p; dims, distribute_to)
+
+"""
+    normalizecomps!(M::SymCPD, p::Real = 2)
+
+Normalize the components of `M` in-place so that the columns of all its factor matrices
+all have `p`-norm equal to unity, i.e., `norm(M.U[k][:, j], p) == 1` for all
+`k ∈ 1:K` and `j ∈ 1:ncomps(M)`. The excess weight is absorbed into `M.λ`.
+Norms equal to zero are ignored (i.e., treated as though they were equal to one).
+
+The following keyword arguments can be used to modify this behavior:
+- `dims` specifies what to normalize (default: `[:λ; 1:K]`)
+- `distribute_to` specifies where to distribute the excess weight (default: `:λ`)
+Valid options for these arguments are the symbol `:λ`, an integer in `1:K`,
+or a collection of these.
+
+See also: `normalizecomps`, `norm`.
+"""
+function normalizecomps!(
+    M::SymCPD{T,N,K},
+    p::Real = 2;
+    dims = [:λ; 1:K],
+    distribute_to = :λ,
+) where {T,N,K}
+    # Check dims and put into standard (mask) form
+    dims_iterable = dims isa Symbol ? (dims,) : dims
+    all(d -> d === :λ || (d isa Integer && d in 1:N), dims_iterable) || throw(
+        ArgumentError(
+            "`dims` must be `:λ`, an integer specifying a mode, or a collection, got $dims",
+        ),
+    )
+    dims_λ = :λ in dims_iterable
+    dims_U = ntuple(in(dims_iterable), K)
+
+    # Check distribute_to and put into standard (mask) form
+    dist_iterable = distribute_to isa Symbol ? (distribute_to,) : distribute_to
+    all(d -> d === :λ || (d isa Integer && d in 1:K), dist_iterable) || throw(
+        ArgumentError(
+            "`distribute_to` must be `:λ`, an integer specifying a mode, or a collection, got $distribute_to",
+        ),
+    )
+    dist_λ = :λ in dist_iterable
+    dist_U = ntuple(in(dist_iterable), K)
+
+    # Call inner function
+    return _normalizecomps!(M, p, dims_λ, dims_U, dist_λ, dist_U)
+end
+
+function _normalizecomps!(
+    M::SymCPD{T,N,K},
+    p::Real,
+    dims_λ::Bool,
+    dims_U::NTuple{K,Bool},
+    dist_λ::Bool,
+    dist_U::NTuple{K,Bool},
+) where {T,N}
+    # Utility function to handle zero weights and norms
+    zero_to_one(x) = iszero(x) ? oneunit(x) : x
+
+    # Normalize components and collect excess weight
+    excess = ones(T, 1, ncomps(M))
+    if dims_λ
+        norms = map(zero_to_one ∘ abs, M.λ)
+        M.λ ./= norms
+        excess .*= reshape(norms, 1, ncomps(M))
+    end
+    for k in Base.OneTo(K)
+        if dims_U[k]
+            norms = mapslices(zero_to_one ∘ Base.Fix2(norm, p), M.U[k]; dims = 1)
+            M.U[k] ./= norms
+            excess .*= norms
+        end
+    end
+
+    # Distribute excess weight (uniformly across specified parts)
+    excess .= excess .^ (1 / count((dist_λ, dist_U...)))
+    if dist_λ
+        M.λ .*= dropdims(excess; dims = 1)
+    end
+    for k in Base.OneTo(K)
+        if dist_U[k]
+            M.U[k] .*= excess
+        end
+    end
+
+    # Return normalized SymCPD
+    return M
+end
+
+"""
+    permutecomps(M::SymCPD, perm)
+
+Permute the components of `M`.
+`perm` is a vector or a tuple of length `ncomps(M)` specifying the permutation.
+
+See also: `permutecomps!`.
+"""
+permutecomps(M::SymCPD, perm) = permutecomps!(deepcopy(M), perm)
+
+"""
+    permutecomps!(M::SymCPD, perm)
+
+Permute the components of `M` in-place.
+`perm` is a vector or a tuple of length `ncomps(M)` specifying the permutation.
+
+See also: `permutecomps`.
+"""
+permutecomps!(M::SymCPD, perm) = permutecomps!(M, collect(perm))
+function permutecomps!(M::SymCPD, perm::Vector)
+    # Check that perm is a valid permutation
+    (length(perm) == ncomps(M) && isperm(perm)) ||
+        throw(ArgumentError("`perm` is not a valid permutation of the components"))
+
+    # Permute weights and factor matrices
+    M.λ .= M.λ[perm]
+    for k in Base.OneTo(length(M.U))
+        M.U[k] .= M.U[k][:, perm]
+    end
+
+    # Return CPD with permuted components
+    return M
+end
