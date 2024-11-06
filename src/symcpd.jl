@@ -47,11 +47,18 @@ See also: `ndims`, `size`.
 ncomps(M::SymCPD) = length(M.λ)
 ndims(M::SymCPD) = length(M.S)
 
-size(M::SymCPD{T,N,K}, dim::Integer) where {T,N,K} = dim <= N ? size(M.U[S[dim]], 1) : 1
-size(M::SymCPD{T,N,K}) where {T,N,K} = ntuple(d -> size(M, d), N)
+size(M::SymCPD{T,N,K,Tλ,TU}, dim::Integer) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = dim <= N ? size(M.U[S[dim]], 1) : 1
+size(M::SymCPD{T,N,K,Tλ,TU}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = ntuple(d -> size(M, d), N)
 
 
-function getindex(M::SymCPD{T,N,K}, I::Vararg{Int,N}) where {T,N,K}
+"""
+    ngroups(M::SymCPD)
+
+Return the number of symmetric groups in `M`.
+"""
+ngroups(M::SymCPD) = length(M.U)
+
+function getindex(M::SymCPD{T,N,K,Tλ,TU}, I::Vararg{Int,N}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
     val = zero(eltype(T))
     for j in Base.OneTo(ncomps(M))
@@ -64,7 +71,7 @@ getindex(M::SymCPD{T,N,K}, I::CartesianIndex{N}) where {T,N,K} = getindex(M, Tup
 norm(M::SymCPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
 function norm2(M::SymCPD{T,N,K}) where {T,N,K}
-    V = reduce(.*, M.U[i]'M.U[i] for i in 1:K)
+    V = reduce(.*, M.U[M.S[i]]'M.U[M.S[i]] for i in 1:ndims(M))
     return sqrt(abs(M.λ' * V * M.λ))
 end
 
@@ -111,9 +118,9 @@ function normalizecomps!(
 ) where {T,N,K}
     # Check dims and put into standard (mask) form
     dims_iterable = dims isa Symbol ? (dims,) : dims
-    all(d -> d === :λ || (d isa Integer && d in 1:N), dims_iterable) || throw(
+    all(d -> d === :λ || (d isa Integer && d in 1:K), dims_iterable) || throw(
         ArgumentError(
-            "`dims` must be `:λ`, an integer specifying a mode, or a collection, got $dims",
+            "`dims` must be `:λ`, an integer specifying a group, or a collection, got $dims",
         ),
     )
     dims_λ = :λ in dims_iterable
@@ -123,7 +130,7 @@ function normalizecomps!(
     dist_iterable = distribute_to isa Symbol ? (distribute_to,) : distribute_to
     all(d -> d === :λ || (d isa Integer && d in 1:K), dist_iterable) || throw(
         ArgumentError(
-            "`distribute_to` must be `:λ`, an integer specifying a mode, or a collection, got $distribute_to",
+            "`distribute_to` must be `:λ`, an integer specifying a group, or a collection, got $distribute_to",
         ),
     )
     dist_λ = :λ in dist_iterable
@@ -200,10 +207,22 @@ function permutecomps!(M::SymCPD, perm::Vector)
 
     # Permute weights and factor matrices
     M.λ .= M.λ[perm]
-    for k in Base.OneTo(length(M.U))
+    for k in Base.OneTo(ngroups(M))
         M.U[k] .= M.U[k][:, perm]
     end
 
     # Return CPD with permuted components
     return M
+end
+
+
+"""
+    convertCPD(M::SymCPD)
+
+Create a CPD object from a SymCPD
+
+"""
+function convertCPD(M::SymCPD)
+    # Make a copy of corresponding factor matrix in M for each new factor matrix
+    return CPD(M.λ, Tuple([copy(M.U[S[dim]]) for dim in S]))
 end
