@@ -14,11 +14,13 @@ using Random: default_rng
 # Exports
 export CPD
 export ncomps, normalizecomps, normalizecomps!, permutecomps, permutecomps!
+export SymCPD, convertCPD
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
 include("tensor-kernels.jl")
 include("cpd.jl")
+include("symcpd.jl")
 include("gcp-losses.jl")
 include("gcp-constraints.jl")
 include("gcp-algorithms.jl")

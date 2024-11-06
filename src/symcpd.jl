@@ -19,6 +19,13 @@ struct SymCPD{T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     S::NTuple{N,Int}
     function SymCPD{T,N,K,Tλ,TU}(λ, U, S) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
         Base.require_one_based_indexing(λ, U...)
+        if K > 0
+            minimum([S...]) == 1 && maximum([S...]) <= K || throw(
+                DimensionMismatch(
+                    "Symmetric Groups must be numbered 1,2,... (max N)",
+                ),
+            )
+        end
         for k in Base.OneTo(K)
             size(U[k], 2) == length(λ) || throw(
                 DimensionMismatch(
@@ -47,7 +54,7 @@ See also: `ndims`, `size`.
 ncomps(M::SymCPD) = length(M.λ)
 ndims(M::SymCPD) = length(M.S)
 
-size(M::SymCPD{T,N,K,Tλ,TU}, dim::Integer) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = dim <= N ? size(M.U[S[dim]], 1) : 1
+size(M::SymCPD{T,N,K,Tλ,TU}, dim::Integer) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = dim <= N ? size(M.U[M.S[dim]], 1) : 1
 size(M::SymCPD{T,N,K,Tλ,TU}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = ntuple(d -> size(M, d), N)
 
 
@@ -62,11 +69,14 @@ function getindex(M::SymCPD{T,N,K,Tλ,TU}, I::Vararg{Int,N}) where {T,N,K,Tλ<:A
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
     val = zero(eltype(T))
     for j in Base.OneTo(ncomps(M))
-        val += M.λ[j] * prod(M.U[S[k]][I[k], j] for k in Base.OneTo(ndims(M)))
+        val += M.λ[j] * prod(M.U[M.S[k]][I[k], j] for k in Base.OneTo(ndims(M)))
     end
     return val
 end
 getindex(M::SymCPD{T,N,K}, I::CartesianIndex{N}) where {T,N,K} = getindex(M, Tuple(I)...)
+
+AbstractArray(A::SymCPD) = reshape(TensorKernels.khatrirao(reverse([A.U[A.S[k]] for k in 1:ndims(A)])...) * A.λ, size(A))
+Array(A::SymCPD) = Array(AbstractArray(A))
 
 norm(M::SymCPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
@@ -118,23 +128,23 @@ function normalizecomps!(
 ) where {T,N,K}
     # Check dims and put into standard (mask) form
     dims_iterable = dims isa Symbol ? (dims,) : dims
-    all(d -> d === :λ || (d isa Integer && d in 1:K), dims_iterable) || throw(
+    all(d -> d === :λ || (d isa Integer && d in 1:ngroups(M)), dims_iterable) || throw(
         ArgumentError(
             "`dims` must be `:λ`, an integer specifying a group, or a collection, got $dims",
         ),
     )
     dims_λ = :λ in dims_iterable
-    dims_U = ntuple(in(dims_iterable), K)
+    dims_U = ntuple(in(dims_iterable), ngroups(M))
 
     # Check distribute_to and put into standard (mask) form
     dist_iterable = distribute_to isa Symbol ? (distribute_to,) : distribute_to
-    all(d -> d === :λ || (d isa Integer && d in 1:K), dist_iterable) || throw(
+    all(d -> d === :λ || (d isa Integer && d in 1:ngroups(M)), dist_iterable) || throw(
         ArgumentError(
             "`distribute_to` must be `:λ`, an integer specifying a group, or a collection, got $distribute_to",
         ),
     )
     dist_λ = :λ in dist_iterable
-    dist_U = ntuple(in(dist_iterable), K)
+    dist_U = ntuple(in(dist_iterable), ngroups(M))
 
     # Call inner function
     return _normalizecomps!(M, p, dims_λ, dims_U, dist_λ, dist_U)
@@ -147,7 +157,7 @@ function _normalizecomps!(
     dims_U::NTuple{K,Bool},
     dist_λ::Bool,
     dist_U::NTuple{K,Bool},
-) where {T,N}
+) where {T,N,K}
     # Utility function to handle zero weights and norms
     zero_to_one(x) = iszero(x) ? oneunit(x) : x
 
@@ -158,7 +168,7 @@ function _normalizecomps!(
         M.λ ./= norms
         excess .*= reshape(norms, 1, ncomps(M))
     end
-    for k in Base.OneTo(K)
+    for k in Base.OneTo(ngroups(M))
         if dims_U[k]
             norms = mapslices(zero_to_one ∘ Base.Fix2(norm, p), M.U[k]; dims = 1)
             M.U[k] ./= norms
@@ -171,7 +181,7 @@ function _normalizecomps!(
     if dist_λ
         M.λ .*= dropdims(excess; dims = 1)
     end
-    for k in Base.OneTo(K)
+    for k in Base.OneTo(ngroups(M))
         if dist_U[k]
             M.U[k] .*= excess
         end
@@ -224,5 +234,5 @@ Create a CPD object from a SymCPD
 """
 function convertCPD(M::SymCPD)
     # Make a copy of corresponding factor matrix in M for each new factor matrix
-    return CPD(M.λ, Tuple([copy(M.U[S[dim]]) for dim in S]))
+    return CPD(M.λ, Tuple([copy(M.U[M.S[dim]]) for dim in M.S]))
 end
