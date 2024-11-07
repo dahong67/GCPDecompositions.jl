@@ -85,8 +85,8 @@ end
     end
 
     @test checksym(X, (1, 1, 1)) == true
-    @test checksym(X, (1, 2, 3)) == true 
-    @test checksym(X, (1, 2, 2)) == true  
+    @test checksym(X, (1, 2, 3)) == true
+    @test checksym(X, (1, 2, 2)) == true
     @test checksym(X, (2, 2, 1)) == true
 
     # Partially symmetric

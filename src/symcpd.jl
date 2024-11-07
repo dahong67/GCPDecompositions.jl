@@ -17,13 +17,15 @@ struct SymCPD{T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     λ::Tλ
     U::NTuple{K,TU}
     S::NTuple{N,Int}
-    function SymCPD{T,N,K,Tλ,TU}(λ, U, S) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
+    function SymCPD{T,N,K,Tλ,TU}(
+        λ,
+        U,
+        S,
+    ) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
         Base.require_one_based_indexing(λ, U...)
         if K > 0
             minimum([S...]) == 1 && maximum([S...]) <= K || throw(
-                DimensionMismatch(
-                    "Symmetric Groups must be numbered 1,2,... (max N)",
-                ),
+                DimensionMismatch("Symmetric Groups must be numbered 1,2,... (max N)"),
             )
         end
         for k in Base.OneTo(K)
@@ -41,8 +43,11 @@ struct SymCPD{T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
         return new{T,N,K,Tλ,TU}(λ, U, S)
     end
 end
-SymCPD(λ::Tλ, U::NTuple{K,TU}, S::NTuple{N,Int}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} =
-    SymCPD{T,N,K,Tλ,TU}(λ, U, S)
+SymCPD(
+    λ::Tλ,
+    U::NTuple{K,TU},
+    S::NTuple{N,Int},
+) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = SymCPD{T,N,K,Tλ,TU}(λ, U, S)
 
 """
     ncomps(M::SymCPD)
@@ -54,9 +59,13 @@ See also: `ndims`, `size`.
 ncomps(M::SymCPD) = length(M.λ)
 ndims(M::SymCPD) = length(M.S)
 
-size(M::SymCPD{T,N,K,Tλ,TU}, dim::Integer) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = dim <= N ? size(M.U[M.S[dim]], 1) : 1
-size(M::SymCPD{T,N,K,Tλ,TU}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = ntuple(d -> size(M, d), N)
-
+size(
+    M::SymCPD{T,N,K,Tλ,TU},
+    dim::Integer,
+) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} =
+    dim <= N ? size(M.U[M.S[dim]], 1) : 1
+size(M::SymCPD{T,N,K,Tλ,TU}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} =
+    ntuple(d -> size(M, d), N)
 
 """
     ngroups(M::SymCPD)
@@ -65,7 +74,10 @@ Return the number of symmetric groups in `M`.
 """
 ngroups(M::SymCPD) = length(M.U)
 
-function getindex(M::SymCPD{T,N,K,Tλ,TU}, I::Vararg{Int,N}) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
+function getindex(
+    M::SymCPD{T,N,K,Tλ,TU},
+    I::Vararg{Int,N},
+) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
     val = zero(eltype(T))
     for j in Base.OneTo(ncomps(M))
@@ -75,7 +87,10 @@ function getindex(M::SymCPD{T,N,K,Tλ,TU}, I::Vararg{Int,N}) where {T,N,K,Tλ<:A
 end
 getindex(M::SymCPD{T,N,K}, I::CartesianIndex{N}) where {T,N,K} = getindex(M, Tuple(I)...)
 
-AbstractArray(A::SymCPD) = reshape(TensorKernels.khatrirao(reverse([A.U[A.S[k]] for k in 1:ndims(A)])...) * A.λ, size(A))
+AbstractArray(A::SymCPD) = reshape(
+    TensorKernels.khatrirao(reverse([A.U[A.S[k]] for k in 1:ndims(A)])...) * A.λ,
+    size(A),
+)
 Array(A::SymCPD) = Array(AbstractArray(A))
 
 norm(M::SymCPD, p::Real = 2) =
@@ -224,7 +239,6 @@ function permutecomps!(M::SymCPD, perm::Vector)
     # Return CPD with permuted components
     return M
 end
-
 
 """
     convertCPD(M::SymCPD)

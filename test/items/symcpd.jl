@@ -10,31 +10,32 @@
         U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
 
         # Check type for various orders
-        @test SymCPD{T,0,0,Vector{T},Matrix{T}}(λ, (), ()) isa SymCPD{T,0,0,Vector{T},Matrix{T}}
+        @test SymCPD{T,0,0,Vector{T},Matrix{T}}(λ, (), ()) isa
+              SymCPD{T,0,0,Vector{T},Matrix{T}}
         @test SymCPD(λ, (U1,), (1,)) isa SymCPD{T,1,1,Vector{T},Matrix{T}}
-        @test SymCPD(λ, (U1, U2), (1,2)) isa SymCPD{T,2,2,Vector{T},Matrix{T}}
-        @test SymCPD(λ, (U1, U2, U3), (1,2,3)) isa SymCPD{T,3,3,Vector{T},Matrix{T}}
+        @test SymCPD(λ, (U1, U2), (1, 2)) isa SymCPD{T,2,2,Vector{T},Matrix{T}}
+        @test SymCPD(λ, (U1, U2, U3), (1, 2, 3)) isa SymCPD{T,3,3,Vector{T},Matrix{T}}
 
         # Check requirement of one-based indexing
         O1, O2 = OffsetArray(U1, 0:1, 0:K-1), OffsetArray(U2, 0:0, 0:K-1)
-        @test_throws ArgumentError SymCPD(λ, (O1, O2), (1,2))
+        @test_throws ArgumentError SymCPD(λ, (O1, O2), (1, 2))
 
         # Check dimension matching (for number of components)
-        @test_throws DimensionMismatch SymCPD(λfull, (U1, U2, U3), (1,2,3))
-        @test_throws DimensionMismatch SymCPD(λ, (U1full, U2, U3), (1,2,3))
-        @test_throws DimensionMismatch SymCPD(λ, (U1, U2full, U3), (1,2,3))
-        @test_throws DimensionMismatch SymCPD(λ, (U1, U2, U3full), (1,2,3))
+        @test_throws DimensionMismatch SymCPD(λfull, (U1, U2, U3), (1, 2, 3))
+        @test_throws DimensionMismatch SymCPD(λ, (U1full, U2, U3), (1, 2, 3))
+        @test_throws DimensionMismatch SymCPD(λ, (U1, U2full, U3), (1, 2, 3))
+        @test_throws DimensionMismatch SymCPD(λ, (U1, U2, U3full), (1, 2, 3))
 
         # Check different symmetric cases
-        @test SymCPD(λ, (U1,), (1,1,1)) isa SymCPD{T,3,1,Vector{T},Matrix{T}}
-        @test SymCPD(λ, (U1, U2), (1,2,1)) isa SymCPD{T,3,2,Vector{T},Matrix{T}}
-        @test SymCPD(λ, (U1, U2), (1,1,2)) isa SymCPD{T,3,2,Vector{T},Matrix{T}}
-        @test SymCPD(λ, (U1, U2), (2,1,1)) isa SymCPD{T,3,2,Vector{T},Matrix{T}}
+        @test SymCPD(λ, (U1,), (1, 1, 1)) isa SymCPD{T,3,1,Vector{T},Matrix{T}}
+        @test SymCPD(λ, (U1, U2), (1, 2, 1)) isa SymCPD{T,3,2,Vector{T},Matrix{T}}
+        @test SymCPD(λ, (U1, U2), (1, 1, 2)) isa SymCPD{T,3,2,Vector{T},Matrix{T}}
+        @test SymCPD(λ, (U1, U2), (2, 1, 1)) isa SymCPD{T,3,2,Vector{T},Matrix{T}}
 
         # Check dimension matching for S
-        @test_throws DimensionMismatch SymCPD(λ, (U1, U2), (1,2,3))
-        @test_throws DimensionMismatch SymCPD(λ, (U1, U2), (2,2,2))
-        @test_throws DimensionMismatch SymCPD(λ, (U1, U2), (1,2,3))
+        @test_throws DimensionMismatch SymCPD(λ, (U1, U2), (1, 2, 3))
+        @test_throws DimensionMismatch SymCPD(λ, (U1, U2), (2, 2, 2))
+        @test_throws DimensionMismatch SymCPD(λ, (U1, U2), (1, 2, 3))
     end
 end
 
@@ -43,24 +44,26 @@ end
     U1, U2, U3 = [1 2 3; 4 5 6], [-1 0 1], [1 2 3; 4 5 6; 7 8 9]
 
     @test ncomps(SymCPD(λ, (U1,), (1,))) ==
-          ncomps(SymCPD(λ, (U1, U2), (1,2))) ==
-          ncomps(SymCPD(λ, (U1, U2, U3), (1,2,3,3))) ==
-          ncomps(SymCPD(λ, (U1, U2, U3), (2,1,1,2,3))) ==
+          ncomps(SymCPD(λ, (U1, U2), (1, 2))) ==
+          ncomps(SymCPD(λ, (U1, U2, U3), (1, 2, 3, 3))) ==
+          ncomps(SymCPD(λ, (U1, U2, U3), (2, 1, 1, 2, 3))) ==
           3
     @test ncomps(SymCPD(λ[1:2], (U1[:, 1:2],), (1,))) ==
-          ncomps(SymCPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2]), (1,2))) ==
-          ncomps(SymCPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2], U3[:, 1:2]), (1,2,3))) ==
-          ncomps(SymCPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2], U3[:, 1:2]), (3,1,1,2,3))) 
-          2
+          ncomps(SymCPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2]), (1, 2))) ==
+          ncomps(SymCPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2], U3[:, 1:2]), (1, 2, 3))) ==
+          ncomps(SymCPD(λ[1:2], (U1[:, 1:2], U2[:, 1:2], U3[:, 1:2]), (3, 1, 1, 2, 3)))
+    2
     @test ncomps(SymCPD(λ[1:1], (U1[:, 1:1],), (1,))) ==
-          ncomps(SymCPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1]), (1,2))) ==
-          ncomps(SymCPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1], U3[:, 1:1]), (1,2,3))) ==
-          ncomps(SymCPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1], U3[:, 1:1]), (3,1,1,2,3,1)))
-          1
+          ncomps(SymCPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1]), (1, 2))) ==
+          ncomps(SymCPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1], U3[:, 1:1]), (1, 2, 3))) ==
+          ncomps(SymCPD(λ[1:1], (U1[:, 1:1], U2[:, 1:1], U3[:, 1:1]), (3, 1, 1, 2, 3, 1)))
+    1
     @test ncomps(SymCPD(λ[1:0], (U1[:, 1:0],), (1,))) ==
-          ncomps(SymCPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0]), (1,2))) ==
-          ncomps(SymCPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0], U3[:, 1:0]), (1,2,3))) ==
-          ncomps(SymCPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0], U3[:, 1:0]), (1,2,3,2,2,2))) ==
+          ncomps(SymCPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0]), (1, 2))) ==
+          ncomps(SymCPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0], U3[:, 1:0]), (1, 2, 3))) ==
+          ncomps(
+              SymCPD(λ[1:0], (U1[:, 1:0], U2[:, 1:0], U3[:, 1:0]), (1, 2, 3, 2, 2, 2)),
+          ) ==
           0
 end
 
@@ -70,10 +73,10 @@ end
 
     @test ndims(SymCPD{Int,0,0,Vector{Int},Matrix{Int}}(λ, (), ())) == 0
     @test ndims(SymCPD(λ, (U1,), (1,))) == 1
-    @test ndims(SymCPD(λ, (U1, U2), (1,2))) == 2
-    @test ndims(SymCPD(λ, (U1, U2, U3), (1,2,3))) == 3
-    @test ndims(SymCPD(λ, (U1, U2), (1,2,2))) == 3
-    @test ndims(SymCPD(λ, (U1,), (1,1,1))) == 3
+    @test ndims(SymCPD(λ, (U1, U2), (1, 2))) == 2
+    @test ndims(SymCPD(λ, (U1, U2, U3), (1, 2, 3))) == 3
+    @test ndims(SymCPD(λ, (U1, U2), (1, 2, 2))) == 3
+    @test ndims(SymCPD(λ, (U1,), (1, 1, 1))) == 3
 end
 
 @testitem "size" begin
@@ -81,10 +84,11 @@ end
     U1, U2, U3 = [1 2 3; 4 5 6], [-1 0 1], [1 2 3; 4 5 6; 7 8 9]
 
     @test size(SymCPD(λ, (U1,), (1,))) == (size(U1, 1),)
-    @test size(SymCPD(λ, (U1, U2), (1,2))) == (size(U1, 1), size(U2, 1))
-    @test size(SymCPD(λ, (U1, U2, U3), (1,2,3))) == (size(U1, 1), size(U2, 1), size(U3, 1))
+    @test size(SymCPD(λ, (U1, U2), (1, 2))) == (size(U1, 1), size(U2, 1))
+    @test size(SymCPD(λ, (U1, U2, U3), (1, 2, 3))) ==
+          (size(U1, 1), size(U2, 1), size(U3, 1))
 
-    M = SymCPD(λ, (U1, U2, U3), (1,2,3,3))
+    M = SymCPD(λ, (U1, U2, U3), (1, 2, 3, 3))
     @test size(M, 1) == 2
     @test size(M, 2) == 1
     @test size(M, 3) == 3
@@ -100,7 +104,7 @@ end
         λ = λfull[1:K]
         U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
 
-        M = SymCPD(λ, (U1, U2, U3), (1,2,3))
+        M = SymCPD(λ, (U1, U2, U3), (1, 2, 3))
         for i1 in axes(U1, 1), i2 in axes(U2, 1), i3 in axes(U3, 1)
             Mi = sum(λ .* U1[i1, :] .* U2[i2, :] .* U3[i3, :])
             @test Mi == M[i1, i2, i3]
@@ -110,7 +114,7 @@ end
         @test_throws BoundsError M[1, size(U2, 1)+1, 1]
         @test_throws BoundsError M[1, 1, size(U3, 1)+1]
 
-        M = SymCPD(λ, (U1, U2), (1,2))
+        M = SymCPD(λ, (U1, U2), (1, 2))
         for i1 in axes(U1, 1), i2 in axes(U2, 1)
             Mi = sum(λ .* U1[i1, :] .* U2[i2, :])
             @test Mi == M[i1, i2]
@@ -128,7 +132,7 @@ end
         @test_throws BoundsError M[size(U1, 1)+1]
 
         # Symmetric cases
-        M = SymCPD(λ, (U3,), (1,1,1))
+        M = SymCPD(λ, (U3,), (1, 1, 1))
         for i1 in axes(U3, 1), i2 in axes(U3, 1), i3 in axes(U3, 1)
             Mi = sum(λ .* U3[i1, :] .* U3[i2, :] .* U3[i3, :])
             @test Mi == M[i1, i2, i3]
@@ -138,7 +142,7 @@ end
         @test_throws BoundsError M[1, size(U3, 1)+1, 1]
         @test_throws BoundsError M[1, 1, size(U3, 1)+1]
 
-        M = SymCPD(λ, (U2, U3), (1,2,1))
+        M = SymCPD(λ, (U2, U3), (1, 2, 1))
         for i1 in axes(U2, 1), i2 in axes(U3, 1), i3 in axes(U2, 1)
             Mi = sum(λ .* U2[i1, :] .* U3[i2, :] .* U2[i3, :])
             @test Mi == M[i1, i2, i3]
@@ -157,7 +161,7 @@ end
         U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
         λ = λfull[1:K]
         U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
-        M = SymCPD(λ, U, (1,2,3)[1:N])
+        M = SymCPD(λ, U, (1, 2, 3)[1:N])
 
         X = Array(M)
         @test all(I -> M[I] == X[I], CartesianIndices(X))
@@ -168,11 +172,11 @@ end
     λ = T[1, 100, 10000]
     U1, U2 = T[1 2 3; 4 5 6], T[1 2 3; 4 5 6; 7 8 9]
 
-    M = SymCPD(λ, (U1,), (1,1,1))
+    M = SymCPD(λ, (U1,), (1, 1, 1))
     X = Array(M)
     @test all(I -> M[I] == X[I], CartesianIndices(X))
 
-    M = SymCPD(λ, (U1, U2), (1,2,1))
+    M = SymCPD(λ, (U1, U2), (1, 2, 1))
     X = Array(M)
     @test all(I -> M[I] == X[I], CartesianIndices(X))
 end
@@ -187,7 +191,7 @@ end
         λ = λfull[1:K]
         U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
 
-        M = SymCPD(λ, (U1, U2, U3), (1,2,3))
+        M = SymCPD(λ, (U1, U2, U3), (1, 2, 3))
         @test norm(M) ==
               norm(M, 2) ==
               sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
@@ -195,7 +199,7 @@ end
         @test norm(M, 3) ==
               (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
 
-        M = SymCPD(λ, (U1, U2), (1,2))
+        M = SymCPD(λ, (U1, U2), (1, 2))
         @test norm(M) ==
               norm(M, 2) ==
               sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
@@ -212,7 +216,7 @@ end
               (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
 
         # Symmetric Cases
-        M = SymCPD(λ, (U1,), (1,1,1))
+        M = SymCPD(λ, (U1,), (1, 1, 1))
         @test norm(M) ==
               norm(M, 2) ==
               sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
@@ -220,7 +224,7 @@ end
         @test norm(M, 3) ==
               (sum(m -> abs(m)^3, M[I] for I in CartesianIndices(size(M))))^(1 / 3)
 
-        M = SymCPD(λ, (U1, U2), (1,2,1))
+        M = SymCPD(λ, (U1, U2), (1, 2, 1))
         @test norm(M) ==
               norm(M, 2) ==
               sqrt(sum(abs2, M[I] for I in CartesianIndices(size(M))))
@@ -242,7 +246,7 @@ end
         U1, U2, U3 = U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K]
 
         @testset "p=$p" for p in [1, 2, Inf]
-            M = SymCPD(λ, (U1, U2, U3), (1,2,3))
+            M = SymCPD(λ, (U1, U2, U3), (1, 2, 3))
             Mback = deepcopy(M)
             Mnorm = normalizecomps(M, p)
 
@@ -337,7 +341,7 @@ end
         U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
         λ = λfull[1:K]
         U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
-        M = SymCPD(λ, U, (1,2,3)[1:N])
+        M = SymCPD(λ, U, (1, 2, 3)[1:N])
 
         @testset "perm=$perm" for perm in permutations(1:K)
             Mback = deepcopy(M)
@@ -363,20 +367,19 @@ end
     λ = [1, 100, 10000]
     U1, U2, = [1 2 3; 4 5 6], [1 2 3; 4 5 6; 7 8 9]
 
-    M_symcpd = SymCPD(λ, (U1, U2), (1,2,1))
+    M_symcpd = SymCPD(λ, (U1, U2), (1, 2, 1))
     M_cpd = convertCPD(M_symcpd)
 
     @test ncomps(M_symcpd) == ncomps(M_cpd)
     @test ndims(M_symcpd) == ndims(M_cpd)
     @test size(M_symcpd) == size(M_cpd)
-    
+
     print(size(M_symcpd))
     for i in Base.OneTo(size(M_symcpd)[1])
         for j in Base.OneTo(size(M_symcpd)[2])
             for k in Base.OneTo(size(M_symcpd)[3])
-                @test M_symcpd[i,j,k] == M_cpd[i,j,k]
+                @test M_symcpd[i, j, k] == M_cpd[i, j, k]
             end
         end
     end
-    
 end
