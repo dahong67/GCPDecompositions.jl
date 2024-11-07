@@ -15,6 +15,7 @@ using Random: default_rng
 export CPD
 export ncomps, normalizecomps, normalizecomps!, permutecomps, permutecomps!
 export SymCPD, convertCPD
+export checksym
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
