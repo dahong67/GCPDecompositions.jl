@@ -14,7 +14,7 @@ using Random: default_rng
 # Exports
 export CPD
 export ncomps, normalizecomps, normalizecomps!, permutecomps, permutecomps!
-export SymCPD, convertCPD
+export SymCPD, convertCPD, ngroups
 export checksym
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
@@ -64,6 +64,18 @@ gcp(
     algorithm = default_algorithm(X, r, loss, constraints),
     init = default_init(X, r, loss, constraints, algorithm),
 ) = GCPAlgorithms._gcp(X, r, loss, constraints, algorithm, init)
+
+
+symgcp(
+    X::Array,
+    r,
+    S::NTuple{N,Int};
+    sym_data_eps = 1e-10,
+    loss = GCPLosses.LeastSquares(),
+    constraints = default_constraints(loss),
+    algorithm = default_algorithm(X, r, loss, constraints),
+    init = default_init_sym(X, r, loss, constraints, algorithm, S),
+) where {N} = GCPAlgorithms._symgcp(X, r, S, sym_data_eps, loss, constraints, algorithm, init)
 
 # Defaults
 
@@ -121,6 +133,32 @@ function default_init(rng, X, r, loss, constraints, algorithm)
     Xnorm = sqrt(sum(abs2, skipmissing(X)))
     for k in Base.OneTo(N)
         M.U[k] .*= (Xnorm / Mnorm)^(1 / N)
+    end
+
+    return M
+end
+
+"""
+    default_init_sym([rng=default_rng()], X, r, loss, constraints, algorithm, S)
+
+Return a default initialization for symmetric gcp for the data tensor `X`, rank `r`,
+loss function `loss`, tuple of constraints `constraints`, and
+algorithm `algorithm`, using the random number generator `rng` if needed.
+"""
+default_init_sym(X, r, loss, constraints, algorithm, S) = 
+    default_init_sym(default_rng(), X, r, loss, constraints, algorithm, S)
+function default_init_sym(rng, X, r, loss, constraints, algorithm, S)
+    # Generate SymCPD with random factors
+    T, K = nonmissingtype(eltype(X)), maximum(S)
+    T = promote_type(T, Float64)
+    sym_modes = [findall(S .== group_idx)[1] for group_idx in unique(S)]
+    M = SymCPD(ones(T, r), rand.(rng, T, size(X)[sym_modes], r), S)
+
+    # Normalize
+    Mnorm = norm(M)
+    Xnorm = sqrt(sum(abs2, skipmissing(X)))
+    for k in Base.OneTo(K)
+        M.U[k] .*= (Xnorm / Mnorm)^(1 / K)
     end
 
     return M

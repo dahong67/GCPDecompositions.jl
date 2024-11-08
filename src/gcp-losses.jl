@@ -6,7 +6,7 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!
+using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, checksym
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal
 import ForwardDiff
@@ -63,6 +63,16 @@ function objective(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
 end
 
 """
+    objective(M::SymCPD, X::AbstractArray, loss)
+
+Compute the GCP objective function for the symmetric model tensor `M`, data tensor `X`,
+and loss function `loss`.
+"""
+function objective(M::SymCPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
+    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
+end
+
+"""
     grad_U!(GU, M::CPD, X::AbstractArray, loss)
 
 Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])`
@@ -83,6 +93,48 @@ function grad_U!(
     for k in 1:N
         rmul!(GU[k], Diagonal(M.λ))
     end
+    return GU
+end
+
+"""
+    grad_U!(GU, M::SymCPD, X::AbstractArray, loss)
+
+Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])`
+for the model tensor `M`, data tensor `X`, and loss function `loss`, and store
+the result in `GU = (GU[1],...,GU[N])`.
+"""
+function grad_U!(
+    GU::NTuple{K,TGU},
+    M::SymCPD{T,N,K},
+    X::Array{TX,N},
+    loss,
+    sym_data,
+) where {T,TX,N,K,TGU<:AbstractMatrix{T}}
+    Y = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
+        I in CartesianIndices(X)
+    ]
+
+    for j in 1:K
+        if sym_data
+            mttkrp!(GU[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
+        else
+            for (index, mode) in enumerate(findall(M.S .== j))
+                if index == 1
+                    mttkrp!(GU[j], Y, tuple([M.U[k] for k in M.S]...), mode)
+                else
+                    added_factor = similar(GU[j])
+                    mttkrp!(added_factor, Y, tuple([M.U[k] for k in M.S]...), mode)
+                    GU = (GU[1:j-1]..., GU[j] + added_factor, GU[j+1:end]...)
+                end
+            end
+        end
+    end
+
+    for j in 1:K
+        rmul!(GU[j], Diagonal(M.λ))
+    end
+
     return GU
 end
 

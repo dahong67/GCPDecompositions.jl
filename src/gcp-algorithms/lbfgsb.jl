@@ -85,3 +85,65 @@ function _gcp(
     U = map(range -> reshape(u[range], :, r), vec_ranges)
     return CPD(ones(T, r), U)
 end
+
+function _symgcp(
+    X::Array{TX,N},
+    r,
+    S::NTuple{N,Int},
+    sym_data_eps,
+    loss,
+    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
+    algorithm::GCPAlgorithms.LBFGSB,
+    init,
+) where {TX,N}
+    # T = promote_type(nonmissingtype(TX), Float64)
+    T = Float64    # LBFGSB.jl seems to only support Float64
+
+    # Compute lower bound from constraints
+    lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
+
+    # Error for unsupported loss/constraint combinations
+    dom = GCPLosses.domain(loss)
+    if dom == Interval(-Inf, +Inf)
+        lower in (-Inf, 0.0) || error(
+            "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
+        )
+    elseif dom == Interval(0.0, +Inf)
+        lower == 0.0 || error(
+            "only lower bound constraints of `0` are (currently) supported for loss functions with a domain of `0 .. Inf`",
+        )
+    else
+        error(
+            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
+        )
+    end
+
+    # Initialization
+    M0 = deepcopy(init)
+    u0 = vcat(vec.(M0.U)...)
+    K = ngroups(M0)
+
+    # Check if data is symmetric (if it is, gradients can be simplified)
+    sym_data = checksym(X, S, sym_data_eps)
+
+    # Setup vectorized objective function and gradient
+    vec_cutoffs = (0, cumsum(r .* tuple([size(M0.U[k])[1] for k in 1:K]...))...)
+    vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(K))
+    function f(u)
+        U = map(range -> reshape(view(u, range), :, r), vec_ranges)  # Change
+        return GCPLosses.objective(SymCPD(ones(T, r), U, S), X, loss)
+    end
+
+    function g!(gu, u)
+        U = map(range -> reshape(view(u, range), :, r), vec_ranges)
+        GU = map(range -> reshape(view(gu, range), :, r), vec_ranges)
+        GCPLosses.grad_U!(GU, SymCPD(ones(T, r), U, S), X, loss, sym_data)
+        return gu
+    end
+
+    # Run LBFGSB
+    lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
+    u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
+    U = map(range -> reshape(u[range], :, r), vec_ranges)
+    return SymCPD(ones(T, r), U, S)
+end
