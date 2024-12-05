@@ -34,7 +34,7 @@ function _gcp(
             V = reduce(.*, M.U[i]'M.U[i] for i in setdiff(1:N, n))
             mttkrp!(M.U[n], X, M.U, n, mttkrp_buffers[n])
             rdiv!(M.U[n], lu!(V))
-            M.λ .= norm.(eachcol(M.U[n]))
+            M.λ .= vec(sqrt.(sum(abs2, U[n]; dims=1)))
             M.U[n] ./= permutedims(M.λ)
         end
     end
