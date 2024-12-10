@@ -6,7 +6,7 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, checksym
+using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, checksym, khatrirao
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal
 import ForwardDiff
@@ -97,46 +97,52 @@ function grad_U!(
 end
 
 """
-    grad_U!(GU, M::SymCPD, X::AbstractArray, loss)
+    grad_U_λ!(GU, M::SymCPD, X::AbstractArray, loss)
 
-Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])`
-for the model tensor `M`, data tensor `X`, and loss function `loss`, and store
-the result in `GU = (GU[1],...,GU[N])`.
+Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])` and the 
+weights `λ` for the model tensor `M`, data tensor `X`, and loss function `loss`, and store
+the result in `GU_λ = (GU[1],...,GU[K], Gλ)`.
 """
-function grad_U!(
-    GU::NTuple{K,TGU},
+function grad_U_λ!(
+    GU_λ::Tuple,
     M::SymCPD{T,N,K},
     X::Array{TX,N},
     loss,
     sym_data,
-) where {T,TX,N,K,TGU<:AbstractMatrix{T}}
+) where {T,TX,N,K}
     Y = [
         ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
         I in CartesianIndices(X)
     ]
 
+    # Factor matrix gradients
     for j in 1:K
         if sym_data
-            mttkrp!(GU[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
-            rmul!(GU[j], count(M.S .== j))
+            mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
+            rmul!(GU_λ[j], count(M.S .== j))
         else
             for (index, mode) in enumerate(findall(M.S .== j))
-                if index == 1
-                    mttkrp!(GU[j], Y, tuple([M.U[k] for k in M.S]...), mode)
-                else
-                    added_factor = similar(GU[j])
+                if index == 1  # Overwrite
+                    mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), mode)
+                else  # Add in-place
+                    added_factor = similar(GU_λ[j])
                     mttkrp!(added_factor, Y, tuple([M.U[k] for k in M.S]...), mode)
-                    GU = (GU[1:j-1]..., GU[j] + added_factor, GU[j+1:end]...)
+                    GU_λ[j] .= GU_λ[j] + added_factor
+                    #GU_λ = (GU_λ[1:j-1]..., GU_λ[j] + added_factor, GU_λ[j+1:end]...)
                 end
             end
         end
+        rmul!(GU_λ[j], Diagonal(M.λ))
     end
+    
+    #for j in 1:K
+    #    rmul!(GU_λ[j], Diagonal(M.λ))
+    #end
 
-    for j in 1:K
-        rmul!(GU[j], Diagonal(M.λ))
-    end
+    # Weights gradient
+    GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
 
-    return GU
+    return GU_λ
 end
 
 # Statistically motivated losses

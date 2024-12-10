@@ -48,6 +48,7 @@ SymCPD(
     U::NTuple{K,TU},
     S::NTuple{N,Int},
 ) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = SymCPD{T,N,K,Tλ,TU}(λ, U, S)
+SymCPD(M_cpd::CPD) = SymCPD(M_cpd)
 
 """
     ncomps(M::SymCPD)
@@ -248,5 +249,5 @@ Create a CPD object from a SymCPD
 """
 function convertCPD(M::SymCPD)
     # Make a copy of corresponding factor matrix in M for each new factor matrix
-    return CPD(M.λ, Tuple([copy(M.U[M.S[dim]]) for dim in M.S]))
+    return CPD(deepcopy(M.λ), Tuple([deepcopy(M.U[M.S[dim]]) for dim in M.S]))
 end

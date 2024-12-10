@@ -120,30 +120,37 @@ function _symgcp(
 
     # Initialization
     M0 = deepcopy(init)
-    u0 = vcat(vec.(M0.U)...)
+    u_λ_0 = vcat(vec.(M0.U)..., M0.λ)
     K = ngroups(M0)
 
     # Check if data is symmetric (if it is, gradients can be simplified)
-    sym_data = checksym(X, S, sym_data_eps)
+    #sym_data = checksym(X, S, sym_data_eps)
+    sym_data = false
 
     # Setup vectorized objective function and gradient
-    vec_cutoffs = (0, cumsum(r .* tuple([size(M0.U[k])[1] for k in 1:K]...))...)
-    vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(K))
-    function f(u)
-        U = map(range -> reshape(view(u, range), :, r), vec_ranges)  # Change
-        return GCPLosses.objective(SymCPD(ones(T, r), U, S), X, loss)
+    vec_cutoffs = (0, (cumsum(r .* tuple([size(M0.U[k])[1] for k in 1:K]...))...), sum((length(M0.U[k]) for k in 1:K)) + r)
+    vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(K+1))
+    function f(u_λ)
+        U = map(range -> reshape(view(u_λ, range), :, r), vec_ranges[1:length(vec_ranges)-1])
+        λ = view(u_λ, vec_ranges[length(vec_ranges)])
+        return GCPLosses.objective(SymCPD(λ, U, S), X, loss)
     end
 
-    function g!(gu, u)
-        U = map(range -> reshape(view(u, range), :, r), vec_ranges)
-        GU = map(range -> reshape(view(gu, range), :, r), vec_ranges)
-        GCPLosses.grad_U!(GU, SymCPD(ones(T, r), U, S), X, loss, sym_data)
-        return gu
+    function g!(gu_λ, u_λ)
+        U = map(range -> reshape(view(u_λ, range), :, r), vec_ranges[1:length(vec_ranges)-1])
+        λ = view(u_λ, vec_ranges[length(vec_ranges)])
+        GU = map(range -> reshape(view(gu_λ, range), :, r), vec_ranges[1:length(vec_ranges)-1])
+        Gλ = view(gu_λ, vec_ranges[length(vec_ranges)])
+        GCPLosses.grad_U_λ!((GU..., Gλ), SymCPD(λ, U, S), X, loss, sym_data)
+        return gu_λ
     end
 
     # Run LBFGSB
     lbfgsopts = (; (pn => getproperty(algorithm, pn) for pn in propertynames(algorithm))...)
-    u = lbfgsb(f, g!, u0; lb = fill(lower, length(u0)), lbfgsopts...)[2]
-    U = map(range -> reshape(u[range], :, r), vec_ranges)
-    return SymCPD(ones(T, r), U, S)
+    u_λ = lbfgsb(f, g!, u_λ_0; lb = fill(lower, length(u_λ_0)), lbfgsopts...)[2]
+
+    U = map(range -> reshape(u_λ[range], :, r), vec_ranges[1:length(vec_ranges)-1])
+    λ = u_λ[vec_ranges[length(vec_ranges)]]
+
+    return SymCPD(λ, U, S)
 end

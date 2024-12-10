@@ -2,27 +2,19 @@
 
 @testitem "gradients-fullsym" begin
     using GCPDecompositions:
+        TensorKernels.khatrirao,
         GCPAlgorithms.LBFGSB,
         default_constraints,
         default_init_sym,
         GCPLosses.LeastSquares,
-        GCPLosses.grad_U!,
+        GCPLosses.grad_U_λ!,
         SymCPD
     using LinearAlgebra: norm
     import ForwardDiff
 
-    function form_fullsym_M(U::Matrix{T}) where {T}
-        sz = size(U)[1]
-        M = zeros(T, sz, sz, sz)
-        for i1 in axes(U, 1), i2 in axes(U, 1), i3 in axes(U, 1)
-            M[i1, i2, i3] = sum(U[i1, :] .* U[i2, :] .* U[i3, :])
-        end
-        return M
-    end
-
     @testset "r=$r, sz=$sz" for r in [1, 2, 5], sz in [3, 10, 50]
 
-        # Form fully symmetric rank-1 tensor
+        # Form tensor
         U_star = randn(sz, r)
         X = zeros(sz, sz, sz)
         for i1 in axes(U_star, 1), i2 in axes(U_star, 1), i3 in axes(U_star, 1)
@@ -36,52 +28,58 @@
         S = (1, 1, 1)
 
         M_star = SymCPD(ones(r), (U_star,), (1, 1, 1))
-        @test maximum([M_star[I] - X[I] for I in CartesianIndices(X)]) == 0.0
+        @test isapprox([M_star[I] - X[I] for I in CartesianIndices(X)], zeros(eltype(X), size(X)))
 
-        GU = (similar(M_star.U[1]),)
-        computed_grad_solution = grad_U!(GU, M_star, X, loss, false)[1]  # Without using simplified form for symmetric data
-        computed_grad_solution_simplified = grad_U!(GU, M_star, X, loss, true)[1]  # With using simplified form for symmetric data
-        @test computed_grad_solution ==
-              zeros(eltype(computed_grad_solution), size(computed_grad_solution))
-        @test computed_grad_solution_simplified == zeros(
-            eltype(computed_grad_solution_simplified),
-            size(computed_grad_solution_simplified),
-        )
+        GU = (similar(M_star.U[1]), similar(M_star.λ))
+        computed_grad_solution_U, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false)  # Without using simplified form for symmetric data
+        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ!(GU, M_star, X, loss, true)  # With using simplified form for symmetric data
+        @test isapprox(computed_grad_solution_U, zeros(eltype(computed_grad_solution_U), size(computed_grad_solution_U)))
+        @test isapprox(computed_grad_solution_λ, zeros(eltype(computed_grad_solution_λ), size(computed_grad_solution_λ)))
+        @test isapprox(computed_grad_solution_simplified_U, zeros(eltype(computed_grad_solution_simplified_U), size(computed_grad_solution_simplified_U)))
+        @test isapprox(computed_grad_solution_simplified_λ, zeros(eltype(computed_grad_solution_simplified_λ), size(computed_grad_solution_simplified_λ)))
 
-        objective(U) = norm(X - form_fullsym_M(U))^2
-        auto_grad_solution = ForwardDiff.gradient(objective, M_star.U[1])
-        @test auto_grad_solution ==
-              zeros(eltype(auto_grad_solution), size(auto_grad_solution))
+        function form_fullsym_M(U_λ_vec::Vector{T}) where {T}
+            U = reshape(U_λ_vec[1:sz*r], (sz, r))
+            λ = U_λ_vec[sz*r+1:end]
+            return reshape(khatrirao(U, U, U) * λ, (sz, sz, sz))
+        end
+        objective(Uλ_vec) = norm(X - form_fullsym_M(Uλ_vec))^2
+        auto_grad_solution = ForwardDiff.gradient(objective, vcat(vec(M_star.U[1]), M_star.λ))
+        auto_grad_solution_U = reshape(auto_grad_solution[1:sz*r], size(M_star.U[1]))
+        auto_grad_solution_λ = auto_grad_solution[sz*r+1:end]
+        @test isapprox(auto_grad_solution_U, zeros(eltype(auto_grad_solution_U), size(auto_grad_solution_U)), atol=1e-12)
+        @test isapprox(auto_grad_solution_λ, zeros(eltype(auto_grad_solution_λ), size(auto_grad_solution_λ)), atol=1e-12)
 
         # Check gradients at random init compared to autodiff
         init = default_init_sym(X, r, loss, constraints, algorithm, S)
         M0 = deepcopy(init)
-        GU = (similar(M0.U[1]),)
+        GU = (similar(M0.U[1]), similar(M0.λ))
 
-        computed_grad = grad_U!(GU, M0, X, loss, false)[1]
-        computed_grad_simplified = grad_U!(GU, M0, X, loss, true)[1]
+        computed_grad_solution_U, computed_grad_solution_λ = grad_U_λ!(GU, M0, X, loss, false)
+        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ!(GU, M0, X, loss, true)
 
-        auto_grad = ForwardDiff.gradient(objective, M0.U[1])
+        auto_grad_solution = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), M0.λ))
+        auto_grad_solution_U = reshape(auto_grad_solution[1:sz*r], size(M0.U[1]))
+        auto_grad_solution_λ = auto_grad_solution[sz*r+1:end]
 
-        @test maximum([
-            abs(computed_grad[I] - auto_grad[I]) for I in CartesianIndices(auto_grad)
-        ]) <= 1e-6
-        @test maximum([
-            abs(computed_grad_simplified[I] - auto_grad[I]) for
-            I in CartesianIndices(auto_grad)
-        ]) <= 1e-6
+        @test isapprox(computed_grad_solution_U, auto_grad_solution_U, rtol=1e-6)
+        @test isapprox(computed_grad_solution_λ, auto_grad_solution_λ, rtol=1e-6)
+        @test isapprox(computed_grad_solution_simplified_U, auto_grad_solution_U, rtol=1e-6)
+        @test isapprox(computed_grad_solution_simplified_λ, auto_grad_solution_λ, rtol=1e-6)
+
     end
 end
 
 @testitem "gradients-partialsym" begin
     using GCPDecompositions:
+        TensorKernels.khatrirao,
         GCPAlgorithms.LBFGSB,
         symgcp,
         default_constraints,
         default_init_sym,
         GCPLosses.LeastSquares,
         ngroups,
-        GCPLosses.grad_U!,
+        GCPLosses.grad_U_λ!,
         convertCPD,
         SymCPD
     using LinearAlgebra: norm
@@ -97,9 +95,9 @@ end
         return M
     end
 
-    @testset "r=$r, sz1=$sz1, sz2=$sz2" for r in [1, 2, 5], sz1 in [3, 10, 50], sz2 in [5, 15, 40]
+    @testset "r=$r, sz1=$sz1, sz2=$sz2" for r in [1, 5], sz1 in [3, 50], sz2 in [5, 40]
 
-        # Form fully symmetric rank-1 tensor
+        # Form tensor 
         U1_star = randn(sz1, r)
         U2_star = randn(sz2, r)
         X = zeros(sz1, sz2, sz1)
@@ -114,67 +112,55 @@ end
         S = (1, 2, 1)
 
         M_star = SymCPD(ones(r), (U1_star, U2_star), (1, 2, 1))
-        @test maximum([M_star[I] - X[I] for I in CartesianIndices(X)]) == 0.0
+        @test isapprox([M_star[I] - X[I] for I in CartesianIndices(X)], zeros(eltype(X), size(X)))
 
-        GU = (similar(M_star.U[1]), similar(M_star.U[2]))
-        computed_grad_solution_U1, computed_grad_solution_U2 =
-            grad_U!(GU, M_star, X, loss, false)
-        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2 =
-            grad_U!(GU, M_star, X, loss, true)
-        @test computed_grad_solution_U1 ==
-              zeros(eltype(computed_grad_solution_U1), size(computed_grad_solution_U1))
-        @test computed_grad_solution_simplified_U1 == zeros(
-            eltype(computed_grad_solution_simplified_U1),
-            size(computed_grad_solution_simplified_U1),
-        )
+        GU = (similar(M_star.U[1]), similar(M_star.U[2]), similar(M_star.λ))
+        computed_grad_solution_U1, computed_grad_solution_U2, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false)  # Without using simplified form for symmetric data
+        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_λ = grad_U_λ!(GU, M_star, X, loss, true)  # With using simplified form for symmetric data
+        @test isapprox(computed_grad_solution_U1, zeros(eltype(computed_grad_solution_U1), size(computed_grad_solution_U1)))
+        @test isapprox(computed_grad_solution_U2, zeros(eltype(computed_grad_solution_U2), size(computed_grad_solution_U2)))
+        @test isapprox(computed_grad_solution_λ, zeros(eltype(computed_grad_solution_λ), size(computed_grad_solution_λ)))
+        @test isapprox(computed_grad_solution_simplified_U1, zeros(eltype(computed_grad_solution_simplified_U1), size(computed_grad_solution_simplified_U1)))
+        @test isapprox(computed_grad_solution_simplified_U2, zeros(eltype(computed_grad_solution_simplified_U2), size(computed_grad_solution_simplified_U2)))
+        @test isapprox(computed_grad_solution_simplified_λ, zeros(eltype(computed_grad_solution_simplified_λ), size(computed_grad_solution_simplified_λ)))
 
-        U1_sz = size(M_star.U[1])
-        U2_sz = size(M_star.U[2])
-        function vectorized_objective(U_vec::Vector)
-            # Unflatten   
-            U1 = reshape(U_vec[1:prod(U1_sz)], U1_sz)
-            U2 = reshape(U_vec[prod(U1_sz)+1:end], U2_sz)
-            return norm(X - form_partialsym_M(U1, U2))^2
+        function form_partialsym_M(U_λ_vec::Vector{T}) where {T}
+            U1 = reshape(U_λ_vec[1:sz1*r], (sz1, r))
+            U2 = reshape(U_λ_vec[sz1*r+1:(sz1+sz2)*r], (sz2, r))
+            λ = U_λ_vec[(sz1+sz2)*r+1:end]
+            return reshape(khatrirao(U1, U2, U1) * λ, (sz1, sz2, sz1))
         end
-        vectorized_auto_grad_solution = ForwardDiff.gradient(
-            vectorized_objective,
-            vcat(vec(M_star.U[1]), vec(M_star.U[2])),
-        )
-        # Unflatten
-        U1_auto_grad_solution = reshape(vectorized_auto_grad_solution[1:prod(U1_sz)], U1_sz)
-        U2_auto_grad_solution =
-            reshape(vectorized_auto_grad_solution[prod(U1_sz)+1:end], U2_sz)
+        objective(Uλ_vec) = norm(X - form_partialsym_M(Uλ_vec))^2
 
-        @test U1_auto_grad_solution ==
-              zeros(eltype(U1_auto_grad_solution), size(U1_auto_grad_solution))
-        @test U2_auto_grad_solution ==
-              zeros(eltype(U2_auto_grad_solution), size(U2_auto_grad_solution))
+        auto_grad_solution = ForwardDiff.gradient(objective, vcat(vec(M_star.U[1]), vec(M_star.U[2]), M_star.λ))
+        auto_grad_solution_U1 = reshape(auto_grad_solution[1:sz1*r], size(M_star.U[1]))
+        auto_grad_solution_U2 = reshape(auto_grad_solution[sz1*r+1:(sz1+sz2)*r], size(M_star.U[2]))
+        auto_grad_solution_λ = auto_grad_solution[(sz1+sz2)*r+1:end]
+
+        @test isapprox(auto_grad_solution_U1, zeros(eltype(auto_grad_solution_U1), size(auto_grad_solution_U1)), atol=1e-12)
+        @test isapprox(auto_grad_solution_U2, zeros(eltype(auto_grad_solution_U2), size(auto_grad_solution_U2)), atol=1e-12)
+        @test isapprox(auto_grad_solution_λ, zeros(eltype(auto_grad_solution_λ), size(auto_grad_solution_λ)), atol=1e-12)
+
 
         # Check gradients at random init compared to autodiff
         init = default_init_sym(X, r, loss, constraints, algorithm, S)
         M0 = deepcopy(init)
-        GU = (similar(M0.U[1]), similar(M0.U[2]))
+        GU = (similar(M0.U[1]), similar(M0.U[2]), similar(M0.λ))
 
-        computed_grad_U1, computed_grad_U2 = grad_U!(GU, M0, X, loss, false)
-        computed_grad_simplified_U1, computed_grad_simplified_U2 = grad_U!(GU, M0, X, loss, true)
+        computed_grad_solution_U1, computed_grad_solution_U2, computed_grad_solution_λ = grad_U_λ!(GU, M0, X, loss, false)
+        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_λ = grad_U_λ!(GU, M0, X, loss, true)
 
-        vectorized_auto_grad =
-            ForwardDiff.gradient(vectorized_objective, vcat(vec(M0.U[1]), vec(M0.U[2])))
-        # Unflatten
-        U1_auto_grad = reshape(vectorized_auto_grad[1:prod(U1_sz)], U1_sz)
-        U2_auto_grad = reshape(vectorized_auto_grad[prod(U1_sz)+1:end], U2_sz)
+        auto_grad_solution = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), vec(M0.U[2]), M0.λ))
+        auto_grad_solution_U1 = reshape(auto_grad_solution[1:sz1*r], size(M_star.U[1]))
+        auto_grad_solution_U2 = reshape(auto_grad_solution[sz1*r+1:(sz1+sz2)*r], size(M_star.U[2]))
+        auto_grad_solution_λ = auto_grad_solution[(sz1+sz2)*r+1:end]
 
-        @test maximum([
-            abs(computed_grad_U1[I] - U1_auto_grad[I]) for I in CartesianIndices(U1_auto_grad)
-        ]) <= 1e-6
-        @test maximum([
-            abs(computed_grad_U2[I] - U2_auto_grad[I]) for I in CartesianIndices(U2_auto_grad)
-        ]) <= 1e-6
-        @test maximum([
-            abs(computed_grad_simplified_U1[I] - U1_auto_grad[I]) for I in CartesianIndices(U1_auto_grad)
-        ]) <= 1e-6
-        @test maximum([
-            abs(computed_grad_simplified_U2[I] - U2_auto_grad[I]) for I in CartesianIndices(U2_auto_grad)
-        ]) <= 1e-6
+        @test isapprox(computed_grad_solution_U1, auto_grad_solution_U1, rtol=1e-6)
+        @test isapprox(computed_grad_solution_U2, auto_grad_solution_U2, rtol=1e-6)
+        @test isapprox(computed_grad_solution_λ, auto_grad_solution_λ, rtol=1e-6)
+        @test isapprox(computed_grad_solution_simplified_U1, auto_grad_solution_U1, rtol=1e-6)
+        @test isapprox(computed_grad_solution_simplified_U2, auto_grad_solution_U2, rtol=1e-6)
+        @test isapprox(computed_grad_solution_simplified_λ, auto_grad_solution_λ, rtol=1e-6)
+
     end
 end

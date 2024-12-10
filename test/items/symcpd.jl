@@ -374,7 +374,6 @@ end
     @test ndims(M_symcpd) == ndims(M_cpd)
     @test size(M_symcpd) == size(M_cpd)
 
-    print(size(M_symcpd))
     for i in Base.OneTo(size(M_symcpd)[1])
         for j in Base.OneTo(size(M_symcpd)[2])
             for k in Base.OneTo(size(M_symcpd)[3])
