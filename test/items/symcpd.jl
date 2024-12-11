@@ -365,10 +365,30 @@ end
 
 @testitem "convertCPD" begin
     λ = [1, 100, 10000]
-    U1, U2, = [1 2 3; 4 5 6], [1 2 3; 4 5 6; 7 8 9]
+    U1, U2 = [1 2 3; 4 5 6], [1 2 3; 4 5 6; 7 8 9]
 
     M_symcpd = SymCPD(λ, (U1, U2), (1, 2, 1))
     M_cpd = convertCPD(M_symcpd)
+
+    @test ncomps(M_symcpd) == ncomps(M_cpd)
+    @test ndims(M_symcpd) == ndims(M_cpd)
+    @test size(M_symcpd) == size(M_cpd)
+
+    for i in Base.OneTo(size(M_symcpd)[1])
+        for j in Base.OneTo(size(M_symcpd)[2])
+            for k in Base.OneTo(size(M_symcpd)[3])
+                @test M_symcpd[i, j, k] == M_cpd[i, j, k]
+            end
+        end
+    end
+end
+
+@testitem "CPDtoSymCPD" begin
+    λ = [1.0, 100, 10000]
+    U1, U2, U3 = randn(10, 3), randn(20, 3), randn(30, 3)
+
+    M_cpd = CPD(λ, (U1, U2, U3))
+    M_symcpd = SymCPD(M_cpd)
 
     @test ncomps(M_symcpd) == ncomps(M_cpd)
     @test ndims(M_symcpd) == ndims(M_cpd)

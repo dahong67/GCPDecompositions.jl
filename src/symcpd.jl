@@ -48,7 +48,7 @@ SymCPD(
     U::NTuple{K,TU},
     S::NTuple{N,Int},
 ) where {T,N,K,Tλ<:AbstractVector{T},TU<:AbstractMatrix{T}} = SymCPD{T,N,K,Tλ,TU}(λ, U, S)
-SymCPD(M_cpd::CPD) = SymCPD(M_cpd)
+SymCPD(M_cpd::CPD) = SymCPD(M_cpd.λ, M_cpd.U, Tuple(1:length(M_cpd.U)))
 
 """
     ncomps(M::SymCPD)
