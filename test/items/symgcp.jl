@@ -365,7 +365,7 @@ end
         r = 3
         sz = 5      # 125 total entries
         s = 50      # Sample size
-        N = 10000   # Number of stochastic realizations
+        N = 100000   # Number of stochastic realizations
 
         # Form tensor
         U1_star = randn(sz, r)
