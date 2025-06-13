@@ -95,6 +95,7 @@ function _symgcp(
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
     algorithm::GCPAlgorithms.LBFGSB,
     init,
+    γ,
 ) where {TX,N}
     # T = promote_type(nonmissingtype(TX), Float64)
     T = Float64    # LBFGSB.jl seems to only support Float64
@@ -130,10 +131,19 @@ function _symgcp(
     # Setup vectorized objective function and gradient
     vec_cutoffs = (0, (cumsum(r .* tuple([size(M0.U[k])[1] for k in 1:K]...))...), sum((length(M0.U[k]) for k in 1:K)) + r)
     vec_ranges = ntuple(k -> vec_cutoffs[k]+1:vec_cutoffs[k+1], Val(K+1))
+
+    # losses = []
+    # reg_term_losses = []
+    # times = []
+    # t0 = time()
+
     function f(u_λ)
         U = map(range -> reshape(view(u_λ, range), :, r), vec_ranges[1:length(vec_ranges)-1])
         λ = view(u_λ, vec_ranges[length(vec_ranges)])
-        return GCPLosses.objective(SymCPD(λ, U, S), X, loss)
+        push!(losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0)) 
+        push!(reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
+        push!(times, time() - t0)
+        return GCPLosses.objective(SymCPD(λ, U, S), X, loss, γ)
     end
 
     function g!(gu_λ, u_λ)
@@ -141,7 +151,7 @@ function _symgcp(
         λ = view(u_λ, vec_ranges[length(vec_ranges)])
         GU = map(range -> reshape(view(gu_λ, range), :, r), vec_ranges[1:length(vec_ranges)-1])
         Gλ = view(gu_λ, vec_ranges[length(vec_ranges)])
-        GCPLosses.grad_U_λ!((GU..., Gλ), SymCPD(λ, U, S), X, loss, sym_data)
+        GCPLosses.grad_U_λ!((GU..., Gλ), SymCPD(λ, U, S), X, loss, sym_data, γ)
         return gu_λ
     end
 
@@ -152,5 +162,5 @@ function _symgcp(
     U = map(range -> reshape(u_λ[range], :, r), vec_ranges[1:length(vec_ranges)-1])
     λ = u_λ[vec_ranges[length(vec_ranges)]]
 
-    return SymCPD(λ, U, S)
+    return SymCPD(λ, U, S), losses, reg_term_losses, times
 end
