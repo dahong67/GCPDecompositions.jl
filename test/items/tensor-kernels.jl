@@ -116,3 +116,38 @@ end
     @test checksym(X, (2, 2, 1, 1)) == false
     @test checksym(X, (1, 2, 1, 1)) == false
 end
+
+@testitem "sparse_mttkrp" begin
+    using Random
+    using GCPDecompositions.TensorKernels
+    using SparseArrayKit
+    using SparseArrays
+
+    # Check that sparse mttkrp gives same result as dense
+    @testset "size=$sz, rank=$r" for sz in [(10, 20, 30)], r in [5]
+        Random.seed!(0)
+        X = SparseArray{Float64}(undef, sz)
+        X[1,1,2] = 0.5
+        X[3,5,1] = -4.56
+        X[7,8,9] = 1056.43243
+        sample_idxs = [(1,1,2), (3,5,1), (7,8,9)]
+        sample_vals = [0.5, -4.56, 1056.43243]
+        U = randn.(sz, r)
+        N = 3
+
+        # Make exploded factor matrices
+        U_exp = tuple([U[[sample_idxs[i][n] for i in eachindex(sample_idxs)], :] for (n, U) in enumerate(U)]...)
+
+        G = similar.(U)
+        for n in 1:N
+            # Form Y_hat
+            Y_hat = spzeros(Float64, size(X)[n], length(sample_idxs))
+            for (sample_idx, indices) in enumerate(sample_idxs)
+                Y_hat[indices[n], sample_idx] = sample_vals[sample_idx]
+            end
+            # Compute sparse mttkrp
+            sparse_mttkrp!(G[n], Y_hat, U_exp, n)
+        end
+        @test all(mttkrps(X, U) .≈ G)
+    end
+end
