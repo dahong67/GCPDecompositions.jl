@@ -6,9 +6,11 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, checksym, khatrirao
+using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, checksym, khatrirao, sparse_mttkrp!
 using IntervalSets: Interval
-using LinearAlgebra: mul!, rmul!, Diagonal
+using LinearAlgebra: mul!, rmul!, Diagonal, norm
+using SparseArrays: spzeros
+#using SparseArrayKit
 import ForwardDiff
 
 # Abstract type
@@ -65,11 +67,11 @@ end
 """
     objective(M::SymCPD, X::AbstractArray, loss)
 
-Compute the GCP objective function for the symmetric model tensor `M`, data tensor `X`,
+Compute the symmetric GCP objective function for the symmetric model tensor `M`, data tensor `X`,
 and loss function `loss`.
 """
-function objective(M::SymCPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
-    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I]))
+function objective(M::SymCPD{T,N}, X::Array{TX,N}, loss, γ) where {T,TX,N}
+    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I])) + γ * sum(sum((norm(M.U[k][:, r])^2 - 1)^2 for r in 1:ncomps(M)) for k in 1:ngroups(M))
 end
 
 """
@@ -97,11 +99,12 @@ function grad_U!(
 end
 
 """
-    grad_U_λ!(GU, M::SymCPD, X::AbstractArray, loss)
+    grad_U_λ!(GU, M::SymCPD, X::AbstractArray, loss, sym_data, γ)
 
-Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])` and the 
+Compute the SymGCP gradient with respect to the factor matrices `U = (U[1],...,U[N])` and the 
 weights `λ` for the model tensor `M`, data tensor `X`, and loss function `loss`, and store
-the result in `GU_λ = (GU[1],...,GU[K], Gλ)`.
+the result in `GU_λ = (GU[1],...,GU[K], Gλ)`. Simplify gradients for symmetry of model tensor matching 
+symmetry of data tensor if sym_data is true. γ controls the strength of the (column-norm - 1) regularization.
 """
 function grad_U_λ!(
     GU_λ::Tuple,
@@ -109,6 +112,7 @@ function grad_U_λ!(
     X::Array{TX,N},
     loss,
     sym_data,
+    γ,
 ) where {T,TX,N,K}
     Y = [
         ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
@@ -128,19 +132,108 @@ function grad_U_λ!(
                     added_factor = similar(GU_λ[j])
                     mttkrp!(added_factor, Y, tuple([M.U[k] for k in M.S]...), mode)
                     GU_λ[j] .= GU_λ[j] + added_factor
-                    #GU_λ = (GU_λ[1:j-1]..., GU_λ[j] + added_factor, GU_λ[j+1:end]...)
                 end
             end
         end
         rmul!(GU_λ[j], Diagonal(M.λ))
+        norm_reg_factor = zeros(size(GU_λ[j]))
+        for r in 1:ncomps(M)
+            norm_reg_factor[:, r] = 4γ * (norm(M.U[j][:, r])^2 - 1) * M.U[j][:, r]
+        end
+        GU_λ[j] .= GU_λ[j] + norm_reg_factor
     end
-    
-    #for j in 1:K
-    #    rmul!(GU_λ[j], Diagonal(M.λ))
-    #end
 
     # Weights gradient
     GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
+
+    return GU_λ
+end
+
+
+"""
+    stochastic_grad_U_λ!(GU_λ, M::SymCPD, X::AbstractArray, loss, B)
+
+Compute the SymGCP gradient with respect to the factor matrices `U = (U[1],...,U[N])` and the 
+weights `λ` for the model tensor `M`, elements of the data tensor `X` with indices given by B, and loss function `loss`, and store
+the result in `GU_λ = (GU[1],...,GU[K], Gλ)`. Simplify gradients for symmetry of model tensor matching 
+symmetry of data tensor if sym_data is true. γ controls the strength of the (column-norm - 1) regularization.
+    η : number of nonzeros in `X`
+"""
+function stochastic_grad_U_λ!(
+    GU_λ::Tuple,
+    M::SymCPD{T,N,K},
+    X::Array{TX,N},
+    loss,
+    sym_data,
+    γ,
+    B,
+    sampling_strategy;
+    η=0,
+    p=1,
+    q=1
+) where {T,TX,N,K}
+    
+    ζ = length(X) - η
+    B_unique = unique(B)   # Since we are sampling with replacement
+    idx_counts = [count(==(I), B) for I in B_unique]   # Number of times each idx was sampled
+    sample_vals = zeros(T, length(B_unique))     # Will contain entries of elementwise derivative tensor at indices given by B
+    for (i, (element_idx, num_sampled)) in enumerate(zip(B_unique, idx_counts))
+        if sampling_strategy == "uniform"
+            sample_vals[i] = num_sampled * (length(X) / length(B)) .* deriv(loss, X[element_idx], M[element_idx])  # Compute elementwise derivative
+        elseif sampling_strategy == "stratified"
+            if i <= p
+                sample_vals[i] = num_sampled * (η / p) .* deriv(loss, X[element_idx], M[element_idx])  # Nonzero entries
+            else
+                sample_vals[i] = num_sampled * (ζ / q) .* deriv(loss, 0.0, M[element_idx])             # Zero entries
+            end
+        else
+            error(
+                "The only supported sampling strategies are uniform and stratified",
+            )
+        end
+    end
+
+    # Form exploded factor matrices
+    mode_Us = tuple([M.U[k] for k in M.S]...)  # Collect factor matrix for each mode
+    U_exp = tuple([U[[B_unique[i][n] for i in eachindex(B_unique)], :] for (n, U) in enumerate(mode_Us)]...)
+
+    # Factor matrix gradients
+    for j in 1:K
+        if sym_data
+            # Form Y_hat
+            first_n = findall(M.S .== j)[1]
+            Y_hat = spzeros(T, size(X)[first_n], length(B_unique))
+            for (sample_idx, indices) in enumerate(B_unique)
+                Y_hat[indices[first_n], sample_idx] = sample_vals[sample_idx]
+            end
+            sparse_mttkrp!(GU_λ[j], Y_hat, U_exp, first_n)
+            rmul!(GU_λ[j], count(M.S .== j))
+        else
+            for (index, mode) in enumerate(findall(M.S .== j))
+                # Form Y_hat
+                Y_hat = spzeros(T, size(X)[mode], length(B_unique))
+                for (sample_idx, indices) in enumerate(B_unique)
+                    Y_hat[indices[mode], sample_idx] = sample_vals[sample_idx]
+                end
+                if index == 1  # Overwrite
+                    sparse_mttkrp!(GU_λ[j], Y_hat, U_exp, mode)
+                else  # Add in-place
+                    added_factor = similar(GU_λ[j])
+                    sparse_mttkrp!(added_factor, Y_hat, U_exp, mode)
+                    GU_λ[j] .= GU_λ[j] + added_factor
+                end
+            end
+        end
+        rmul!(GU_λ[j], Diagonal(M.λ))
+        norm_reg_factor = zeros(size(GU_λ[j]))
+        for r in 1:ncomps(M)
+            norm_reg_factor[:, r] = 4γ * (norm(M.U[j][:, r])^2 - 1) * M.U[j][:, r]
+        end
+        GU_λ[j] .= GU_λ[j] + norm_reg_factor
+    end
+
+    # Weights gradient
+    GU_λ[K+1] .= vec(sample_vals' * reduce(.*, U_exp))
 
     return GU_λ
 end

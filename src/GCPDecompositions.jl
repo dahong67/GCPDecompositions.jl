@@ -10,6 +10,7 @@ import Base: AbstractArray, Array
 import LinearAlgebra: norm
 using IntervalSets: Interval
 using Random: default_rng
+using SparseArrays: spzeros
 
 # Exports
 export CPD
@@ -18,6 +19,7 @@ export SymCPD, convertCPD, ngroups
 export checksym
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
+export symgcp
 
 include("tensor-kernels.jl")
 include("cpd.jl")
@@ -73,9 +75,10 @@ symgcp(
     sym_data_eps = 1e-10,
     loss = GCPLosses.LeastSquares(),
     constraints = default_constraints(loss),
-    algorithm = default_algorithm(X, r, loss, constraints),
+    algorithm = default_algorithm_sym(X, r, loss, constraints),
     init = default_init_sym(X, r, loss, constraints, algorithm, S),
-) where {N} = GCPAlgorithms._symgcp(X, r, S, sym_data_eps, loss, constraints, algorithm, init)
+    γ = 0.0, 
+) where {N} = GCPAlgorithms._symgcp(X, r, S, sym_data_eps, loss, constraints, algorithm, init, γ)
 
 # Defaults
 
@@ -110,6 +113,18 @@ See also: `gcp`.
 default_algorithm(X::Array{<:Real}, r, loss::GCPLosses.LeastSquares, constraints::Tuple{}) =
     GCPAlgorithms.FastALS()
 default_algorithm(X, r, loss, constraints) = GCPAlgorithms.LBFGSB()
+
+"""
+    default_algorithm_sym(X, r, loss, constraints)
+
+Return a default algorithm for the data tensor `X`, rank `r`,
+loss function `loss`, and tuple of constraints `constraints`,
+for symgcp.
+
+See also: `symgcp`.
+"""
+default_algorithm_sym(X::Array{<:Real}, r, loss::GCPLosses.LeastSquares, constraints::Tuple{}) =
+    GCPAlgorithms.LBFGSB()
 
 """
     default_init([rng=default_rng()], X, r, loss, constraints, algorithm)

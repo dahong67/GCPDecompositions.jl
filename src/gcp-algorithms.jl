@@ -37,5 +37,6 @@ function _gcp end
 include("gcp-algorithms/lbfgsb.jl")
 include("gcp-algorithms/als.jl")
 include("gcp-algorithms/fastals.jl")
+include("gcp-algorithms/adam.jl")
 
 end

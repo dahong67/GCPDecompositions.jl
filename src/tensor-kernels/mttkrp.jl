@@ -41,10 +41,10 @@ See also: `mttkrp`, `create_mttkrp_buffer`
 function mttkrp!(
     G::TM,
     X::AbstractArray{T,N},
-    U::NTuple{N,TM},
+    U::NTuple{N,TU},
     n::Integer,
     buffer = create_mttkrp_buffer(X, U, n),
-) where {TM<:AbstractMatrix,T,N}
+) where {TM<:AbstractMatrix,T,N,TU<:AbstractMatrix}
     I, r = _checked_mttkrp_dims(X, U, n)
 
     # Check output dimensions
