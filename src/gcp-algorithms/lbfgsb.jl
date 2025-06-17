@@ -140,9 +140,9 @@ function _symgcp(
     function f(u_λ)
         U = map(range -> reshape(view(u_λ, range), :, r), vec_ranges[1:length(vec_ranges)-1])
         λ = view(u_λ, vec_ranges[length(vec_ranges)])
-        push!(losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0)) 
-        push!(reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
-        push!(times, time() - t0)
+        #push!(losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0)) 
+        #push!(reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
+        #push!(times, time() - t0)
         return GCPLosses.objective(SymCPD(λ, U, S), X, loss, γ)
     end
 
@@ -162,5 +162,6 @@ function _symgcp(
     U = map(range -> reshape(u_λ[range], :, r), vec_ranges[1:length(vec_ranges)-1])
     λ = u_λ[vec_ranges[length(vec_ranges)]]
 
-    return SymCPD(λ, U, S), losses, reg_term_losses, times
+    return SymCPD(λ, U, S)
+    #return SymCPD(λ, U, S), losses, reg_term_losses, times
 end
