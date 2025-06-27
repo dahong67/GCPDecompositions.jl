@@ -108,8 +108,7 @@ function _symgcp(
     time_start = time()
     # Temporarily add global stopping criterion for experiments
     total_iters = 0
-    # max_iters = 10000000
-    max_iters = 50
+    max_iters = 10000000000. # Temporary
     while c <= algorithm.κ && total_iters < max_iters
         
         #  Save copies of factor matrices and weights, first- and second-order moment estimates in case of failed epoch
