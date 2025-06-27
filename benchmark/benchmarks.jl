@@ -7,6 +7,7 @@ const SUITE_MODULES = Dict(
     "mttkrp-large" => :BenchmarkMTTKRPLarge,
     "khatrirao" => :BenchmarkKhatriRao,
     "leastsquares" => :BenchmarkLeastSquares,
+    "symgcp" => :BenchmarkSymGCP
 )
 
 # Create top-level suite including only sub-suites
