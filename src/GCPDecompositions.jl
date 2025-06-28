@@ -8,17 +8,20 @@ import Base: ndims, size, show, summary
 import Base: getindex
 import Base: AbstractArray, Array
 import LinearAlgebra: norm
+using Base.Order: Ordering, Reverse
 using IntervalSets: Interval
 using Random: default_rng
 
 # Exports
-export CPD
-export ncomps, normalizecomps, normalizecomps!, permutecomps, permutecomps!
+export CPD, CPDComp
+export ncomps,
+    normalizecomps, normalizecomps!, permutecomps, permutecomps!, sortcomps, sortcomps!
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
 include("tensor-kernels.jl")
 include("cpd.jl")
+include("cpdcomp.jl")
 include("gcp-losses.jl")
 include("gcp-constraints.jl")
 include("gcp-algorithms.jl")
