@@ -53,6 +53,7 @@ end
 using Distributions
 origin(Point(25 + 40 + 10 + 100, 175))
 Luxor.scale(30, -150)
+setline(8)
 for (dist, color) in [
     Gamma() => Luxor.julia_green,
     Chisq(3) => Luxor.julia_blue,
@@ -68,6 +69,7 @@ line(Point(0, 0), Point(10, 0); action = :stroke)
 using StableRNGs
 rng = StableRNG(1)
 origin(Point(25 + 10 + 20 * 4, 25 + 10 + 20 * 12))
+setline(4)
 for i in 0:17, j in 0:9
     poly(rect(Point(20 * i, 20 * j), 20, 20; vertices=true); close=true)
     setcolor(rand(rng, [Luxor.julia_red, Luxor.julia_green, Luxor.julia_blue, Luxor.julia_purple]))
