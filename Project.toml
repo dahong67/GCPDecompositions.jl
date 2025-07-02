@@ -20,7 +20,7 @@ LossFunctionsExt = "LossFunctions"
 
 [compat]
 Compat = "3.42, 4"
-ForwardDiff = "0.10.36"
+ForwardDiff = "0.10.36, 1"
 IntervalSets = "0.7.7"
 LBFGSB = "0.4.1"
 LinearAlgebra = "1.6"
