@@ -6,9 +6,11 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!
+using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, sparse_mttkrp!, sparse_mttkrps!, checksym, khatrirao
 using IntervalSets: Interval
-using LinearAlgebra: mul!, rmul!, Diagonal
+using LinearAlgebra: mul!, rmul!, Diagonal, norm
+using SparseArrayKit: SparseArray, nonzero_keys, nonzero_values
+using StatsBase: countmap
 import ForwardDiff
 
 # Abstract type
@@ -63,6 +65,16 @@ function objective(M::CPD{T,N}, X::Array{TX,N}, loss) where {T,TX,N}
 end
 
 """
+    objective(M::SymCPD, X::AbstractArray, loss)
+
+Compute the symmetric GCP objective function for the symmetric model tensor `M`, data tensor `X`,
+and loss function `loss`.
+"""
+function objective(M::SymCPD{T,N}, X::Array{TX,N}, loss, γ) where {T,TX,N}
+    return sum(value(loss, X[I], M[I]) for I in CartesianIndices(X) if !ismissing(X[I])) + γ * sum(sum((norm(M.U[k][:, r])^2 - 1)^2 for r in 1:ncomps(M)) for k in 1:ngroups(M))
+end
+
+"""
     grad_U!(GU, M::CPD, X::AbstractArray, loss)
 
 Compute the GCP gradient with respect to the factor matrices `U = (U[1],...,U[N])`
@@ -84,6 +96,140 @@ function grad_U!(
         rmul!(GU[k], Diagonal(M.λ))
     end
     return GU
+end
+
+"""
+    grad_U_λ!(GU, M::SymCPD, X::AbstractArray, loss, sym_data, γ)
+
+Compute the SymGCP gradient with respect to the factor matrices `U = (U[1],...,U[N])` and the 
+weights `λ` for the model tensor `M`, data tensor `X`, and loss function `loss`, and store
+the result in `GU_λ = (GU[1],...,GU[K], Gλ)`. Simplify gradients for symmetry of model tensor matching 
+symmetry of data tensor if sym_data is true. γ controls the strength of the (column-norm - 1) regularization.
+"""
+function grad_U_λ!(
+    GU_λ::Tuple,
+    M::SymCPD{T,N,K},
+    X::Array{TX,N},
+    loss,
+    sym_data,
+    γ,
+) where {T,TX,N,K}
+    Y = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
+        I in CartesianIndices(X)
+    ]
+
+    # Factor matrix gradients
+    for j in 1:K
+        if sym_data
+            mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
+            rmul!(GU_λ[j], count(M.S .== j))
+        else
+            for (index, mode) in enumerate(findall(M.S .== j))
+                if index == 1  # Overwrite
+                    mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), mode)
+                else  # Add in-place
+                    added_factor = similar(GU_λ[j])
+                    mttkrp!(added_factor, Y, tuple([M.U[k] for k in M.S]...), mode)
+                    GU_λ[j] .= GU_λ[j] + added_factor
+                end
+            end
+        end
+        rmul!(GU_λ[j], Diagonal(M.λ))
+        GU_λ[j] .+= mapslices(x -> 4γ * (norm(x)^2 - 1) * x, M.U[j]; dims=1)
+    end
+
+    # Weights gradient
+    GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
+
+    return GU_λ
+end
+
+
+"""
+    stochastic_grad_U_λ!(GU_λ, M::SymCPD, X::AbstractArray, loss, B)
+
+Compute the SymGCP gradient with respect to the factor matrices `U = (U[1],...,U[N])` and the 
+weights `λ` for the model tensor `M`, elements of the data tensor `X` with indices given by B, and loss function `loss`, and store
+the result in `GU_λ = (GU[1],...,GU[K], Gλ)`. Simplify gradients for symmetry of model tensor matching 
+symmetry of data tensor if sym_data is true. γ controls the strength of the (column-norm - 1) regularization.
+    p - number of nonzero elements in batch
+    q - number of zero elements in batch
+"""
+function stochastic_grad_U_λ!(
+    GU_λ::Tuple,
+    M::SymCPD{T,N,K},
+    X::Array{TX,N},
+    loss,
+    sym_data,
+    γ,
+    B,
+    sampling_strategy;
+    p=1,
+    q=1
+) where {T,TX,N,K}
+    
+    η = count(!iszero, X)
+    ζ = length(X) - η
+    idx_counts = countmap(B)
+    sample_vals = zeros(T, length(keys(idx_counts)))   # Will contain entries of elementwise derivative tensor at indices given by B
+    for (i, element_idx) in enumerate(keys(idx_counts))
+        num_sampled = idx_counts[element_idx]
+        if sampling_strategy == "uniform"
+            sample_vals[i] = num_sampled * (length(X) / length(B)) .* deriv(loss, X[element_idx], M[element_idx])  # Compute elementwise derivative
+        elseif sampling_strategy == "stratified"
+            entry = X[element_idx]
+            if iszero(entry)
+                sample_vals[i] = num_sampled * (ζ / q) .* deriv(loss, entry, M[element_idx])   # Zeros
+            else
+                sample_vals[i] = num_sampled * (η / p) .* deriv(loss, X[element_idx], M[element_idx])   # Nonzeros
+            end
+        else
+            error(
+                "The only supported sampling strategies are uniform and stratified",
+            )
+        end
+    end
+
+    # Create sparse subsampled derivative tensor
+    #Y = SparseTensorCOO(size(X), [Tuple(I) for I in keys(idx_counts)], sample_vals)
+    inds = collect(keys(idx_counts))
+    Y = SparseArray{T,N}(Dict([(inds[i], sample_vals[i]) for i in eachindex(inds)]), size(X))
+
+    # Factor matrix gradients
+    Us = tuple([M.U[k] for k in M.S]...)
+
+    # Compute mttkrp for each mode
+    mode_GUs = similar.(Us)
+    sparse_mttkrps!(mode_GUs, Y, Us)
+
+    for j in 1:K
+        if sym_data
+            first_n = findall(M.S .== j)[1]
+            GU_λ[j] .= mode_GUs[first_n]
+            rmul!(GU_λ[j], count(M.S .== j))
+        else
+            for (index, mode) in enumerate(findall(M.S .== j))
+                if index == 1  # Overwrite
+                    GU_λ[j] .= mode_GUs[mode]
+                else  # Add in-place
+                    GU_λ[j] .+= mode_GUs[mode]
+                end
+            end
+        end
+        rmul!(GU_λ[j], Diagonal(M.λ))
+        if !iszero(γ)
+            GU_λ[j] .+= mapslices(x -> 4γ * (norm(x)^2 - 1) * x, M.U[j]; dims=1)
+        end
+    end
+
+    # Weights gradient
+	#inds, vals = storedindices(Y), storedvalues(Y)
+    inds, vals = nonzero_keys(Y), nonzero_values(Y)
+	Uh = reduce(.*, Us[k][getindex.(inds, k), :] for k in eachindex(Us))
+    mul!(GU_λ[K+1], Uh', collect(vals))
+
+    return GU_λ
 end
 
 # Statistically motivated losses

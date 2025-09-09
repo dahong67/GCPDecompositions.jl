@@ -8,9 +8,11 @@ module GCPAlgorithms
 using ..GCPDecompositions
 using ..TensorKernels: create_mttkrp_buffer, mttkrp!
 using ..TensorKernels: khatrirao!, khatrirao
+using ..TensorKernels: checksym
 using IntervalSets: Interval
 using LinearAlgebra: lu!, mul!, norm, rdiv!
 using LBFGSB: lbfgsb
+using StatsBase: sample!
 
 """
     AbstractAlgorithm
@@ -36,5 +38,6 @@ function _gcp end
 include("gcp-algorithms/lbfgsb.jl")
 include("gcp-algorithms/als.jl")
 include("gcp-algorithms/fastals.jl")
+include("gcp-algorithms/adam.jl")
 
 end

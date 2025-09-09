@@ -368,14 +368,19 @@ end
     using Random, IntervalSets
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (50, 40, 30)],
+    @testset "size(X)=$sz, rank(X)=$r, β=$β" for sz in [(15, 20, 25), (50, 40, 30)],
         r in 1:2,
         β in [0, 0.5, 1]
 
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
-        # May want to consider other distributions depending on value of β
-        X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+        if β == 0
+            # For β=0 (Itakura-Saito), use Exponential distribution for better convergence
+            X = [rand(Exponential(M[I])) for I in CartesianIndices(size(M))]
+        else
+            # For other β values, use Poisson distribution
+            X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+        end
 
         function beta_value(β, x, m)
             if β == 0
