@@ -47,9 +47,11 @@ with respect to the loss function `loss` and return a `CPD` object.
 Keyword arguments:
 + `constraints` : a `Tuple` of constraints on the factor matrices `U = (U[1],...,U[N])`.
 + `algorithm`   : algorithm to use
++ `regularizers` : a `Tuple` of regularizers
 
 Conventional CP corresponds to the default `GCPLosses.LeastSquares()` loss
-with the default of no constraints (i.e., `constraints = ()`).
+with the default of no constraints (i.e., `constraints = ()`)
+and no regularizers (i.e., `regularizers = ()`).
 
 If the LossFunctions.jl package is also loaded,
 `loss` can also be a loss function from that package.
@@ -63,9 +65,10 @@ gcp(
     r;
     loss = GCPLosses.LeastSquares(),
     constraints = default_constraints(loss),
+    regularizers = (),
     algorithm = default_algorithm(X, r, loss, constraints),
     init = default_init(X, r, loss, constraints, algorithm),
-) = GCPAlgorithms._gcp(X, r, loss, constraints, algorithm, init)
+) = GCPAlgorithms._gcp(X, r, loss, constraints, regularizers, algorithm, init)
 
 # Defaults
 

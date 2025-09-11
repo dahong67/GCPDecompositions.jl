@@ -368,14 +368,19 @@ end
     using Random, IntervalSets
     using Distributions
 
-    @testset "size(X)=$sz, rank(X)=$r, β" for sz in [(15, 20, 25), (50, 40, 30)],
+    @testset "size(X)=$sz, rank(X)=$r, β=$β" for sz in [(15, 20, 25), (50, 40, 30)],
         r in 1:2,
         β in [0, 0.5, 1]
 
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
-        # May want to consider other distributions depending on value of β
-        X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+        if β == 0
+            # For β=0 (Itakura-Saito), use Exponential distribution for better convergence
+            X = [rand(Exponential(M[I])) for I in CartesianIndices(size(M))]
+        else
+            # For other β values, use Poisson distribution
+            X = [rand(Poisson(M[I])) for I in CartesianIndices(size(M))]
+        end
 
         function beta_value(β, x, m)
             if β == 0
@@ -478,6 +483,55 @@ end
                 ),
             )
             @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
+        end
+    end
+end
+
+@testitem "Regularizers" begin
+    using Random
+    using LinearAlgebra: norm
+
+    @testset "ColumnNormRegularizer" begin
+        Random.seed!(0)
+        sz = (5, 10, 15)
+        r = 3
+        γ = 0.1
+        α = 1.0
+
+        M = CPD(ones(r), rand.(sz, r))
+        X = randn(sz)
+
+        loss_func = GCPLosses.LeastSquares()
+        regs = (GCPLosses.ColumnNormRegularizer(γ, α),)
+
+        @test_throws DomainError GCPLosses.ColumnNormRegularizer(-1)
+        @test_throws DomainError GCPLosses.ColumnNormRegularizer(γ, -1)
+
+        ref_val =
+            sum(GCPLosses.value(loss_func, X[I], M[I]) for I in CartesianIndices(X)) +
+            γ * sum(
+                sum((norm(M.U[n][:, r])^2 - α)^2 for r in 1:size(M.U[1])[2]) for
+                n in eachindex(M.U)
+            )
+        computed_val = GCPLosses.objective(M, X, loss_func, regs)
+        @test abs(ref_val - computed_val) <= 1e-8
+
+        # Check regularizer gradient
+        GU_reg = similar.(M.U)
+        GCPLosses.grad_U!(GU_reg, regs[1], M.U)
+        for n in 1:3
+            @test typeof(GU_reg[n]) <: typeof(M.U[n])
+            @test size(GU_reg[n]) == size(M.U[n])
+            @test maximum(abs.(GU_reg[n] .- mapslices(x -> 4γ * (norm(x)^2 - α) * x, M.U[n]; dims=1))) <= 1e-8
+        end
+
+        # Check full gradient = loss gradient + manually computed reg gradient
+        GU = similar.(M.U)
+        GU_loss = similar.(M.U)
+        GCPLosses.grad_U!(GU, M, X, loss_func, regs)
+        GCPLosses.grad_U!(GU_loss, M, X, loss_func, ())
+        for n in 1:3
+            @test maximum(abs.(GU[n] .- (GU_loss[n] .+ mapslices(x -> 4γ * (norm(x)^2 - α) * x, M.U[n]; dims=1)))) <= 1e-8
         end
     end
 end

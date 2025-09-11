@@ -12,8 +12,8 @@ end
 
 @testitem "value/deriv/domain methods" begin
     using InteractiveUtils: subtypes
-    using .GCPLosses: value, deriv, domain, AbstractLoss
-    @testset "type=$type" for type in subtypes(AbstractLoss)
+    using .GCPLosses: value, deriv, domain, AbstractEntrywiseLoss
+    @testset "type=$type" for type in subtypes(AbstractEntrywiseLoss)
         @test hasmethod(value, Tuple{type,Real,Real})
         @test hasmethod(deriv, Tuple{type,Real,Real})
         @test hasmethod(domain, Tuple{type})

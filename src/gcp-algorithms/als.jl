@@ -19,6 +19,7 @@ function _gcp(
     r,
     loss::GCPLosses.LeastSquares,
     constraints::Tuple{},
+    regularizers,
     algorithm::GCPAlgorithms.ALS,
     init,
 ) where {TX<:Real,N}
