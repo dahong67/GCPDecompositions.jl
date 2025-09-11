@@ -25,22 +25,22 @@ U_1[:,i] \circ U_2[:,i] \circ U_3[:,i]
 \in
 \mathbb{R}^{10 \times 20 \times 30}
 .\]</p><p>We can extract each of these as follows:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.λ    # to write `λ`, type `\lambda` then hit tab</code><code class="nohighlight hljs ansi" style="display:block;">1-element Vector{Float64}:
- 74.68642754159828</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[1]</code><code class="nohighlight hljs ansi" style="display:block;">10×1 Matrix{Float64}:
- 0.32454315243787374
- 0.33535386585700866
+ 77.14981176938123</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[1]</code><code class="nohighlight hljs ansi" style="display:block;">10×1 Matrix{Float64}:
+ 0.3186939895749339
+ 0.32885748655326086
  ⋮
- 0.3078467022332255
- 0.31471173905498895</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[2]</code><code class="nohighlight hljs ansi" style="display:block;">20×1 Matrix{Float64}:
- 0.23037035952163612
- 0.21285530227559402
+ 0.297434153161956
+ 0.3089542738052455</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[2]</code><code class="nohighlight hljs ansi" style="display:block;">20×1 Matrix{Float64}:
+ 0.22622385230433012
+ 0.2086404885648717
  ⋮
- 0.22450247774315873
- 0.22241424714278904</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[3]</code><code class="nohighlight hljs ansi" style="display:block;">30×1 Matrix{Float64}:
- 0.17717985716654017
- 0.1869427665117931
+ 0.21542162586045696
+ 0.22783366765548047</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; M.U[3]</code><code class="nohighlight hljs ansi" style="display:block;">30×1 Matrix{Float64}:
+ 0.18836467219548855
+ 0.16481901510540137
  ⋮
- 0.18941244173778754
- 0.16593918028797888</code></pre><p>Let&#39;s check how close the factor matrices <span>$U_1$</span>, <span>$U_2$</span>, and <span>$U_3$</span> (which were estimated from the noisy data) are to the true signal components <span>$\mathbf{1}_{10}$</span>, <span>$\mathbf{1}_{20}$</span>, and <span>$\mathbf{1}_{30}$</span>. We use the angle between the vectors since the scale of each factor matrix isn&#39;t meaningful on its own (read <a href="../man/main/#Overview">Overview</a> to learn more):</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using LinearAlgebra: normalize</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(u, v) = acos(normalize(u)&#39;*normalize(v))  # angle between vectors in radians</code><code class="nohighlight hljs ansi" style="display:block;">vecangle (generic function with 1 method)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[1][:,1], ones(10))</code><code class="nohighlight hljs ansi" style="display:block;">0.03944336674193301</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[2][:,1], ones(20))</code><code class="nohighlight hljs ansi" style="display:block;">0.05578880870522112</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[3][:,1], ones(30))</code><code class="nohighlight hljs ansi" style="display:block;">0.0591568400543408</code></pre><p>The decomposition does a pretty good job of extracting the signal from the noise!</p><p>The power of <strong>Generalized</strong> CP Decomposition is that we can fit CP decompositions to data using different losses (i.e., different notions of fit). By default, <code>gcp</code> uses the (conventional) least-squares loss, but we can easily try another! For example, to try non-negative least-squares simply run</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; M_nonneg = gcp(X, 1; loss = GCPLosses.NonnegativeLeastSquares())</code><code class="nohighlight hljs ansi" style="display:block;">10×20×30 CPD{Float64, 3, Vector{Float64}, Matrix{Float64}} with 1 component
+ 0.1912251943031596
+ 0.1992267567302773</code></pre><p>Let&#39;s check how close the factor matrices <span>$U_1$</span>, <span>$U_2$</span>, and <span>$U_3$</span> (which were estimated from the noisy data) are to the true signal components <span>$\mathbf{1}_{10}$</span>, <span>$\mathbf{1}_{20}$</span>, and <span>$\mathbf{1}_{30}$</span>. We use the angle between the vectors since the scale of each factor matrix isn&#39;t meaningful on its own (read <a href="../man/main/#Overview">Overview</a> to learn more):</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using LinearAlgebra: normalize</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(u, v) = acos(normalize(u)&#39;*normalize(v))  # angle between vectors in radians</code><code class="nohighlight hljs ansi" style="display:block;">vecangle (generic function with 1 method)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[1][:,1], ones(10))</code><code class="nohighlight hljs ansi" style="display:block;">0.029994688063170682</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[2][:,1], ones(20))</code><code class="nohighlight hljs ansi" style="display:block;">0.06707765362748946</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; vecangle(M.U[3][:,1], ones(30))</code><code class="nohighlight hljs ansi" style="display:block;">0.069662506507787</code></pre><p>The decomposition does a pretty good job of extracting the signal from the noise!</p><p>The power of <strong>Generalized</strong> CP Decomposition is that we can fit CP decompositions to data using different losses (i.e., different notions of fit). By default, <code>gcp</code> uses the (conventional) least-squares loss, but we can easily try another! For example, to try non-negative least-squares simply run</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; M_nonneg = gcp(X, 1; loss = GCPLosses.NonnegativeLeastSquares())</code><code class="nohighlight hljs ansi" style="display:block;">10×20×30 CPD{Float64, 3, Vector{Float64}, Matrix{Float64}} with 1 component
 λ weights:
 1-element Vector{Float64}: …
 U[1] factor matrix:
