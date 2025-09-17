@@ -132,6 +132,37 @@ function create_mttkrp_buffer(
     )
 end
 
+function mttkrp!(
+    G::TM,
+    X::SparseArrayCOO{T,<:Integer,N},
+    U::NTuple{N,TM},
+    n::Integer,
+    buffer = create_mttkrp_buffer(X, U, n),
+) where {TM<:AbstractMatrix,T,N}
+    I, _ = _checked_mttkrp_dims(X, U, n)
+    s = numstored(X)
+
+    # Check output dimensions
+    Base.require_one_based_indexing(G)
+    size(G) == size(U[n]) ||
+        throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
+
+    # Compute MTTKRP via sparse matrix multiplication
+    Yh = sparse(getindex.(X.inds, n), 1:s, X.vals, I[n], s)
+    Uh = reduce(.*, U[k][getindex.(X.inds, k), :] for k in 1:length(U) if k != n)
+    mul!(G, Yh, Uh)
+
+    return G
+end
+
+function create_mttkrp_buffer(
+    X::SparseArrayCOO{T,<:Integer,N},
+    U::NTuple{N,TM},
+    n::Integer,
+) where {TM<:AbstractMatrix,T,N}
+    return ()
+end
+
 """
     _checked_mttkrp_dims(X, (U1, U2, ..., UN), n)
 
