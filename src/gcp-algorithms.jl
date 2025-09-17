@@ -13,7 +13,7 @@ using ..TensorKernels: khatrirao!, khatrirao
 using IntervalSets: Interval
 using LinearAlgebra: lu!, mul!, norm, rdiv!, rmul!, Diagonal
 using LBFGSB: lbfgsb
-using Random: AbstractRNG
+using Random: AbstractRNG, default_rng
 using StatsBase: sample!
 
 # Abstract type and associated functions
@@ -91,8 +91,8 @@ of the objective and gradients.
 
 Concrete types `ConcreteSampler <: AbstractSampler` should implement
 
-+ `gcp_stoch_objective(M, X, loss, sampler::ConcreteSampler)`
-+ `gcp_stoch_grad_U!(GU, M, X, loss, sampler::ConcreteSampler)`
++ `gcp_stoch_objective(rng, M, X, loss, sampler::ConcreteSampler)`
++ `gcp_stoch_grad_U!(rng, GU, M, X, loss, sampler::ConcreteSampler)`
 """
 abstract type AbstractSampler end
 
@@ -115,54 +115,55 @@ Base.iterate(wrapped::SampleOnce, ::Val{:cache}) = (wrapped.cache, Val(:done))
 Base.iterate(::SampleOnce, ::Val{:done}) = nothing
 
 """
-    gcp_stoch_objective(M::CPD, X::AbstractArray, loss, sampler)
+    gcp_stoch_objective([rng=default_rng()], M::CPD, X::AbstractArray, loss, sampler)
 
 Compute stochastic estimate of the GCP objective function for the
 model tensor `M`, data tensor `X`, and loss function `loss`
-using the sampler `sampler`.
+using the sampler `sampler` with random number generator `rng`.
 """
-function gcp_stoch_objective end
+gcp_stoch_objective(M::CPD, X::AbstractArray, loss, sampler) =
+    gcp_stoch_objective(default_rng(), M, X, loss, sampler)
 
 """
-    gcp_stoch_grad_U!(GU, M::CPD, X::AbstractArray, loss, sampler)
+    gcp_stoch_grad_U!([rng=default_rng()], GU, M::CPD, X::AbstractArray, loss, sampler)
 
 Compute stochastic estimate of the GCP gradient with respect to the
 factor matrices `U = (U[1],...,U[N])` for the model tensor `M`,
-data tensor `X`, and loss function `loss` using the sampler `sampler`,
-and store the result in `GU = (GU[1],...,GU[N])`.
+data tensor `X`, and loss function `loss` using the sampler `sampler`
+with random number generator `rng`, and store the result in `GU = (GU[1],...,GU[N])`.
 """
-function gcp_stoch_grad_U! end
+gcp_stoch_grad_U!(GU, M::CPD, X::AbstractArray, loss, sampler) =
+    gcp_stoch_grad_U!(default_rng(), GU, M::CPD, X::AbstractArray, loss, sampler)
 
 """
-    UniformSampler(numsamples::Int, rng::AbstractRNG)
+    UniformSampler(numsamples::Int)
 
-Uniform sampling of `numsamples` entries with replacement
-using the random number generator `rng`.
+Uniform sampling of `numsamples` entries with replacement.
 """
-struct UniformSampler{R<:AbstractRNG} <: AbstractSampler
+struct UniformSampler <: AbstractSampler
     numsamples::Int
-    rng::R
 end
 
 function gcp_stoch_objective(
+    rng::AbstractRNG,
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
     sampler::UniformSampler,
 ) where {T,TX,N}
-    return gcp_stoch_objective(M, X, loss, SampleOnce(X, sampler))
+    return gcp_stoch_objective(rng, M, X, loss, SampleOnce(X, sampler))
 end
 
 SampleOnce(X::Array, sampler::UniformSampler) =
     SampleOnce(sampler, Vector{NTuple{ndims(X),Int}}())
 function gcp_stoch_objective(
+    rng::AbstractRNG,
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
     (sampler, inds)::SampleOnce{<:UniformSampler},
 ) where {T,TX,N}
-    n, ω = size(X), length(X)
-    s, rng = sampler.numsamples, sampler.rng
+    n, ω, s = size(X), length(X), sampler.numsamples
     if isempty(inds)
         sample!(rng, CartesianIndices(n), resize!(inds, s))
     end
@@ -173,14 +174,14 @@ function gcp_stoch_objective(
 end
 
 function gcp_stoch_grad_U!(
+    rng::AbstractRNG,
     GU::NTuple{N,TGU},
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
     sampler::UniformSampler,
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
-    n, ω = size(X), length(X)
-    s, rng = sampler.numsamples, sampler.rng
+    n, ω, s = size(X), length(X), sampler.numsamples
     inds = sample!(rng, CartesianIndices(n), Vector{NTuple{ndims(X),Int}}(undef, s))
     vals = [
         ismissing(X[CartesianIndex(I)]) ? zero(nonmissingtype(eltype(X))) :
