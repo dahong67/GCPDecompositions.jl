@@ -14,6 +14,7 @@ using IntervalSets: Interval
 using LinearAlgebra: lu!, mul!, norm, rdiv!, rmul!, Diagonal
 using LBFGSB: lbfgsb
 using Random: AbstractRNG
+using StatsBase: sample!
 
 # Abstract type and associated functions
 
@@ -96,6 +97,24 @@ Concrete types `ConcreteSampler <: AbstractSampler` should implement
 abstract type AbstractSampler end
 
 """
+    SampleOnce(X::AbstractArray, sampler::AbstractSampler)
+
+Wrapped sampler that samples entries from `X` using `sampler` only
+the first time, then reuses the same indices every time after that.
+For use with `gcp_stoch_objective`.
+
+The internal field `cache` stores cached values - the particular choice
+of what is stored is an implementation detail defined by each `sampler`.
+"""
+struct SampleOnce{S<:AbstractSampler,C} <: AbstractSampler
+    sampler::S
+    cache::C
+end
+Base.iterate(wrapped::SampleOnce) = (wrapped.sampler, Val(:cache))
+Base.iterate(wrapped::SampleOnce, ::Val{:cache}) = (wrapped.cache, Val(:done))
+Base.iterate(::SampleOnce, ::Val{:done}) = nothing
+
+"""
     gcp_stoch_objective(M::CPD, X::AbstractArray, loss, sampler)
 
 Compute stochastic estimate of the GCP objective function for the
@@ -131,9 +150,22 @@ function gcp_stoch_objective(
     loss,
     sampler::UniformSampler,
 ) where {T,TX,N}
+    return gcp_stoch_objective(M, X, loss, SampleOnce(X, sampler))
+end
+
+SampleOnce(X::Array, sampler::UniformSampler) =
+    SampleOnce(sampler, Vector{CartesianIndex{ndims(X)}}())
+function gcp_stoch_objective(
+    M::CPD{T,N},
+    X::Array{TX,N},
+    loss,
+    (sampler, inds)::SampleOnce{<:UniformSampler},
+) where {T,TX,N}
     n, ω = size(X), length(X)
     s, rng = sampler.numsamples, sampler.rng
-    inds = rand(rng, CartesianIndices(n), s)
+    if isempty(inds)
+        sample!(rng, CartesianIndices(n), resize!(inds, s))
+    end
     return sum((ω / s) * value(loss, X[I], M[I]) for I in inds if !ismissing(X[I]))
 end
 
