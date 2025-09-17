@@ -82,7 +82,7 @@ function gcp_grad_U!(
     return GU
 end
 
-# Stochastic objective and gradient functions
+# Stochastic objective and gradient functions: Abstract types and functions
 
 """
     AbstractSampler
@@ -96,24 +96,6 @@ Concrete types `ConcreteSampler <: AbstractSampler` should implement
 + `gcp_stoch_grad_U!(rng, GU, M, X, loss, sampler::ConcreteSampler)`
 """
 abstract type AbstractSampler end
-
-"""
-    SampleOnce(X::AbstractArray, sampler::AbstractSampler)
-
-Wrapped sampler that samples entries from `X` using `sampler` only
-the first time, then reuses the same indices every time after that.
-For use with `gcp_stoch_objective`.
-
-The internal field `cache` stores cached values - the particular choice
-of what is stored is an implementation detail defined by each `sampler`.
-"""
-struct SampleOnce{S<:AbstractSampler,C} <: AbstractSampler
-    sampler::S
-    cache::C
-end
-Base.iterate(wrapped::SampleOnce) = (wrapped.sampler, Val(:cache))
-Base.iterate(wrapped::SampleOnce, ::Val{:cache}) = (wrapped.cache, Val(:done))
-Base.iterate(::SampleOnce, ::Val{:done}) = nothing
 
 """
     gcp_stoch_objective([rng=default_rng()], M::CPD, X::AbstractArray, loss, sampler)
@@ -135,6 +117,26 @@ with random number generator `rng`, and store the result in `GU = (GU[1],...,GU[
 """
 gcp_stoch_grad_U!(GU, M::CPD, X::AbstractArray, loss, sampler) =
     gcp_stoch_grad_U!(default_rng(), GU, M::CPD, X::AbstractArray, loss, sampler)
+
+"""
+    SampleOnce(X::AbstractArray, sampler::AbstractSampler)
+
+Wrapped sampler that samples entries from `X` using `sampler` only
+the first time, then reuses the same indices every time after that.
+For use with `gcp_stoch_objective`.
+
+The internal field `cache` stores cached values - the particular choice
+of what is stored is an implementation detail defined by each `sampler`.
+"""
+struct SampleOnce{S<:AbstractSampler,C} <: AbstractSampler
+    sampler::S
+    cache::C
+end
+Base.iterate(wrapped::SampleOnce) = (wrapped.sampler, Val(:cache))
+Base.iterate(wrapped::SampleOnce, ::Val{:cache}) = (wrapped.cache, Val(:done))
+Base.iterate(::SampleOnce, ::Val{:done}) = nothing
+
+# Stochastic objective and gradient functions: Uniform sampler
 
 """
     UniformSampler(numsamples::Int)
