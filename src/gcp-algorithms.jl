@@ -154,7 +154,7 @@ function gcp_stoch_objective(
 end
 
 SampleOnce(X::Array, sampler::UniformSampler) =
-    SampleOnce(sampler, Vector{CartesianIndex{ndims(X)}}())
+    SampleOnce(sampler, Vector{NTuple{ndims(X),Int}}())
 function gcp_stoch_objective(
     M::CPD{T,N},
     X::Array{TX,N},
@@ -166,7 +166,10 @@ function gcp_stoch_objective(
     if isempty(inds)
         sample!(rng, CartesianIndices(n), resize!(inds, s))
     end
-    return sum((ω / s) * value(loss, X[I], M[I]) for I in inds if !ismissing(X[I]))
+    return sum(
+        (ω / s) * value(loss, X[CartesianIndex(I)], M[CartesianIndex(I)]) for
+        I in inds if !ismissing(X[CartesianIndex(I)])
+    )
 end
 
 function gcp_stoch_grad_U!(
@@ -178,12 +181,12 @@ function gcp_stoch_grad_U!(
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
     n, ω = size(X), length(X)
     s, rng = sampler.numsamples, sampler.rng
-    inds = rand(rng, CartesianIndices(n), s)
+    inds = sample!(rng, CartesianIndices(n), Vector{NTuple{ndims(X),Int}}(undef, s))
     vals = [
-        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) :
-        (ω / s) * deriv(loss, X[I], M[I]) for I in inds
+        ismissing(X[CartesianIndex(I)]) ? zero(nonmissingtype(eltype(X))) :
+        (ω / s) * deriv(loss, X[CartesianIndex(I)], M[CartesianIndex(I)]) for I in inds
     ]
-    Yt = SparseArrayCOO(n, Tuple.(inds), vals)
+    Yt = SparseArrayCOO(n, inds, vals)
     mttkrps!(GU, Yt, M.U)
     for k in 1:N
         rmul!(GU[k], Diagonal(M.λ))
