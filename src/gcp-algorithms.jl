@@ -179,7 +179,10 @@ function gcp_stoch_grad_U!(
     n, ω = size(X), length(X)
     s, rng = sampler.numsamples, sampler.rng
     inds = rand(rng, CartesianIndices(n), s)
-    vals = [(ω / s) * deriv(loss, X[I], M[I]) for I in inds]
+    vals = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) :
+        (ω / s) * deriv(loss, X[I], M[I]) for I in inds
+    ]
     Yt = SparseArrayCOO(n, Tuple.(inds), vals)
     mttkrps!(GU, Yt, M.U)
     for k in 1:N
