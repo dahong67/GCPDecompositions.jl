@@ -42,6 +42,7 @@ function _gcp! end
 
 # Built-in algorithms
 
+include("gcp-algorithms/adam.jl")
 include("gcp-algorithms/lbfgsb.jl")
 include("gcp-algorithms/als.jl")
 include("gcp-algorithms/fastals.jl")
