@@ -16,8 +16,10 @@ Abstract type for GCP constraints on the factor matrices `U = (U[1],...,U[N])`.
 
 Concrete types `ConcreteConstraint <: AbstractConstraint` should implement:
 
-+ `satisfies(M::CPD, constraint::ConcreteConstraint)` that checks if `M` satisfies the constraint
-+ `project!(M::CPD, constraint::ConcreteConstraint)` that projects `M` onto the constraint set
++ `satisfies(M::CPD, constraint::ConcreteConstraint)`
+  that checks if `M` satisfies the constraint
++ `project!(M::CPD, constraint::ConcreteConstraint)`
+  that projects `M` onto the constraint set
 """
 abstract type AbstractConstraint end
 

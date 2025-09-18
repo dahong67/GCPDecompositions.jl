@@ -52,13 +52,17 @@ function gcp(
     # Check if algorithm supports those inputs
     if !applicable(GCPAlgorithms._gcp!, rng, _M, X, _loss, _constraints, algorithm)
         error_str = """
-        Algorithm `$(Base.nameof(typeof(algorithm)))` does not currently have an implementation supporting the provided types:
+        Algorithm `$(Base.nameof(typeof(algorithm)))` does not currently have \
+        an implementation supporting the provided types:
         + `X` is of type `$(typeof(X))`
-        + `loss` is of type `$(typeof(_loss))`$(loss === _loss ? "" : " (converted from `$(typeof(loss))`)")
-        + `constraints` is of type `$(typeof(_constraints))`$(constraints === _constraints ? "" : " (converted from `$(typeof(constraints))`)")
+        + `loss` is of type `$(typeof(_loss))`\
+        $(loss === _loss ? "" : " (converted from `$(typeof(loss))`)")
+        + `constraints` is of type `$(typeof(_constraints))`\
+        $(constraints === _constraints ? "" : " (converted from `$(typeof(constraints))`)")
         + `init` is of type `$(typeof(_M))`
         + `rng` is of type `$(typeof(rng))`
-        Please get in touch and let us know if you think it should - we are adding more methods over time!
+        Please get in touch and let us know if you think it should \
+        - we are adding more methods over time!
 
         The currently implemented methods for `$(Base.nameof(typeof(algorithm)))` are:
         $(methods(GCPAlgorithms._gcp!, (Any, Any, Any, Any, Any, typeof(algorithm))))
@@ -89,9 +93,8 @@ function default_gcp_constraints(X, r, loss::GCPLosses.AbstractLoss)
     elseif dom == Interval(0.0, +Inf)
         return (GCPConstraints.LowerBound(0.0),)
     else
-        error(
-            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
-        )
+        error("only loss functions with a domain of `-Inf .. Inf` \
+               or `0 .. Inf` are (currently) supported")
     end
 end
 

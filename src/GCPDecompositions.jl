@@ -1,5 +1,6 @@
 """
-Generalized CP Decomposition module. Provides approximate CP tensor decomposition with respect to general losses.
+Generalized CP Decomposition module.
+Provides approximate CP tensor decomposition with respect to general losses.
 """
 module GCPDecompositions
 
@@ -31,9 +32,5 @@ include("gcp-losses.jl")
 include("gcp-constraints.jl")
 include("gcp-algorithms.jl")
 include("api-gcp.jl")
-
-if !isdefined(Base, :get_extension)
-    include("../ext/LossFunctionsExt.jl")
-end
 
 end

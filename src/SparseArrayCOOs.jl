@@ -168,7 +168,7 @@ function show(io::IO, ::MIME"text/plain", A::SparseArrayCOO)
     # Print stored entries
     entrylines = get(io, :limit, false) ? displaysize(io)[1] - 4 : typemax(Int)
     pad = map(ndigits, size(A))
-    if entrylines >= nstored                    # Enough space to print all the stored entries
+    if entrylines >= nstored                  # Enough space to print all the stored entries
         perm = issorted(inds; by = reverse) ? (1:nstored) : sortperm(inds; by = reverse)
         sinds, svals = view(inds, perm), view(vals, perm)
         for ptr in 1:nstored
@@ -178,17 +178,17 @@ function show(io::IO, ::MIME"text/plain", A::SparseArrayCOO)
                 _print_ln_dup_entry(io, pad, svals[ptr])
             end
         end
-    elseif entrylines <= 0                      # No space to print any of the stored entries
+    elseif entrylines <= 0                    # No space to print any of the stored entries
         print(io, " \u2026")
-    elseif entrylines == 1                      # Only space to print vertical dots
+    elseif entrylines == 1                    # Only space to print vertical dots
         print(io, '\n', " \u22ee")
-    elseif entrylines == 2                      # Only space to print first stored entry
+    elseif entrylines == 2                    # Only space to print first stored entry
         ptr = findmin(reverse, inds)[2]
         ind, val = inds[ptr], vals[ptr]
         _print_ln_entry(io, pad, ind, val)
         !isnothing(findnext(==(ind), inds, ptr + 1)) && print(io, "  +  \u2026")
         print(io, '\n', ' '^(3 + sum(pad) + 2 * (N - 1) + 3), '\u22ee')
-    else                                        # Print the stored entries in two chunks
+    else                                      # Print the stored entries in two chunks
         # Check if indices are already sorted
         indsorted = issorted(inds; by = reverse)
 
@@ -278,11 +278,9 @@ function check_coo_buffers(
     inds::Vector{NTuple{N,Ti}},
     vals::Vector{Tv},
 ) where {Tv,Ti<:Integer,N}
-    length(inds) == length(vals) || throw(
-        ArgumentError(
-            "the buffer lengths (length(inds) = $(length(inds)), length(vals) = $(length(vals))) do not match",
-        ),
-    )
+    length(inds) == length(vals) ||
+        throw(ArgumentError("the buffer lengths (length(inds) = $(length(inds)), \
+                             length(vals) = $(length(vals))) do not match"))
     return nothing
 end
 
@@ -316,21 +314,17 @@ function check_Ti(dims::Dims{N}, Ti::Type) where {N}
         dim >= 0 || throw(
             ArgumentError("the size along dimension $k (dims[$k] = $dim) is negative"),
         )
-        dim <= maxTi || throw(
-            ArgumentError(
-                "the size along dimension $k (dims[$k] = $dim) does not fit in Ti = $(Ti) (typemax($Ti) = $(typemax(Ti)))",
-            ),
-        )
+        dim <= maxTi ||
+            throw(ArgumentError("the size along dimension $k (dims[$k] = $dim) does not \
+                                 fit in Ti = $(Ti) (typemax($Ti) = $(typemax(Ti)))"))
     end
 
     # Check that corresponding length fits in Int
     len = reduce(widemul, dims)
-    len <= typemax(Int) || throw(
-        ArgumentError(
-            "number of elements (length = $len) does not fit in Int (prevents linear indexing)",
-        ),
-    )
-    # do not need to check that dims[k] <= typemax(Int) for CartesianIndex since eltype(dims) == Int
+    len <= typemax(Int) || throw(ArgumentError("number of elements (length = $len) does \
+                                                not fit in Int (prevents linear indexing)"))
+    # do not need to check that dims[k] <= typemax(Int)
+    # for CartesianIndex since eltype(dims) == Int
 
     return nothing
 end

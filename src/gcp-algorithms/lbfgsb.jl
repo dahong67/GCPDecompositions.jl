@@ -51,17 +51,15 @@ function _gcp!(
     # Error for unsupported loss/constraint combinations
     dom = GCPLosses.domain(loss)
     if dom == Interval(-Inf, +Inf)
-        lower in (-Inf, 0.0) || error(
-            "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
-        )
+        lower in (-Inf, 0.0) ||
+            error("only lower bound constraints of `-Inf` or `0` are (currently) \
+                   supported for loss functions with a domain of `-Inf .. Inf`")
     elseif dom == Interval(0.0, +Inf)
-        lower == 0.0 || error(
-            "only lower bound constraints of `0` are (currently) supported for loss functions with a domain of `0 .. Inf`",
-        )
+        lower == 0.0 || error("only lower bound constraints of `0` are (currently) \
+                               supported for loss functions with a domain of `0 .. Inf`")
     else
-        error(
-            "only loss functions with a domain of `-Inf .. Inf` or `0 .. Inf` are (currently) supported",
-        )
+        error("only loss functions with a domain of `-Inf .. Inf` \
+               or `0 .. Inf` are (currently) supported")
     end
 
     # Initialization

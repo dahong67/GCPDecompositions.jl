@@ -19,8 +19,10 @@ where ``x`` is the data entry and ``m`` is the model entry.
 Concrete types `ConcreteLoss <: AbstractLoss` should implement:
 
 + `value(loss::ConcreteLoss, x, m)` that computes the value of the loss function ``f(x,m)``
-+ `deriv(loss::ConcreteLoss, x, m)` that computes the value of the partial derivative ``\\partial_m f(x,m)`` with respect to ``m``
-+ `domain(loss::ConcreteLoss)` that returns an `Interval` from IntervalSets.jl defining the domain for ``m``
++ `deriv(loss::ConcreteLoss, x, m)` that computes the value of the partial derivative
+  ``\\partial_m f(x,m)`` with respect to ``m``
++ `domain(loss::ConcreteLoss)` that returns an `Interval` from IntervalSets.jl defining
+  the domain for ``m``
 """
 abstract type AbstractLoss end
 
@@ -147,11 +149,12 @@ domain(::Gamma) = Interval(0.0, +Inf)
     Rayleigh(eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Rayleigh data `X`
-with sacle given by the low-rank model tensor `M`
+with scale given by the low-rank model tensor `M`
 
 + **Distribution:** ``x_i \\sim \\operatorname{Rayleigh}(\\theta_i)``
 + **Link function:** ``m_i = \\sqrt{\\frac{\\pi}{2}\\theta_i}``
-+ **Loss function:** ``f(x, m) = 2\\log(m + \\epsilon) + \\frac{\\pi}{4}(\\frac{x}{m + \\epsilon})^2``
++ **Loss function:**
+  ``f(x, m) = 2\\log(m + \\epsilon) + \\frac{\\pi}{4}(\\frac{x}{m + \\epsilon})^2``
 + **Domain:** ``m \\in [0, \\infty)``
 """
 struct Rayleigh{T<:Real} <: AbstractLoss
@@ -242,7 +245,9 @@ domain(::NegativeBinomialOdds) = Interval(0.0, +Inf)
 
 Huber Loss for given Δ
 
-+ **Loss function:** ``f(x, m) = (x - m)^2 if \\abs(x - m)\\leq\\Delta, 2\\Delta\\abs(x - m) - \\Delta^2 otherwise``
++ **Loss function:**
+  ``f(x, m) = (x - m)^2 if \\abs(x - m) \\leq \\Delta,
+    2\\Delta\\abs(x - m) - \\Delta^2 otherwise``
 + **Domain:** ``m \\in \\mathbb{R}``
 """
 struct Huber{T<:Real} <: AbstractLoss
@@ -262,10 +267,11 @@ domain(::Huber) = Interval(-Inf, +Inf)
 
 BetaDivergence Loss for given β
 
-+ **Loss function:** ``f(x, m; β) = \\frac{1}{\\beta}m^{\\beta} - \\frac{1}{\\beta - 1}xm^{\\beta - 1}
-                                        if \\beta \\in \\mathbb{R}  \\{0, 1\\},
-                                    m - x\\log(m) if \\beta = 1,
-                                    \\frac{x}{m} + \\log(m) if \\beta = 0``
++ **Loss function:**
+  ``f(x, m; β) = \\frac{1}{\\beta}m^{\\beta} - \\frac{1}{\\beta - 1}xm^{\\beta - 1}
+                     if \\beta \\in \\mathbb{R} \\{0, 1\\},
+                 m - x\\log(m) if \\beta = 1,
+                 \\frac{x}{m} + \\log(m) if \\beta = 0``
 + **Domain:** ``m \\in [0, \\infty)``
 """
 struct BetaDivergence{S<:Real,T<:Real} <: AbstractLoss
@@ -307,7 +313,8 @@ where ``x`` is the data entry and ``m`` is the model entry.
 Contains the following fields:
 
 + `func::Function`   : function that evaluates the loss function ``f(x,m)``
-+ `deriv::Function`  : function that evaluates the partial derivative ``\\partial_m f(x,m)`` with respect to ``m``
++ `deriv::Function`  : function that evaluates the partial derivative
+  ``\\partial_m f(x,m)`` with respect to ``m``
 + `domain::Interval` : `Interval` from IntervalSets.jl defining the domain for ``m``
 
 The constructor is `UserDefined(func; deriv, domain)`.

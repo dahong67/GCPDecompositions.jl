@@ -21,7 +21,7 @@ setline(4)
 # Draw mode-1 factor
 origin(Point(25, 25 + 40 * 4 + 10))
 for i in 0:6
-    poly(rect(Point(0, 40 * i), 40, 40; vertices=true); close=true)
+    poly(rect(Point(0, 40 * i), 40, 40; vertices = true); close = true)
     setcolor(Luxor.julia_red)
     fillpreserve()
     sethue("black")
@@ -31,7 +31,7 @@ end
 # Draw mode-2 factor
 origin(Point(25 + 40 + 10, 25 + 40 * 4 + 10))
 for i in 0:9
-    poly(rect(Point(40 * i, 0), 40, 40; vertices=true); close=true)
+    poly(rect(Point(40 * i, 0), 40, 40; vertices = true); close = true)
     setcolor(Luxor.julia_purple)
     fillpreserve()
     sethue("black")
@@ -42,7 +42,7 @@ end
 origin(Point(25, 25 + 40 * 4))
 transform([1 0 0.4 -0.8 0 0])
 for i in 0:4
-    poly(rect(Point(0, 40 * i), 40, 40; vertices=true); close=true)
+    poly(rect(Point(0, 40 * i), 40, 40; vertices = true); close = true)
     setcolor(Luxor.julia_green)
     fillpreserve()
     sethue("black")
@@ -60,7 +60,7 @@ for (dist, color) in [
     Rayleigh() => Luxor.julia_red,
 ]
     sethue(color)
-    poly([Point(x, pdf(dist,x)) for x in 0:0.1:10], :stroke)
+    poly([Point(x, pdf(dist, x)) for x in 0:0.1:10], :stroke)
 end
 sethue("black")
 line(Point(0, 0), Point(10, 0); action = :stroke)
@@ -82,16 +82,13 @@ line(Point(0, 0), Point(10, 0); action = :stroke)
 using StableRNGs
 rng = StableRNG(4)
 for i in 0:2, j in 0:1
-    origin(Point(
-        25 + 40 + 10 + 20 + 125 * i,
-        25 + 260 + 40 + 30 + 100 * j,
-    ))
+    origin(Point(25 + 40 + 10 + 20 + 125 * i, 25 + 260 + 40 + 30 + 100 * j))
     Luxor.scale(115, -90)
     setline(4)
 
     # Axes background
     setline(4)
-    poly(rect(Point(0, 0), 1, 1; vertices=true); close=true)
+    poly(rect(Point(0, 0), 1, 1; vertices = true); close = true)
     sethue("white")
     fillpreserve()
 
@@ -99,11 +96,11 @@ for i in 0:2, j in 0:1
     if i == 0    # mode 1
         sethue(Luxor.julia_purple)
         setline(4)
-        poly([Point(x, 1/2+sin(x*(j+1)*2*pi)/3) for x in 0:0.01:1], :stroke)
+        poly([Point(x, 1 / 2 + sin(x * (j + 1) * 2 * pi) / 3) for x in 0:0.01:1], :stroke)
     elseif i == 1    # mode 2
         setline(0.5)
         for x in 0:1/8:7/8
-            poly(rect(Point(x, 0), 1/8, rand(rng); vertices=true); close=true)
+            poly(rect(Point(x, 0), 1 / 8, rand(rng); vertices = true); close = true)
             sethue(Luxor.julia_green)
             fillpreserve()
             sethue("white")
@@ -119,7 +116,7 @@ for i in 0:2, j in 0:1
 
     # Axes border
     setline(4)
-    poly(rect(Point(0, 0), 1, 1; vertices=true); close=true)
+    poly(rect(Point(0, 0), 1, 1; vertices = true); close = true)
     sethue("black")
     strokepath()
 end

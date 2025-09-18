@@ -17,5 +17,5 @@ DEMO_FILES = ["$(splitext(f)[1]).md" for f in readdir(DEMO_DIR) if splitext(f)[2
 using GCPDecompositions, LiveServer
 Base.exit_on_sigint(false)
 cd(pkgdir(GCPDecompositions)) do
-    servedocs(; skip_files = joinpath.(DEMO_DIR, DEMO_FILES))
+    return servedocs(; skip_files = joinpath.(DEMO_DIR, DEMO_FILES))
 end
