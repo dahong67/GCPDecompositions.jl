@@ -102,9 +102,6 @@ struct SampleOnce{S<:AbstractSampler,C} <: AbstractSampler
     sampler::S
     cache::C
 end
-Base.iterate(wrapped::SampleOnce) = (wrapped.sampler, Val(:cache))
-Base.iterate(wrapped::SampleOnce, ::Val{:cache}) = (wrapped.cache, Val(:done))
-Base.iterate(::SampleOnce, ::Val{:done}) = nothing
 
 # Stochastic objective and gradient functions: Uniform sampler
 
@@ -134,9 +131,9 @@ function gcp_stoch_objective(
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
-    (sampler, inds)::SampleOnce{<:UniformSampler},
+    (; sampler, cache)::SampleOnce{<:UniformSampler},
 ) where {T,TX,N}
-    n, ω, s = size(X), length(X), sampler.numsamples
+    n, ω, s, inds = size(X), length(X), sampler.numsamples, cache
     if isempty(inds)
         sample!(rng, CartesianIndices(n), resize!(inds, s))
     end
