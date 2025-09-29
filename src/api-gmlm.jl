@@ -39,7 +39,7 @@ function contract!(result, Xi, B::Array)
     m_dims = size(B)[q+1:end]
     @assert size(result) == m_dims "Result array must have shape $(m_dims)"
 
-    # Flatten Xi as a 1×P row vector (no copy)
+    # Flatten Xi as a 1×P row vector
     Xi_vec = reshape(Xi, 1, :)
     # Reshape B as a P×Q matrix
     B_mat  = reshape(B, size(Xi_vec, 2), :)
