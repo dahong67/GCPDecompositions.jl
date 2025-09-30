@@ -175,8 +175,36 @@ function contract!(result, Xi, B::Array)
     return result
 end
 
+function full_CPD(A::CPD{T,N}) where {T,N}
+    U = A.U
+    λ = A.λ
+    sz = size(A)
+    R = size(U[1], 2)
+    out_type = promote_type(eltype.(U)..., eltype(λ))
+
+    if N == 1
+        return mul!(Vector{out_type}(undef, sz[1]), U[1], λ)
+    end
+
+    X = Array{out_type}(undef, sz)
+    
+    KR_R = similar(U[N], size(U[N], 1), R)
+
+    rows_KR_L = prod(sz[1:N-1])
+    KR_L = similar(U[1], rows_KR_L, R)
+
+    mul!(KR_R, U[N], Diagonal(λ))
+
+    TensorKernels.khatrirao!(KR_L, reverse(U[1:N-1])...)
+
+    X_matrix = reshape(X, (rows_KR_L, sz[N]))
+    mul!(X_matrix, KR_L, KR_R')
+
+    return X
+end
+
 function contract!(result, Xi, B::CPD)
-	temporal_B = Array(B)
+	temporal_B = full_CPD(B)
     contract!(result, Xi, temporal_B)
 end
 
