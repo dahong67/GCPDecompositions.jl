@@ -43,15 +43,13 @@ end
         r = 2
         X = rand(sz, sz, sz)
         M = CPD(ones(r), (rand(sz, r), rand(sz, r), rand(sz, r)))
-        if loss_type == GCPLosses.BetaDivergence
-            loss_func = loss_type(0.5)
-        elseif loss_type == GCPLosses.Huber
-            loss_func = loss_type(0.1)
-        elseif loss_type == GCPLosses.NegativeBinomialOdds
-            loss_func = loss_type(1)
-        else
-            loss_func = loss_type()
-        end
+        # Losses with no default parameters
+        loss_params = Dict(
+            GCPLosses.BetaDivergence => (0.5,),
+            GCPLosses.Huber => (0.1,),
+            GCPLosses.NegativeBinomialOdds => (1,)
+        )
+        loss_func = haskey(loss_params, loss_type) ? loss_type(loss_params[loss_type]...) : loss_type()
 
         # ForwardDiff requires vectorized objective function
         function form_M(U_λ_vec::Vector{T}) where {T}
@@ -66,17 +64,15 @@ end
         # Check gradients at random init compared to autodiff
         GU = similar.(M.U)
         computed_grad = GCPAlgorithms.gcp_grad_U!(GU, M, X, loss_func)
-        computed_grad_U1, computed_grad_U2, computed_grad_U3 =
-            computed_grad[1], computed_grad[2], computed_grad[3]
-
+        computed_grads = [computed_grad[i] for i in 1:3]
+        
         Uλ_vec = vcat(vec(M.U[1]), vec(M.U[2]), vec(M.U[3]), M.λ)
         auto_grad = ForwardDiff.gradient(objective, Uλ_vec)
-        auto_grad_U1 = reshape(auto_grad[1:sz*r], (sz, r))
-        auto_grad_U2 = reshape(auto_grad[sz*r+1:2*sz*r], (sz, r))
-        auto_grad_U3 = reshape(auto_grad[2*sz*r+1:3*sz*r], (sz, r))
+        auto_grads = [reshape(auto_grad[i*sz*r+1:(i+1)*sz*r], (sz,r)) for i in 0:2]
 
-        @test isapprox(computed_grad_U1, auto_grad_U1, rtol = 1e-6)
-        @test isapprox(computed_grad_U2, auto_grad_U2, rtol = 1e-6)
-        @test isapprox(computed_grad_U3, auto_grad_U3, rtol = 1e-6)
+        for (cg, ag) in zip(computed_grads, auto_grads)
+            @test isapprox(cg, ag, rtol = 1e-6)
+        end
+
     end
 end
