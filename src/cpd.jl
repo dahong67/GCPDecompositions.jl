@@ -92,7 +92,54 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-AbstractArray(A::CPD) = reshape(TensorKernels.khatrirao(reverse(A.U)...) * A.λ, size(A))
+function AbstractArray(A::CPD{T,N}) where {T,N}
+    U = A.U
+    λ = A.λ
+    sz = size(A)
+    R = size(λ)[1]
+    Ndim = ndims(A)
+
+    if ndims(A) == 1 # For a vector, it is just U[1] * λ
+        return U[1] * λ
+    end
+
+    # --- 1. Find the Optimal Split Point `k` ---
+    # We want to find k that minimizes Mₖ + Nₖ [Grey Ballard and Tamara G. Kolda, Tensor Decompositions for Data Science, Cambridge University Press, final draft, March 25, 2025.]
+    k_opt = 1
+    M_k = sz[1]
+    N_k = prod(sz[k_opt+1:end])
+    min_cost = M_k + N_k
+    for k in 2:(ndims(A)-1)
+        M_k *= sz[k]
+        N_k /= sz[k]
+        cost = M_k + N_k
+        if cost < min_cost
+            min_cost = cost
+            k_opt = k
+        end
+    end
+
+    # --- Absorb λ into the smallest factor matrix ---
+    U = [U...]  # turn into a vector to modify its value
+    U[argmin(sz)] = U[argmin(sz)] * Diagonal(λ)
+    
+    # --- Compute the "Left" Matrix L ---
+    L_matrices = reverse(U[1:k_opt])
+    rows_L = prod(sz[1:k_opt])
+    L = similar(U[1], rows_L, R)
+    TensorKernels.khatrirao!(L, L_matrices...)
+
+    # --- Compute the "Right" Matrix R ---
+    R_matrices = reverse(U[k_opt+1:Ndim])
+    rows_R = prod(sz[k_opt+1:Ndim])
+    R_mat = similar(U[1], rows_R, R)
+    TensorKernels.khatrirao!(R_mat, R_matrices...)
+
+    Y = L * R_mat'
+    X = reshape(Y, sz)
+    
+    return X
+end
 Array(A::CPD) = Array(AbstractArray(A))
 
 norm(M::CPD, p::Real = 2) =
