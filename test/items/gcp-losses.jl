@@ -47,9 +47,11 @@ end
         loss_params = Dict(
             GCPLosses.BetaDivergence => (0.5,),
             GCPLosses.Huber => (0.1,),
-            GCPLosses.NegativeBinomialOdds => (1,)
+            GCPLosses.NegativeBinomialOdds => (1,),
         )
-        loss_func = haskey(loss_params, loss_type) ? loss_type(loss_params[loss_type]...) : loss_type()
+        loss_func =
+            haskey(loss_params, loss_type) ? loss_type(loss_params[loss_type]...) :
+            loss_type()
 
         # ForwardDiff requires vectorized objective function
         function form_M(U_λ_vec::Vector{T}) where {T}
@@ -65,14 +67,13 @@ end
         GU = similar.(M.U)
         computed_grad = GCPAlgorithms.gcp_grad_U!(GU, M, X, loss_func)
         computed_grads = [computed_grad[i] for i in 1:3]
-        
+
         Uλ_vec = vcat(vec(M.U[1]), vec(M.U[2]), vec(M.U[3]), M.λ)
         auto_grad = ForwardDiff.gradient(objective, Uλ_vec)
-        auto_grads = [reshape(auto_grad[i*sz*r+1:(i+1)*sz*r], (sz,r)) for i in 0:2]
+        auto_grads = [reshape(auto_grad[i*sz*r+1:(i+1)*sz*r], (sz, r)) for i in 0:2]
 
         for (cg, ag) in zip(computed_grads, auto_grads)
             @test isapprox(cg, ag, rtol = 1e-6)
         end
-
     end
 end
