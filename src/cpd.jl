@@ -92,7 +92,8 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-function AbstractArray(A::CPD{T,N}) where {T,N}
+AbstractArray(A::CPD) = reshape(TensorKernels.khatrirao(reverse(A.U)...) * A.λ, size(A)) 
+function Array(A::CPD{T,N}) where {T,N}
     U = A.U
     λ = A.λ
     sz = size(A)
@@ -120,9 +121,12 @@ function AbstractArray(A::CPD{T,N}) where {T,N}
     end
 
     # --- Absorb λ into the smallest factor matrix ---
-    U = [U...]  # turn into a vector to modify its value
-    U[argmin(sz)] = U[argmin(sz)] * Diagonal(λ)
+    # turn into a vector to modify its value
     
+    # U_copy = [U...] 
+    # min_dim = argmin(sz)
+    # U_copy[min_dim] = U_copy[min_dim] * Diagonal(λ)
+
     # --- Compute the "Left" Matrix L ---
     L_matrices = reverse(U[1:k_opt])
     rows_L = prod(sz[1:k_opt])
@@ -135,12 +139,10 @@ function AbstractArray(A::CPD{T,N}) where {T,N}
     R_mat = similar(U[1], rows_R, R)
     TensorKernels.khatrirao!(R_mat, R_matrices...)
 
-    Y = L * R_mat'
-    X = reshape(Y, sz)
+    Y = L * Diagonal(λ) *  R_mat'
     
-    return X
+    return reshape(Y, sz)
 end
-Array(A::CPD) = Array(AbstractArray(A))
 
 norm(M::CPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)

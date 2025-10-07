@@ -13,6 +13,7 @@ import LinearAlgebra: norm
 using Base.Order: Ordering, Reverse
 using IntervalSets: Interval
 using Random: default_rng
+using GCPDecompositions:TensorKernels
 
 # Import sparse array module and export data type
 include("SparseArrayCOOs.jl")
