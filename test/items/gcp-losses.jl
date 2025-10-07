@@ -28,7 +28,6 @@ end
     @testset "loss_func=$loss_type" for loss_type in [
         GCPLosses.BernoulliLogit,
         GCPLosses.BernoulliOdds,
-        GCPLosses.BetaDivergence,
         GCPLosses.Gamma,
         GCPLosses.Huber,
         GCPLosses.LeastSquares,
@@ -38,42 +37,48 @@ end
         GCPLosses.PoissonLog,
         GCPLosses.Rayleigh,
     ]
-        # Setup
-        sz = 10
-        r = 2
-        X = rand(sz, sz, sz)
-        M = CPD(ones(r), (rand(sz, r), rand(sz, r), rand(sz, r)))
+
         # Losses with no default parameters
-        loss_params = Dict(
-            GCPLosses.BetaDivergence => (0.5,),
-            GCPLosses.Huber => (0.1,),
-            GCPLosses.NegativeBinomialOdds => (1,),
+        loss_params = Dict(GCPLosses.Huber => (1,), GCPLosses.NegativeBinomialOdds => (1,))
+        # Define range of values of (x,m) to test
+        test_vals = Dict(
+            GCPLosses.BetaDivergence => (0.5:0.5:2, 0.5:0.5:2),
+            GCPLosses.BernoulliLogit => (-2:0.5:2, -2:0.5:2),
+            GCPLosses.BernoulliOdds => (0:0.5:2, 0:0.5:2),
+            GCPLosses.Gamma => (0:0.5:2, 0.0:0.5:2),
+            GCPLosses.Huber => (-2:0.5:2, -2:0.5:2),
+            GCPLosses.LeastSquares => (-2:0.5:2, -2:0.5:2),
+            GCPLosses.NegativeBinomialOdds => (0:0.5:2, 0:0.5:2),
+            GCPLosses.NonnegativeLeastSquares => (0:0.5:2, 0:0.5:2),
+            GCPLosses.Poisson => (0:0.5:3, 0:0.5:3),
+            GCPLosses.PoissonLog => (-2:0.5:2, -2:0.5:2),
+            GCPLosses.Rayleigh => (0:0.5:2, 0:0.5:2),
         )
         loss_func =
             haskey(loss_params, loss_type) ? loss_type(loss_params[loss_type]...) :
             loss_type()
 
-        # ForwardDiff requires vectorized objective function
-        function form_M(U_λ_vec::Vector{T}) where {T}
-            U1 = reshape(U_λ_vec[1:sz*r], (sz, r))
-            U2 = reshape(U_λ_vec[sz*r+1:2*sz*r], (sz, r))
-            U3 = reshape(U_λ_vec[2*sz*r+1:3*sz*r], (sz, r))
-            λ = U_λ_vec[3*sz*r+1:end]
-            return CPD(λ, (U1, U2, U3))
+        for x in test_vals[loss_type][1]
+            for m in test_vals[loss_type][2]
+                auto_diff_func(m) = GCPLosses.value(loss_func, x, m)
+                computed_diff = GCPLosses.deriv(loss_func, x, m)
+                auto_diff = ForwardDiff.derivative(auto_diff_func, m)
+                @test isapprox(computed_diff, auto_diff, rtol = 1e-6)
+            end
         end
-        objective(Uλ_vec) = GCPAlgorithms.gcp_objective(form_M(Uλ_vec), X, loss_func)
+    end
 
-        # Check gradients at random init compared to autodiff
-        GU = similar.(M.U)
-        computed_grad = GCPAlgorithms.gcp_grad_U!(GU, M, X, loss_func)
-        computed_grads = [computed_grad[i] for i in 1:3]
-
-        Uλ_vec = vcat(vec(M.U[1]), vec(M.U[2]), vec(M.U[3]), M.λ)
-        auto_grad = ForwardDiff.gradient(objective, Uλ_vec)
-        auto_grads = [reshape(auto_grad[i*sz*r+1:(i+1)*sz*r], (sz, r)) for i in 0:2]
-
-        for (cg, ag) in zip(computed_grads, auto_grads)
-            @test isapprox(cg, ag, rtol = 1e-6)
+    @testset "loss_func=GCPDecompositions.GCPLosses.BetaDivergence, beta=$β" for β in
+                                                                                 [0, 0.5, 1]
+        loss_func = GCPLosses.BetaDivergence(β)
+        test_vals = (0:0.5:3, 0.1:0.5:3)
+        for x in test_vals[1]
+            for m in test_vals[2]
+                auto_diff_func(m) = GCPLosses.value(loss_func, x, m)
+                computed_diff = GCPLosses.deriv(loss_func, x, m)
+                auto_diff = ForwardDiff.derivative(auto_diff_func, m)
+                @test isapprox(computed_diff, auto_diff, rtol = 1e-6)
+            end
         end
     end
 end
