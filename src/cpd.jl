@@ -92,8 +92,22 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-AbstractArray(A::CPD) = reshape(TensorKernels.khatrirao(reverse(A.U)...) * A.λ, size(A)) 
-function Array(A::CPD{T,N}) where {T,N}
+"""
+    AbstractArray(A::CPD)
+
+Construct a dense `Array` from a `CPD` tensor.
+
+This function reconstructs the full, dense tensor from its factored form . 
+The core of this method is to find an optimal "split point" that partitions 
+the tensor's dimensions into two groups: a "Left" set of dimensions `{1,...,k}`
+and a "Right" set `{k+1,...,d}`. The parameter λ is absorbed by the factor matrix 
+with the smallest dimension. 
+
+# References
+- G. Ballard and T. G. Kolda, "Tensor Decompositions for Data Science,"
+Cambridge University Press, 2025 (Final Draft).
+"""
+function AbstractArray(A::CPD{T,N}) where {T,N}
     U = A.U
     λ = A.λ
     sz = size(A)
@@ -104,8 +118,7 @@ function Array(A::CPD{T,N}) where {T,N}
         return U[1] * λ
     end
 
-    # --- 1. Find the Optimal Split Point `k` ---
-    # We want to find k that minimizes Mₖ + Nₖ [Grey Ballard and Tamara G. Kolda, Tensor Decompositions for Data Science, Cambridge University Press, final draft, March 25, 2025.]
+    # Find the Optimal Split Point `k` 
     k_opt = 1
     M_k = sz[1]
     N_k = prod(sz[k_opt+1:end])
@@ -120,29 +133,32 @@ function Array(A::CPD{T,N}) where {T,N}
         end
     end
 
-    # --- Absorb λ into the smallest factor matrix ---
-    # turn into a vector to modify its value
-    
-    # U_copy = [U...] 
-    # min_dim = argmin(sz)
-    # U_copy[min_dim] = U_copy[min_dim] * Diagonal(λ)
+    # Absorb λ into the smallest factor matrix     
+    min_dim = argmin(sz)
+    U = ntuple(Val(N)) do k
+        if k == min_dim
+            return U[k]* Diagonal(λ)
+        else
+            return U[k]
+        end
+    end
 
-    # --- Compute the "Left" Matrix L ---
+    # Compute the "Left" Matrix L
     L_matrices = reverse(U[1:k_opt])
     rows_L = prod(sz[1:k_opt])
     L = similar(U[1], rows_L, R)
     TensorKernels.khatrirao!(L, L_matrices...)
 
-    # --- Compute the "Right" Matrix R ---
+    # Compute the "Right" Matrix R 
     R_matrices = reverse(U[k_opt+1:Ndim])
     rows_R = prod(sz[k_opt+1:Ndim])
     R_mat = similar(U[1], rows_R, R)
     TensorKernels.khatrirao!(R_mat, R_matrices...)
 
-    Y = L * Diagonal(λ) *  R_mat'
-    
+    Y = L * R_mat'
     return reshape(Y, sz)
 end
+Array(A::CPD) = Array(AbstractArray(A))
 
 norm(M::CPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
