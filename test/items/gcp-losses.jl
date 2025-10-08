@@ -12,19 +12,17 @@ end
 
 @testitem "value/deriv/domain methods" begin
     using InteractiveUtils: subtypes
+    using ForwardDiff
     using .GCPLosses: value, deriv, domain, AbstractLoss
+
+    # Test that methods are defined
     @testset "type=$type" for type in subtypes(AbstractLoss)
         @test hasmethod(value, Tuple{type,Real,Real})
         @test hasmethod(deriv, Tuple{type,Real,Real})
         @test hasmethod(domain, Tuple{type})
     end
-end
 
-# Compare manually computed derivatives to autodiff
-@testitem "deriv methods correctness" begin
-    using InteractiveUtils: subtypes
-    using ForwardDiff
-    using .GCPLosses: AbstractLoss
+    # Test derivatives with autodiff
     @testset "$loss" for (loss, (xvals, mvals)) in [
         GCPLosses.LeastSquares() => (-2:0.5:2, -2:0.5:2),
         GCPLosses.NonnegativeLeastSquares() => (0:0.5:2, 0:0.5:2),
