@@ -258,8 +258,7 @@ end
 Huber(Δ::T) where {T<:Real} = Huber{T}(Δ)
 value(loss::Huber, x, m) =
     abs(x - m) <= loss.Δ ? (x - m)^2 : 2 * loss.Δ * abs(x - m) - loss.Δ^2
-deriv(loss::Huber, x, m) =
-    abs(x - m) <= loss.Δ ? -2 * (x - m) : -2 * sign(x - m) * loss.Δ * x
+deriv(loss::Huber, x, m) = abs(x - m) <= loss.Δ ? -2 * (x - m) : -2 * loss.Δ * sign(x - m)
 domain(::Huber) = Interval(-Inf, +Inf)
 
 """
