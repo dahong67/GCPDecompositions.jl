@@ -39,10 +39,8 @@ end
         GCPLosses.BetaDivergence(1) => (0:0.5:3, 0.1:0.5:3),
     ]
         for x in xvals, m in mvals
-            auto_diff_func(m) = GCPLosses.value(loss, x, m)
-            computed_diff = GCPLosses.deriv(loss, x, m)
-            auto_diff = ForwardDiff.derivative(auto_diff_func, m)
-            @test isapprox(computed_diff, auto_diff, rtol = 1e-6)
+            ad_ref = ForwardDiff.derivative(m -> GCPLosses.value(loss, x, m), m)
+            @test GCPLosses.deriv(loss, x, m) ≈ ad_ref
         end
     end
 end
