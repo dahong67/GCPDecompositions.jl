@@ -151,17 +151,32 @@ end
     end
 end
 
-@testitem "Array" begin
+@testitem "AbstractArray/Array/copy!" begin
     @testset "N=$N, K=$K" for N in 1:3, K in 1:3
         T = Float64
         λfull = T[1, 100, 10000]
-        U1full, U2full, U3full = T[1 2 3; 4 5 6], T[-1 0 1], T[1 2 3; 4 5 6; 7 8 9]
+        U1full, U2full, U3full = T[-1 0 1], T[1 2 3; 4 5 6], T[1 2 3; 4 5 6; 7 8 9]
         λ = λfull[1:K]
         U = (U1full[:, 1:K], U2full[:, 1:K], U3full[:, 1:K])[1:N]
         M = CPD(λ, U)
 
-        X = Array(M)
+        # AbstractArray
+        X = AbstractArray(M)
+        @test X isa Array
         @test all(I -> M[I] == X[I], CartesianIndices(X))
+
+        # Array
+        X = Array(M)
+        @test X isa Array
+        @test all(I -> M[I] == X[I], CartesianIndices(X))
+
+        # copy!
+        fill!(X, zero(T))
+        Y = copy!(X, M)
+        @test Y === X
+        @test all(I -> M[I] == X[I], CartesianIndices(X))
+        X = similar(X, 4)
+        @test_throws ArgumentError copy!(X, M)
     end
 end
 

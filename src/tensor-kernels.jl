@@ -5,7 +5,6 @@ Tensor kernels for Generalized CP Decomposition.
 """
 module TensorKernels
 
-using Compat: allequal
 using LinearAlgebra: mul!
 using ..SparseArrayCOOs: SparseArrayCOO, numstored
 using SparseArrays: sparse

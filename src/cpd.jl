@@ -92,8 +92,48 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
 end
 getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-AbstractArray(A::CPD) = reshape(TensorKernels.khatrirao(reverse(A.U)...) * A.λ, size(A))
-Array(A::CPD) = Array(AbstractArray(A))
+AbstractArray(A::CPD) = Array(A)
+Array(A::CPD{T}) where {T} = copy!(Array{T}(undef, size(A)), A)
+
+function copy!(dst::Array, src::CPD; buffers = create_copy_buffers(dst, src))
+    # Make sure axes match and extract dims
+    axes(dst) == axes(src) ||
+        throw(ArgumentError("destination array must have the same axes as the source CPD"))
+    N, sz = ndims(src), size(src)
+
+    # Fast path: N == 1
+    N == 1 && return mul!(dst, only(src.U), src.λ)
+
+    # Collect scaled factor matrices with λ absorbed into the smallest one
+    k_min = argmin(sz)
+    U = ntuple(k -> k == k_min ? src.U[k] * Diagonal(src.λ) : src.U[k], Val(N))
+
+    # Compute left and right khatrirao products (based on optimal split)
+    k_split = argmin(k -> prod(sz[1:k]) + prod(sz[k+1:end]), 1:N-1)
+    TensorKernels.khatrirao!(buffers.KR_L, reverse(U[1:k_split])...)
+    TensorKernels.khatrirao!(buffers.KR_R, reverse(U[k_split+1:N])...)
+
+    # Multiply into (appropriately matricized) dst array
+    dst_mat = reshape(dst, size(buffers.KR_L, 1), size(buffers.KR_R, 1))
+    mul!(dst_mat, buffers.KR_L, transpose(buffers.KR_R))
+
+    return dst
+end
+
+function create_copy_buffers(dst::Array, src::CPD{T}) where {T}
+    # Extract dims
+    N, sz, r = ndims(src), size(src), ncomps(src)
+
+    # Fast path: N == 1 (no buffers needed)
+    N == 1 && return ()
+
+    # Usual path (buffers needed for khatrirao products)
+    k_split = argmin(k -> prod(sz[1:k]) + prod(sz[k+1:end]), 1:N-1)
+    return (;
+        KR_L = Array{T}(undef, prod(sz[1:k_split]), r),
+        KR_R = Array{T}(undef, prod(sz[k_split+1:N]), r),
+    )
+end
 
 norm(M::CPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)

@@ -8,9 +8,10 @@ module GCPDecompositions
 import Base: ndims, size, show, summary
 import Base: getindex
 import Base: permutedims
-import Base: AbstractArray, Array
+import Base: AbstractArray, Array, copy!
 import LinearAlgebra: norm
 using Base.Order: Ordering, Reverse
+using LinearAlgebra: Diagonal, mul!
 using IntervalSets: Interval
 using Random: default_rng
 
