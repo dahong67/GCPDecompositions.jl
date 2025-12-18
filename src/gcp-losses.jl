@@ -171,18 +171,29 @@ function stochastic_grad_U_λ!(
     
     η = count(!iszero, X)
     ζ = length(X) - η
-    idx_counts = countmap(B)
-    sample_vals = zeros(T, length(keys(idx_counts)))   # Will contain entries of elementwise derivative tensor at indices given by B
-    for (i, element_idx) in enumerate(keys(idx_counts))
-        num_sampled = idx_counts[element_idx]
+    ω = length(X)
+
+    # Initialize sparse subsampled derivative tensor
+    inds = unique(B)
+    Y = SparseArray{T,N}(Dict([(idx, zero(T)) for idx in inds]), size(X))
+
+    # Compute bias-corrected derivatives
+    for (i,idx) in enumerate(B)
         if sampling_strategy == "uniform"
-            sample_vals[i] = num_sampled * (length(X) / length(B)) .* deriv(loss, X[element_idx], M[element_idx])  # Compute elementwise derivative
+            Y[idx] += (ω / length(B)) * deriv(loss, X[idx], M[idx])
         elseif sampling_strategy == "stratified"
-            entry = X[element_idx]
-            if iszero(entry)
-                sample_vals[i] = num_sampled * (ζ / q) .* deriv(loss, entry, M[element_idx])   # Zeros
+            # First p entries of B are nonzeros, remaining q entries are zeros
+            if i <= p
+                Y[idx] += (η / p) * deriv(loss, X[idx], M[idx])
             else
-                sample_vals[i] = num_sampled * (η / p) .* deriv(loss, X[element_idx], M[element_idx])   # Nonzeros
+                Y[idx] += (ζ / q) * deriv(loss, X[idx], M[idx])
+            end
+        elseif sampling_strategy == "semi-stratified"
+            # First p entries of B are nonzeros, remaining q entries are possible zeros
+            if i <= p
+                Y[idx] += (η / p) * (deriv(loss, X[idx], M[idx]) - deriv(loss, zero(T), M[idx]))
+            else
+                Y[idx] += (ω / q) * deriv(loss, zero(T), M[idx])
             end
         else
             error(
@@ -190,11 +201,6 @@ function stochastic_grad_U_λ!(
             )
         end
     end
-
-    # Create sparse subsampled derivative tensor
-    #Y = SparseTensorCOO(size(X), [Tuple(I) for I in keys(idx_counts)], sample_vals)
-    inds = collect(keys(idx_counts))
-    Y = SparseArray{T,N}(Dict([(inds[i], sample_vals[i]) for i in eachindex(inds)]), size(X))
 
     # Factor matrix gradients
     Us = tuple([M.U[k] for k in M.S]...)
@@ -224,7 +230,6 @@ function stochastic_grad_U_λ!(
     end
 
     # Weights gradient
-	#inds, vals = storedindices(Y), storedvalues(Y)
     inds, vals = nonzero_keys(Y), nonzero_values(Y)
 	Uh = reduce(.*, Us[k][getindex.(inds, k), :] for k in eachindex(Us))
     mul!(GU_λ[K+1], Uh', collect(vals))

@@ -13,7 +13,7 @@ Brief description of algorithm parameters:
   - `τ::Int`                 : number of iterations per epoch (default:1000)
   - `κ::Int`                 : max number of bad epochs (default: `1`)
   - `ν::Float`               : learning rate decay after bad epoch (deafult: `0.1`)
-  - `sampling_strategy::String`    : how to sample elements, options are `uniform` or ... (default: `uniform`)
+  - `sampling_strategy::String`    : how to sample elements, options are `uniform` or `stratified` or `semi-stratified` (default: `uniform`)
   - `p::Int`                 : number of nonzero samples for stratified sampling (default: `1`)
   - `q::Int`                 : number of zero samples for stratified sampling (default: `1`)
   - `κ_factor::Float`        : minimum relative decrease in objective function to not be a bad epoch, smaller is more stringent (default: `0.999`)
@@ -84,10 +84,10 @@ function _symgcp(
     lr = algorithm.α
 
     # For stratified sampling, keep list of indices where data tensor is nonzero
-    if algorithm.sampling_strategy == "stratified"
+    if algorithm.sampling_strategy == "stratified" || algorithm.sampling_strategy == "semi-stratified"
         nonzero_idxs = findall(!iszero, X)
         length(nonzero_idxs) > 0 || error(
-            "You have selected stratified sampling in a tensor with no zeros!",
+            "You have selected stratified or semi-stratified sampling in a tensor with no zeros!",
         )
         p = algorithm.p
         q = algorithm.q
@@ -97,7 +97,7 @@ function _symgcp(
     Gλ = similar(λ)   # Gradient buffer for weights
 
     # TODO: Estimate loss from fixed set of samples
-    # (For now, just use entire tensor)
+    # (For now just use entire tensor)
     F_hat = GCPLosses.objective(SymCPD(λ, U, S), X, loss, γ)
     iter_losses = [] # Record loss from objective function (no regularization)
     iter_reg_term_losses = [] # Record loss from regularization term
@@ -139,15 +139,21 @@ function _symgcp(
                         zero_count += 1
                     end
                 end
+            elseif algorithm.sampling_strategy == "semi-stratified"
+                B = Vector{CartesianIndex}(undef, p+q)
+                # Sample p nonzero entries (with replacement)
+                B[1:p] = rand(nonzero_idxs, p)           
+                # Sample q entries from entire tensor (with replacement)
+                B[p+1:p+q] = rand(CartesianIndices(X), q)
             else
                 error(
-                    "The only supported sampling strategies are uniform and stratified",
+                    "The only supported sampling strategies are uniform, stratified, and semi-stratified",
                 )
             end
 
             # Compute stochastic gradient
-            if algorithm.sampling_strategy == "stratified"
-                GCPLosses.stochastic_grad_U_λ!((GU..., Gλ), SymCPD(λ, U, S), X, loss, sym_data, γ, B, "stratified"; p=p, q=q)
+            if algorithm.sampling_strategy == "stratified" || algorithm.sampling_strategy == "semi-stratified"
+                GCPLosses.stochastic_grad_U_λ!((GU..., Gλ), SymCPD(λ, U, S), X, loss, sym_data, γ, B, algorithm.sampling_strategy; p=p, q=q)
             else
                 GCPLosses.stochastic_grad_U_λ!((GU..., Gλ), SymCPD(λ, U, S), X, loss, sym_data, γ, B, "uniform")
             end

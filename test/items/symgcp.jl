@@ -562,7 +562,7 @@ end
         M0 = default_init_sym(X, r, loss, constraints, algorithm, S)
 
         GU_stochastic = (similar(U_star), ones(r))
-        @test_throws ErrorException GCPLosses.stochastic_grad_U_λ!(GU_stochastic, M0, X, loss, false, 0.1, CartesianIndices(X), "semistratified")
+        @test_throws ErrorException GCPLosses.stochastic_grad_U_λ!(GU_stochastic, M0, X, loss, false, 0.1, CartesianIndices(X), "unstratified")
     end
 end
 
