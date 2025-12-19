@@ -99,14 +99,13 @@ function _symgcp(
     # TODO: Estimate loss from fixed set of samples
     # (For now just use entire tensor)
     F_hat = GCPLosses.objective(SymCPD(λ, U, S), X, loss, γ)
-    iter_losses = [] # Record loss from objective function (no regularization)
-    iter_reg_term_losses = [] # Record loss from regularization term
-    iter_times = [] # Record total elapsed time after every iteration
-    push!(iter_losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0))  # Keep track of losses without regularization term
-    push!(iter_reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
+    epoch_losses = [] # Record loss from objective function (no regularization)
+    epoch_reg_term_losses = [] # Record loss from regularization term
+    epoch_times = [] # Record total elapsed time after every epoch
+    push!(epoch_losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0))  # Keep track of losses without regularization term
+    push!(epoch_reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
     
     time_start = time()
-    iter = 0
 
     while c <= algorithm.κ
 
@@ -181,15 +180,12 @@ function _symgcp(
 
             t += 1
 
-            # Track loss every 100 iterations
-            if iter % 100 == 0
-                push!(iter_losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0))  # Keep track of losses without regularization term
-                push!(iter_reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
-                push!(iter_times, time() - time_start)
-            end
-            iter += 1
-
         end
+
+        # Track loss after every epoch
+        push!(epoch_losses, GCPLosses.objective(SymCPD(λ, U, S), X, loss, 0))  # Keep track of losses without regularization term
+        push!(epoch_reg_term_losses, γ * sum(sum((norm(U[k][:, r])^2 - 1)^2 for r in 1:size(U[1])[2]) for k in 1:maximum(S)))
+        push!(epoch_times, time() - time_start)
         #total_iters += algorithm.τ
 
         # TODO: Estimate loss from fixed set of samples, make necessary adjustments
@@ -211,6 +207,6 @@ function _symgcp(
     end
 
     # Return final model and loss after each epoch
-    return SymCPD(λ, U, S), iter_losses, iter_reg_term_losses, iter_times
+    return SymCPD(λ, U, S), epoch_losses, epoch_reg_term_losses, epoch_times
 
 end
