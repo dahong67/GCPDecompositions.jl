@@ -492,3 +492,73 @@ end
         end
     end
 end
+
+@testitem "GCP-Adam" begin
+    using Random, IntervalSets
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Bernoulli(M[I] / (M[I] + 1))) for I in CartesianIndices(size(M))]
+
+        # Compute reference
+        Random.seed!(0)
+        Mr = gcp(
+            X,
+            r;
+            loss = GCPLosses.UserDefined(
+                (x, m) -> log(m + 1) - x * log(m + 1e-10);
+                deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
+                domain = Interval(0.0, +Inf),
+            ),
+            constraints = (GCPConstraints.LowerBound(0.0),),
+            algorithm = GCPAlgorithms.LBFGSB(),
+        )
+
+        # Uniform sampling with dense data tensor
+        Random.seed!(0)
+        Mh = gcp(
+            X,
+            r;
+            loss = GCPLosses.BernoulliOdds(),
+            algorithm = GCPAlgorithms.Adam(;
+                α = 0.01,
+                epochiters = 100,
+                fsampler = GCPAlgorithms.UniformSampler(10^5),
+                gsampler = GCPAlgorithms.UniformSampler(10^4),
+            ),
+        )
+        @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
+
+        # Stratified sampling with sparse data tensor
+        Random.seed!(0)
+        Mh = gcp(
+            SparseArrayCOO(X),
+            r;
+            loss = GCPLosses.BernoulliOdds(),
+            algorithm = GCPAlgorithms.Adam(;
+                α = 0.01,
+                epochiters = 100,
+                fsampler = GCPAlgorithms.StratifiedSampler(10^4, 10^4),
+                gsampler = GCPAlgorithms.StratifiedSampler(10^3, 10^1),
+            ),
+        )
+        @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
+
+        # Semistratified sampling with sparse data tensor
+        Random.seed!(0)
+        Mh = gcp(
+            SparseArrayCOO(X),
+            r;
+            loss = GCPLosses.BernoulliOdds(),
+            algorithm = GCPAlgorithms.Adam(;
+                α = 0.01,
+                epochiters = 100,
+                fsampler = GCPAlgorithms.SemistratifiedSampler(10^4, 10^4),
+                gsampler = GCPAlgorithms.SemistratifiedSampler(10^3, 10^3),
+            ),
+        )
+        @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
+    end
+end
