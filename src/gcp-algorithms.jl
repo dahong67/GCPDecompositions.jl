@@ -252,13 +252,11 @@ function gcp_stoch_grad_U!(
 
     # Form sparse stochastic derivative tensor
     inds = [X.inds[nzptrs]; zinds]
-    vals = [
-        [
-            (η / p) * deriv(loss, X.vals[ptr], M[CartesianIndex(X.inds[ptr])]) for
-            ptr in nzptrs
-        ]
-        [(ζ / q) * deriv(loss, zero(TX), M[CartesianIndex(ind)]) for ind in zinds]
-    ]
+    nzvals = map(nzptrs) do ptr
+        return (η / p) * deriv(loss, X.vals[ptr], M[CartesianIndex(X.inds[ptr])])
+    end
+    zvals = [(ζ / q) * deriv(loss, zero(TX), M[CartesianIndex(ind)]) for ind in zinds]
+    vals = [nzvals; zvals]
     Yt = SparseArrayCOO(n, inds, vals)
     mttkrps!(GU, Yt, M.U)
     for k in 1:N
