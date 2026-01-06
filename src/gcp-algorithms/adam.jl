@@ -41,7 +41,7 @@ end
 function _gcp!(
     rng::AbstractRNG,
     M::CPD{Float64,N},
-    X::Array{<:Union{Real,Missing},N},
+    X::Union{Array{<:Union{Real,Missing},N},SparseArrayCOO{<:Real,<:Integer,N}},
     loss::GCPLosses.AbstractLoss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
     algorithm::GCPAlgorithms.Adam,
