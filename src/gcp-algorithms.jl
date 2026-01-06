@@ -14,7 +14,7 @@ using IntervalSets: Interval
 using LinearAlgebra: lu!, mul!, norm, rdiv!, rmul!, Diagonal
 using LBFGSB: lbfgsb
 using Random: AbstractRNG, default_rng
-using StatsBase: sample!
+using StatsBase: sample, sample!
 
 # Objective and gradient functions
 
@@ -156,6 +156,108 @@ function gcp_stoch_grad_U!(
     vals = [
         ismissing(X[CartesianIndex(I)]) ? zero(nonmissingtype(eltype(X))) :
         (ω / s) * deriv(loss, X[CartesianIndex(I)], M[CartesianIndex(I)]) for I in inds
+    ]
+    Yt = SparseArrayCOO(n, inds, vals)
+    mttkrps!(GU, Yt, M.U)
+    for k in 1:N
+        rmul!(GU[k], Diagonal(M.λ))
+    end
+    return GU
+end
+
+# Stochastic objective and gradient functions: Stratified sampler
+
+"""
+    StratifiedSampler(num_nonzeros::Int, num_zeros::Int)
+
+Stratified sampling of `num_nonzeros` nonzero entries
+and `num_zeros` zero entries with replacement.
+For `SparseArrayCOO` tensors, stored entries are all treated as nonzero.
+"""
+struct StratifiedSampler <: AbstractSampler
+    num_nonzeros::Int
+    num_zeros::Int
+end
+
+function gcp_stoch_objective(
+    rng::AbstractRNG,
+    M::CPD{T,N},
+    X::SparseArrayCOO{TX,TI,N},
+    loss,
+    sampler::StratifiedSampler,
+) where {T,TX,TI,N}
+    return gcp_stoch_objective(rng, M, X, loss, SampleOnce(X, sampler))
+end
+
+SampleOnce(::SparseArrayCOO{TX,TI,N}, sampler::StratifiedSampler) where {TX,TI,N} =
+    SampleOnce(sampler, (; nzptrs = Vector{Int}(), zinds = Vector{NTuple{N,TI}}()))
+function gcp_stoch_objective(
+    rng::AbstractRNG,
+    M::CPD{T,N},
+    X::SparseArrayCOO{TX,TI,N},
+    loss,
+    (; sampler, cache)::SampleOnce{<:StratifiedSampler},
+) where {T,TX,TI,N}
+    # Extract parameters
+    n, η, ζ = size(X), numstored(X), length(X) - numstored(X)
+    p, q = sampler.num_nonzeros, sampler.num_zeros
+    (; nzptrs, zinds) = cache
+
+    # Sample entries if not already done
+    if isempty(nzptrs) || isempty(zinds)
+        # Sample nonzeros
+        sample!(rng, 1:η, resize!(nzptrs, p))
+
+        # Sample zeros (naive rejection sampling loop for now)
+        while length(zinds) < q
+            ind = convert(NTuple{N,TI}, sample(rng, CartesianIndices(n)))
+            if !(ind in X.inds)
+                push!(zinds, ind)
+            end
+        end
+    end
+
+    # Compute and return estimated objective function value
+    nzsum = sum(
+        (η / p) * value(loss, X.vals[ptr], M[CartesianIndex(X.inds[ptr])]) for
+        ptr in nzptrs
+    )
+    zsum = sum((ζ / q) * value(loss, zero(TX), M[CartesianIndex(ind)]) for ind in zinds)
+    return nzsum + zsum
+end
+
+function gcp_stoch_grad_U!(
+    rng::AbstractRNG,
+    GU::NTuple{N,TGU},
+    M::CPD{T,N},
+    X::SparseArrayCOO{TX,TI,N},
+    loss,
+    sampler::StratifiedSampler,
+) where {T,TX,TI,N,TGU<:AbstractMatrix{T}}
+    # Extract parameters
+    n, η, ζ = size(X), numstored(X), length(X) - numstored(X)
+    p, q = sampler.num_nonzeros, sampler.num_zeros
+
+    # Sample nonzeros
+    nzptrs = sample!(rng, 1:η, Vector{Int}(undef, p))
+
+    # Sample zeros (naive rejection sampling loop for now)
+    zinds = Vector{NTuple{N,TI}}()
+    while length(zinds) < q
+        ind = convert(NTuple{N,TI}, sample(rng, CartesianIndices(n)))
+        if !(ind in X.inds)
+            push!(zinds, ind)
+        end
+    end
+
+    # Form sparse stochastic derivative tensor
+    inds = [X.inds[nzptrs]; zinds]
+    vals = [
+        [
+            (η / p) * deriv(loss, X.vals[ptr], M[CartesianIndex(X.inds[ptr])]) for
+            ptr in nzptrs
+        ]
+        [(ζ / q) * deriv(loss, zero(TX), M[CartesianIndex(ind)]) for ind in zinds]
     ]
     Yt = SparseArrayCOO(n, inds, vals)
     mttkrps!(GU, Yt, M.U)

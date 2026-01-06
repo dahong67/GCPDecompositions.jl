@@ -10,7 +10,7 @@ import Base: IndexStyle
 import Base: similar, show, summary
 
 # Exports
-export SparseArrayCOO
+export SparseArrayCOO, numstored
 
 """
     SparseArrayCOO{Tv,Ti<:Integer,N} <: AbstractArray{Tv,N}
