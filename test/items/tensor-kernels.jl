@@ -17,6 +17,7 @@
                 [reduce(kron, [U[i][:, j] for i in reverse(setdiff(1:N, n))]) for j in 1:r],
             )
             @test mttkrp(X, U, n) ≈ Xn * Zn
+            @test mttkrp(SparseArrayCOO(X), U, n) ≈ Xn * Zn
         end
     end
 end
