@@ -562,3 +562,72 @@ end
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
     end
 end
+
+@testitem "stochastic obj / grad" begin
+    using Random, IntervalSets
+    using Distributions
+
+    @testset "size(X)=$sz, rank(X)=$r" for sz in [(15, 20, 25), (50, 40, 30)], r in 1:2
+        Random.seed!(0)
+        M = CPD(ones(r), rand.(sz, r))
+        X = [rand(Bernoulli(M[I] / (M[I] + 1))) for I in CartesianIndices(size(M))]
+        Xs = SparseArrayCOO(X)
+
+        # Compute references
+        Fr = GCPAlgorithms.gcp_objective(M, X, GCPLosses.LeastSquares())
+        Gr = GCPAlgorithms.gcp_grad_U!(similar.(M.U), M, X, GCPLosses.LeastSquares())
+
+        # Dense data samplers
+        @testset "sampler=$sampler" for sampler in [GCPAlgorithms.UniformSampler(10)]
+            Random.seed!(0)
+            F = mean(1:100) do _
+                return GCPAlgorithms.gcp_stoch_objective(
+                    M,
+                    X,
+                    GCPLosses.LeastSquares(),
+                    sampler,
+                )
+            end
+            G = mean(1:10000) do _
+                Gtuple = GCPAlgorithms.gcp_stoch_grad_U!(
+                    similar.(M.U),
+                    M,
+                    X,
+                    GCPLosses.LeastSquares(),
+                    sampler,
+                )
+                return collect(Gtuple)
+            end
+            @test abs2(F - Fr) / abs2(Fr) < 1e-2
+            @test maximum(sum.(abs2, G .- Gr) ./ sum.(abs2, Gr)) < 1e-1
+        end
+
+        # Sparse data samplers
+        @testset "sampler=$sampler" for sampler in [
+            GCPAlgorithms.StratifiedSampler(10, 2),
+            GCPAlgorithms.SemistratifiedSampler(10, 10),
+        ]
+            Random.seed!(0)
+            F = mean(1:100) do _
+                return GCPAlgorithms.gcp_stoch_objective(
+                    M,
+                    Xs,
+                    GCPLosses.LeastSquares(),
+                    sampler,
+                )
+            end
+            G = mean(1:10000) do _
+                Gtuple = GCPAlgorithms.gcp_stoch_grad_U!(
+                    similar.(M.U),
+                    M,
+                    Xs,
+                    GCPLosses.LeastSquares(),
+                    sampler,
+                )
+                return collect(Gtuple)
+            end
+            @test abs2(F - Fr) / abs2(Fr) < 1e-2
+            @test maximum(sum.(abs2, G .- Gr) ./ sum.(abs2, Gr)) < 1e-1
+        end
+    end
+end
