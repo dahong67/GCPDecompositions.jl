@@ -72,6 +72,12 @@
     )
 end
 
+@testitem "default_gcp_init" begin
+    X = randn(2, 3, 4)
+    M = default_gcp_init(X, 2, GCPLosses.LeastSquares(), (), GCPAlgorithms.ALS())
+    @test M isa CPD
+end
+
 @testitem "LeastSquares" begin
     using Random
 
