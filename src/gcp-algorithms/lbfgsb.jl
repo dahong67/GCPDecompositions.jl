@@ -35,6 +35,7 @@ Base.@kwdef struct LBFGSB <: AbstractAlgorithm
 end
 
 function _gcp!(
+    rng::AbstractRNG,
     M::CPD{Float64,N},
     X::Array{<:Union{Real,Missing},N},
     loss::GCPLosses.AbstractLoss,

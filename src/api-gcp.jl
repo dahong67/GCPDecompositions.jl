@@ -4,10 +4,11 @@
 
 """
     gcp(X, r;
+        rng = default_rng(),
         loss = GCPLosses.LeastSquares(),
         constraints = default_gcp_constraints(X, r, loss),
         algorithm = default_gcp_algorithm(X, r, loss, constraints),
-        init = default_gcp_init(X, r, loss, constraints, algorithm))
+        init = default_gcp_init(rng, X, r, loss, constraints, algorithm))
 
 Compute an approximate rank-`r` CP decomposition of the data tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
@@ -16,6 +17,7 @@ Keyword arguments:
 + `loss`        : loss function of type `GCPLosses.AbstractLoss`
 + `constraints` : a `Tuple` of constraints of type `GCPConstraints.AbstractConstraint`
 + `algorithm`   : algorithm of type `GCPAlgorithms.AbstractAlgorithm`
++ `rng`         : random number generator (used by `default_gcp_init` and some algorithms)
 
 Conventional CP corresponds to the default `GCPLosses.LeastSquares()` loss
 with the default of no constraints (i.e., `constraints = ()`).
@@ -29,10 +31,11 @@ See also: `CPD`, `GCPLosses`, `GCPConstraints`, `GCPAlgorithms`.
 function gcp(
     X,
     r;
+    rng = default_rng(),
     loss = GCPLosses.LeastSquares(),
     constraints = default_gcp_constraints(X, r, loss),
     algorithm = default_gcp_algorithm(X, r, loss, constraints),
-    init = default_gcp_init(X, r, loss, constraints, algorithm),
+    init = default_gcp_init(rng, X, r, loss, constraints, algorithm),
 )
     # Normalize loss and constraints
     _loss = convert(GCPLosses.AbstractLoss, loss)
@@ -47,7 +50,7 @@ function gcp(
     _M = deepcopy(init)
 
     # Check if algorithm supports those inputs
-    if !applicable(GCPAlgorithms._gcp!, _M, X, _loss, _constraints, algorithm)
+    if !applicable(GCPAlgorithms._gcp!, rng, _M, X, _loss, _constraints, algorithm)
         error_str = """
         Algorithm `$(Base.nameof(typeof(algorithm)))` does not currently have \
         an implementation supporting the provided types:
@@ -57,17 +60,18 @@ function gcp(
         + `constraints` is of type `$(typeof(_constraints))`\
         $(constraints === _constraints ? "" : " (converted from `$(typeof(constraints))`)")
         + `init` is of type `$(typeof(_M))`
+        + `rng` is of type `$(typeof(rng))`
         Please get in touch and let us know if you think it should \
         - we are adding more methods over time!
 
         The currently implemented methods for `$(Base.nameof(typeof(algorithm)))` are:
-        $(methods(GCPAlgorithms._gcp!, (Any, Any, Any, Any, typeof(algorithm))))
+        $(methods(GCPAlgorithms._gcp!, (Any, Any, Any, Any, Any, typeof(algorithm))))
         """
         throw(ErrorException(error_str))
     end
 
     # Call internal function with normalized inputs
-    return GCPAlgorithms._gcp!(_M, X, _loss, _constraints, algorithm)
+    return GCPAlgorithms._gcp!(rng, _M, X, _loss, _constraints, algorithm)
 end
 
 # Default constraints
