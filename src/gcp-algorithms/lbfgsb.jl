@@ -39,7 +39,7 @@ function _gcp!(
     M::CPD{Float64,N},
     X::Array{<:Union{Real,Missing},N},
     loss::AbstractLoss,
-    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
+    constraints::Tuple{Vararg{LowerBoundConstraint}},
     algorithm::GCPAlgorithms.LBFGSB,
 ) where {N}
     r = ncomps(M)
@@ -66,7 +66,7 @@ function _gcp!(
     normalizecomps!(M; dims = :λ, distribute_to = 1:ndims(M))
     M.U[1] .*= permutedims(sign.(M.λ))
     M.λ .= oneunit(T)
-    project!(M, GCPConstraints.LowerBound(lower))
+    project!(M, LowerBoundConstraint(lower))
     U0 = M.U
     u0 = vcat(vec.(U0)...)
 

@@ -48,11 +48,15 @@ export LeastSquaresLoss,
     UserDefinedLoss,
     WrappedLoss
 
+# Constraints
+include("constraints.jl")
+export AbstractConstraint, project!, satisfies
+export LowerBoundConstraint
+
 # Exports
 export gcp, default_gcp_constraints, default_gcp_algorithm, default_gcp_init
-export GCPConstraints, GCPAlgorithms
+export GCPAlgorithms
 
-include("gcp-constraints.jl")
 include("gcp-algorithms.jl")
 include("api-gcp.jl")
 

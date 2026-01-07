@@ -21,14 +21,14 @@
         X,
         r;
         loss = LeastSquaresLoss(),
-        constraints = (GCPConstraints.LowerBound(1),),
+        constraints = (LowerBoundConstraint(1),),
     )
     @test_throws ErrorException gcp(X, r; loss = PoissonLoss(), constraints = ())
     @test_throws ErrorException gcp(
         X,
         r;
         loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
-        constraints = (GCPConstraints.LowerBound(1),),
+        constraints = (LowerBoundConstraint(1),),
     )
 
     # Exercise `_gcp!` for Adam
@@ -36,7 +36,7 @@
         X,
         r;
         loss = LeastSquaresLoss(),
-        constraints = (GCPConstraints.LowerBound(1),),
+        constraints = (LowerBoundConstraint(1),),
         algorithm = GCPAlgorithms.Adam(;
             fsampler = GCPAlgorithms.UniformSampler(10),
             gsampler = GCPAlgorithms.UniformSampler(10),
@@ -56,7 +56,7 @@
         X,
         r;
         loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
-        constraints = (GCPConstraints.LowerBound(1),),
+        constraints = (LowerBoundConstraint(1),),
         algorithm = GCPAlgorithms.Adam(;
             fsampler = GCPAlgorithms.UniformSampler(10),
             gsampler = GCPAlgorithms.UniformSampler(10),
@@ -67,7 +67,7 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        constraints = (GCPConstraints.LowerBound(0),),
+        constraints = (LowerBoundConstraint(0),),
         algorithm = GCPAlgorithms.ALS(),
     )
 end
@@ -180,7 +180,7 @@ end
                 deriv = (x, m) -> 1 - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
@@ -241,7 +241,7 @@ end
                 deriv = (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
@@ -271,7 +271,7 @@ end
                 deriv = (x, m) -> 2 / (m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
@@ -301,7 +301,7 @@ end
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
@@ -367,7 +367,7 @@ end
                 deriv = (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
@@ -455,7 +455,7 @@ end
                 deriv = (x, m) -> beta_deriv(β, x, m),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 
@@ -512,7 +512,7 @@ end
                     deriv = (x, m) -> 1 - x / (m + 1e-10),
                     domain = Interval(0.0, +Inf),
                 ),
-                constraints = (GCPConstraints.LowerBound(0.0),),
+                constraints = (LowerBoundConstraint(0.0),),
                 algorithm = GCPAlgorithms.LBFGSB(),
             )
 
@@ -550,7 +550,7 @@ end
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
+            constraints = (LowerBoundConstraint(0.0),),
             algorithm = GCPAlgorithms.LBFGSB(),
         )
 

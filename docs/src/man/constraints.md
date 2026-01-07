@@ -5,13 +5,12 @@
     This page of the docs is still a work-in-progress. Check back later!
 
 ```@docs
-GCPConstraints
-GCPConstraints.AbstractConstraint
-GCPConstraints.satisfies
-GCPConstraints.project!
+AbstractConstraint
+satisfies
+project!
 ```
 
 ```@autodocs
-Modules = [GCPConstraints]
-Filter = t -> t in subtypes(GCPConstraints.AbstractConstraint)
+Modules = [GCPDecompositions]
+Filter = t -> t in subtypes(AbstractConstraint)
 ```

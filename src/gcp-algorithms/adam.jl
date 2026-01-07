@@ -43,7 +43,7 @@ function _gcp!(
     M::CPD{Float64,N},
     X::Union{Array{<:Union{Real,Missing},N},SparseArrayCOO{<:Real,<:Integer,N}},
     loss::AbstractLoss,
-    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
+    constraints::Tuple{Vararg{LowerBoundConstraint}},
     algorithm::GCPAlgorithms.Adam,
 ) where {N}
     r = ncomps(M)
@@ -72,7 +72,7 @@ function _gcp!(
     normalizecomps!(M; dims = :λ, distribute_to = 1:ndims(M))
     M.U[1] .*= permutedims(sign.(M.λ))
     M.λ .= oneunit(T)
-    project!(M, GCPConstraints.LowerBound(lower))
+    project!(M, LowerBoundConstraint(lower))
 
     # Setup fsampler
     fsampler = SampleOnce(X, algorithm.fsampler)

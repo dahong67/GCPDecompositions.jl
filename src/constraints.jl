@@ -1,11 +1,4 @@
-## GCP Constraints
-
-"""
-Constraints for Generalized CP Decomposition.
-"""
-module GCPConstraints
-
-using ..GCPDecompositions: CPD
+## Constraints
 
 # Abstract type and associated functions
 
@@ -40,20 +33,19 @@ function project! end
 # Built-in constraints
 
 """
-    LowerBound(value::Real)
+    LowerBoundConstraint(value::Real)
 
 Lower-bound constraint on the entries of the factor matrices
 `U = (U[1],...,U[N])`, i.e., `U[i][j,k] >= value`.
 """
-struct LowerBound{T} <: AbstractConstraint
+struct LowerBoundConstraint{T} <: AbstractConstraint
     value::T
 end
-satisfies(M::CPD, constraint::LowerBound) = all(all(>=(constraint.value), Uk) for Uk in M.U)
-function project!(M::CPD, constraint::LowerBound)
+satisfies(M::CPD, constraint::LowerBoundConstraint) =
+    all(all(>=(constraint.value), Uk) for Uk in M.U)
+function project!(M::CPD, constraint::LowerBoundConstraint)
     for Uk in M.U
         Uk .= max.(constraint.value, Uk)
     end
     return M
-end
-
 end

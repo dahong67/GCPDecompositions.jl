@@ -15,7 +15,7 @@ with respect to the loss function `loss` and return a `CPD` object.
 
 Keyword arguments:
 + `loss`        : loss function of type `AbstractLoss`
-+ `constraints` : a `Tuple` of constraints of type `GCPConstraints.AbstractConstraint`
++ `constraints` : a `Tuple` of constraints of type `AbstractConstraint`
 + `algorithm`   : algorithm of type `GCPAlgorithms.AbstractAlgorithm`
 + `rng`         : random number generator (used by `default_gcp_init` and some algorithms)
 
@@ -26,7 +26,7 @@ If the LossFunctions.jl package is also loaded,
 `loss` can also be a `DistanceLoss` or `MarginLoss` from that package;
 `gcp` will automatically wrap it into a `WrappedLoss` loss.
 
-See also: `CPD`, `AbstractLoss`, `GCPConstraints`, `GCPAlgorithms`.
+See also: `CPD`, `AbstractLoss`, `AbstractConstraint`, `GCPAlgorithms`.
 """
 function gcp(
     X,
@@ -40,8 +40,8 @@ function gcp(
     # Normalize loss and constraints
     _loss = convert(AbstractLoss, loss)
     _constraints =
-        constraints isa GCPConstraints.AbstractConstraint ? tuple(constraints) :
-        convert(Tuple{Vararg{GCPConstraints.AbstractConstraint}}, Tuple(constraints))
+        constraints isa AbstractConstraint ? tuple(constraints) :
+        convert(Tuple{Vararg{AbstractConstraint}}, Tuple(constraints))
 
     # Check and copy init
     init isa CPD || throw(ArgumentError("`init` must be a `CPD`"))
@@ -91,7 +91,7 @@ function default_gcp_constraints(X, r, loss::AbstractLoss)
     if dom == Interval(-Inf, +Inf)
         return ()
     elseif dom == Interval(0.0, +Inf)
-        return (GCPConstraints.LowerBound(0.0),)
+        return (LowerBoundConstraint(0.0),)
     else
         error("only loss functions with a domain of `-Inf .. Inf` \
                or `0 .. Inf` are (currently) supported")
