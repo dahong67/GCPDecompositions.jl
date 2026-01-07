@@ -9,6 +9,13 @@ GCPAlgorithms
 GCPAlgorithms.AbstractAlgorithm
 GCPAlgorithms.gcp_objective
 GCPAlgorithms.gcp_grad_U!
+GCPAlgorithms.gcp_stoch_objective
+GCPAlgorithms.gcp_stoch_grad_U!
+GCPAlgorithms.AbstractSampler
+GCPAlgorithms.SampleOnce
+GCPAlgorithms.UniformSampler
+GCPAlgorithms.StratifiedSampler
+GCPAlgorithms.SemistratifiedSampler
 ```
 
 ```@autodocs
