@@ -44,12 +44,12 @@ Return the number of components in `M`.
 See also: `ndims`, `size`.
 """
 ncomps(M::CPD) = length(M.λ)
-ndims(::CPD{T,N}) where {T,N} = N
+Base.ndims(::CPD{T,N}) where {T,N} = N
 
-size(M::CPD{T,N}, dim::Integer) where {T,N} = dim <= N ? size(M.U[dim], 1) : 1
-size(M::CPD{T,N}) where {T,N} = ntuple(d -> size(M, d), N)
+Base.size(M::CPD{T,N}, dim::Integer) where {T,N} = dim <= N ? size(M.U[dim], 1) : 1
+Base.size(M::CPD{T,N}) where {T,N} = ntuple(d -> size(M, d), N)
 
-function show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
+function Base.show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
     # Compute displaysize for showing fields
     LINES, COLUMNS = displaysize(io)
     LINES_FIELD = max(LINES - 2 - N, 0) ÷ (1 + N)
@@ -66,7 +66,7 @@ function show(io::IO, mime::MIME{Symbol("text/plain")}, M::CPD{T,N}) where {T,N}
     end
 end
 
-function summary(io::IO, M::CPD)
+function Base.summary(io::IO, M::CPD)
     dimstring =
         ndims(M) == 0 ? "0-dimensional" :
         ndims(M) == 1 ? "$(size(M,1))-element" : join(map(string, size(M)), '×')
@@ -82,7 +82,7 @@ function summary(io::IO, M::CPD)
     )
 end
 
-function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
+function Base.getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     @boundscheck Base.checkbounds_indices(Bool, axes(M), I) || Base.throw_boundserror(M, I)
     val = zero(eltype(T))
     for j in Base.OneTo(ncomps(M))
@@ -90,12 +90,12 @@ function getindex(M::CPD{T,N}, I::Vararg{Int,N}) where {T,N}
     end
     return val
 end
-getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
+Base.getindex(M::CPD{T,N}, I::CartesianIndex{N}) where {T,N} = getindex(M, Tuple(I)...)
 
-AbstractArray(A::CPD) = Array(A)
-Array(A::CPD{T}) where {T} = copy!(Array{T}(undef, size(A)), A)
+Base.AbstractArray(A::CPD) = Array(A)
+Base.Array(A::CPD{T}) where {T} = copy!(Array{T}(undef, size(A)), A)
 
-function copy!(dst::Array, src::CPD; buffers = create_copy_buffers(dst, src))
+function Base.copy!(dst::Array, src::CPD; buffers = create_copy_buffers(dst, src))
     # Make sure axes match and extract dims
     axes(dst) == axes(src) ||
         throw(ArgumentError("destination array must have the same axes as the source CPD"))
@@ -135,7 +135,7 @@ function create_copy_buffers(dst::Array, src::CPD{T}) where {T}
     )
 end
 
-norm(M::CPD, p::Real = 2) =
+LinearAlgebra.norm(M::CPD, p::Real = 2) =
     p == 2 ? norm2(M) : norm((M[I] for I in CartesianIndices(size(M))), p)
 function norm2(M::CPD{T,N}) where {T,N}
     V = reduce(.*, M.U[i]'M.U[i] for i in 1:N)
@@ -151,7 +151,7 @@ Permute the dimensions (axes) of `M`.
 The permuted `CPD` object returned by this function is formed without copying
 (the output shares storage with the input `M`).
 """
-function permutedims(M::CPD, perm)
+function Base.permutedims(M::CPD, perm)
     (length(perm) == ndims(M) && isperm(perm)) ||
         throw(ArgumentError("no valid permutation of dimensions"))
     return CPD(M.λ, ntuple(k -> M.U[perm[k]], ndims(M)))
