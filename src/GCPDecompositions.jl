@@ -17,19 +17,23 @@ include("kernels/mttkrp.jl")
 include("kernels/mttkrps.jl")
 export create_mttkrp_buffer, mttkrp, mttkrp!, mttkrps, mttkrps!, khatrirao, khatrirao!
 
-# Import sparse array module and export data type
-include("SparseArrayCOOs.jl")
-using .SparseArrayCOOs
+# Tensor Types
+include("types/sparsearraycoo.jl")
+include("types/cpd.jl")
 export SparseArrayCOO, numstored
+export CPD,
+    ncomps,
+    normalizecomps,
+    normalizecomps!,
+    permutecomps,
+    permutecomps!,
+    sortcomps,
+    sortcomps!
 
 # Exports
-export CPD
-export ncomps,
-    normalizecomps, normalizecomps!, permutecomps, permutecomps!, sortcomps, sortcomps!
 export gcp, default_gcp_constraints, default_gcp_algorithm, default_gcp_init
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
-include("cpd.jl")
 include("gcp-losses.jl")
 include("gcp-constraints.jl")
 include("gcp-algorithms.jl")

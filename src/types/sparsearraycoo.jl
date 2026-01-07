@@ -1,22 +1,5 @@
 ## Sparse array type
 
-module SparseArrayCOOs
-
-# Imports: AbstractArray interface
-import Base: size, getindex, setindex!
-import Base: IndexStyle
-
-# Imports: Overloads for specializing outputs
-import Base: similar, show, summary
-import ..GCPDecompositions: mttkrp!, create_mttkrp_buffer, _checked_mttkrp_dims
-
-# Other imports (will be removed later)
-using SparseArrays
-using LinearAlgebra
-
-# Exports
-export SparseArrayCOO, numstored
-
 """
     SparseArrayCOO{Tv,Ti<:Integer,N} <: AbstractArray{Tv,N}
 
@@ -119,9 +102,9 @@ SparseArrayCOO(A::AbstractArray) = SparseArrayCOO(Int, A)
 
 ## Minimal AbstractArray interface
 
-size(A::SparseArrayCOO) = A.dims
+Base.size(A::SparseArrayCOO) = A.dims
 
-function getindex(A::SparseArrayCOO{Tv,<:Integer,N}, I::Vararg{Int,N}) where {Tv,N}
+function Base.getindex(A::SparseArrayCOO{Tv,<:Integer,N}, I::Vararg{Int,N}) where {Tv,N}
     @boundscheck checkbounds(A, I...)
     out = zero(Tv)
     for (ind, val) in zip(A.inds, A.vals)
@@ -132,7 +115,7 @@ function getindex(A::SparseArrayCOO{Tv,<:Integer,N}, I::Vararg{Int,N}) where {Tv
     return out
 end
 
-function setindex!(A::SparseArrayCOO{Tv,Ti,N}, v, I::Vararg{Int,N}) where {Tv,Ti<:Integer,N}
+function Base.setindex!(A::SparseArrayCOO{Tv,Ti,N}, v, I::Vararg{Int,N}) where {Tv,Ti<:Integer,N}
     @boundscheck checkbounds(A, I...)
     ind, val = convert(NTuple{N,Ti}, I), convert(Tv, v)
     done = false
@@ -153,15 +136,15 @@ function setindex!(A::SparseArrayCOO{Tv,Ti,N}, v, I::Vararg{Int,N}) where {Tv,Ti
     return A
 end
 
-IndexStyle(::Type{<:SparseArrayCOO}) = IndexCartesian()
+Base.IndexStyle(::Type{<:SparseArrayCOO}) = IndexCartesian()
 
 ## Overloads for specialized implementations
 
-similar(::SparseArrayCOO{<:Any,Ti}, ::Type{Tv}, dims::Dims{N}) where {Tv,Ti<:Integer,N} =
+Base.similar(::SparseArrayCOO{<:Any,Ti}, ::Type{Tv}, dims::Dims{N}) where {Tv,Ti<:Integer,N} =
     SparseArrayCOO{Tv,Ti,N}(undef, dims)
 
-show(io::IO, A::SparseArrayCOO) = invoke(show, Tuple{IO,Any}, io, A)
-function show(io::IO, ::MIME"text/plain", A::SparseArrayCOO)
+Base.show(io::IO, A::SparseArrayCOO) = invoke(show, Tuple{IO,Any}, io, A)
+function Base.show(io::IO, ::MIME"text/plain", A::SparseArrayCOO)
     nstored, N = numstored(A), ndims(A)
     inds, vals = A.inds, A.vals
 
@@ -255,7 +238,7 @@ function _print_ln_dup_entry(io::IO, pad::NTuple{N,Int}, val) where {N}
     return print(io, "   +  ", val)
 end
 
-function summary(io::IO, A::SparseArrayCOO)
+function Base.summary(io::IO, A::SparseArrayCOO)
     invoke(summary, Tuple{IO,AbstractArray}, io, A)
     nstored = numstored(A)
     return print(io, " with ", nstored, " stored ", nstored == 1 ? "entry" : "entries")
@@ -390,4 +373,3 @@ function checkbounds_dims(dims::Dims{N}, I::Vararg{Integer,N}) where {N}
     return nothing
 end
 
-end
