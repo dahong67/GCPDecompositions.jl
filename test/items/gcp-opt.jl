@@ -31,6 +31,38 @@
         constraints = (GCPConstraints.LowerBound(1),),
     )
 
+    # Exercise `_gcp!` for Adam
+    @test_throws ErrorException gcp(
+        X,
+        r;
+        loss = GCPLosses.LeastSquares(),
+        constraints = (GCPConstraints.LowerBound(1),),
+        algorithm = GCPAlgorithms.Adam(;
+            fsampler = GCPAlgorithms.UniformSampler(10),
+            gsampler = GCPAlgorithms.UniformSampler(10),
+        ),
+    )
+    @test_throws ErrorException gcp(
+        X,
+        r;
+        loss = GCPLosses.Poisson(),
+        constraints = (),
+        algorithm = GCPAlgorithms.Adam(;
+            fsampler = GCPAlgorithms.UniformSampler(10),
+            gsampler = GCPAlgorithms.UniformSampler(10),
+        ),
+    )
+    @test_throws ErrorException gcp(
+        X,
+        r;
+        loss = GCPLosses.UserDefined((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        constraints = (GCPConstraints.LowerBound(1),),
+        algorithm = GCPAlgorithms.Adam(;
+            fsampler = GCPAlgorithms.UniformSampler(10),
+            gsampler = GCPAlgorithms.UniformSampler(10),
+        ),
+    )
+
     # Exercise check in `gcp` for supported inputs to algorithm
     @test_throws ErrorException gcp(
         X,
