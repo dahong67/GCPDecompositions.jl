@@ -5,17 +5,13 @@
     This page of the docs is still a work-in-progress. Check back later!
 
 ```@docs
-GCPLosses
-GCPLosses.AbstractLoss
+AbstractLoss
+value
+deriv
+domain
 ```
 
 ```@autodocs
-Modules = [GCPLosses]
-Filter = t -> t in subtypes(GCPLosses.AbstractLoss)
-```
-
-```@docs
-GCPLosses.value
-GCPLosses.deriv
-GCPLosses.domain
+Modules = [GCPDecompositions]
+Filter = t -> t in subtypes(AbstractLoss)
 ```

@@ -5,7 +5,7 @@
 """
     gcp(X, r;
         rng = default_rng(),
-        loss = GCPLosses.LeastSquares(),
+        loss = LeastSquaresLoss(),
         constraints = default_gcp_constraints(X, r, loss),
         algorithm = default_gcp_algorithm(X, r, loss, constraints),
         init = default_gcp_init(rng, X, r, loss, constraints, algorithm))
@@ -14,31 +14,31 @@ Compute an approximate rank-`r` CP decomposition of the data tensor `X`
 with respect to the loss function `loss` and return a `CPD` object.
 
 Keyword arguments:
-+ `loss`        : loss function of type `GCPLosses.AbstractLoss`
++ `loss`        : loss function of type `AbstractLoss`
 + `constraints` : a `Tuple` of constraints of type `GCPConstraints.AbstractConstraint`
 + `algorithm`   : algorithm of type `GCPAlgorithms.AbstractAlgorithm`
 + `rng`         : random number generator (used by `default_gcp_init` and some algorithms)
 
-Conventional CP corresponds to the default `GCPLosses.LeastSquares()` loss
+Conventional CP corresponds to the default `LeastSquaresLoss()` loss
 with the default of no constraints (i.e., `constraints = ()`).
 
 If the LossFunctions.jl package is also loaded,
 `loss` can also be a `DistanceLoss` or `MarginLoss` from that package;
-`gcp` will automatically wrap it into a `GCPLosses.Wrapped` loss.
+`gcp` will automatically wrap it into a `WrappedLoss` loss.
 
-See also: `CPD`, `GCPLosses`, `GCPConstraints`, `GCPAlgorithms`.
+See also: `CPD`, `AbstractLoss`, `GCPConstraints`, `GCPAlgorithms`.
 """
 function gcp(
     X,
     r;
     rng = default_rng(),
-    loss = GCPLosses.LeastSquares(),
+    loss = LeastSquaresLoss(),
     constraints = default_gcp_constraints(X, r, loss),
     algorithm = default_gcp_algorithm(X, r, loss, constraints),
     init = default_gcp_init(rng, X, r, loss, constraints, algorithm),
 )
     # Normalize loss and constraints
-    _loss = convert(GCPLosses.AbstractLoss, loss)
+    _loss = convert(AbstractLoss, loss)
     _constraints =
         constraints isa GCPConstraints.AbstractConstraint ? tuple(constraints) :
         convert(Tuple{Vararg{GCPConstraints.AbstractConstraint}}, Tuple(constraints))
@@ -85,9 +85,9 @@ rank `r`, and loss function `loss`.
 See also: `gcp`.
 """
 default_gcp_constraints(X, r, loss) =
-    default_gcp_constraints(X, r, convert(GCPLosses.AbstractLoss, loss))
-function default_gcp_constraints(X, r, loss::GCPLosses.AbstractLoss)
-    dom = GCPLosses.domain(loss)
+    default_gcp_constraints(X, r, convert(AbstractLoss, loss))
+function default_gcp_constraints(X, r, loss::AbstractLoss)
+    dom = domain(loss)
     if dom == Interval(-Inf, +Inf)
         return ()
     elseif dom == Interval(0.0, +Inf)
@@ -109,15 +109,10 @@ loss function `loss`, and tuple of constraints `constraints`.
 See also: `gcp`.
 """
 default_gcp_algorithm(X, r, loss, constraints) =
-    default_gcp_algorithm(X, r, convert(GCPLosses.AbstractLoss, loss), constraints)
-default_gcp_algorithm(
-    X::Array{<:Real},
-    r,
-    loss::GCPLosses.LeastSquares,
-    constraints::Tuple{},
-) = GCPAlgorithms.FastALS()
-default_gcp_algorithm(X, r, loss::GCPLosses.AbstractLoss, constraints) =
-    GCPAlgorithms.LBFGSB()
+    default_gcp_algorithm(X, r, convert(AbstractLoss, loss), constraints)
+default_gcp_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
+    GCPAlgorithms.FastALS()
+default_gcp_algorithm(X, r, loss::AbstractLoss, constraints) = GCPAlgorithms.LBFGSB()
 
 # Default initialization
 
@@ -132,15 +127,9 @@ See also: `gcp`.
 """
 default_gcp_init(X, r, loss, constraints, algorithm) =
     default_gcp_init(default_rng(), X, r, loss, constraints, algorithm)
-default_gcp_init(rng, X, r, loss, constraints, algorithm) = default_gcp_init(
-    rng,
-    X,
-    r,
-    convert(GCPLosses.AbstractLoss, loss),
-    constraints,
-    algorithm,
-)
-function default_gcp_init(rng, X, r, loss::GCPLosses.AbstractLoss, constraints, algorithm)
+default_gcp_init(rng, X, r, loss, constraints, algorithm) =
+    default_gcp_init(rng, X, r, convert(AbstractLoss, loss), constraints, algorithm)
+function default_gcp_init(rng, X, r, loss::AbstractLoss, constraints, algorithm)
     # Generate CPD with random factors
     T, N = nonmissingtype(eltype(X)), ndims(X)
     T = promote_type(T, Float64)

@@ -1,12 +1,4 @@
-## GCP Losses
-
-"""
-Loss functions for Generalized CP Decomposition.
-"""
-module GCPLosses
-
-using IntervalSets: Interval
-import ForwardDiff
+## Loss functions
 
 # Abstract type and associated functions
 
@@ -52,7 +44,7 @@ function domain end
 # Built-in losses
 
 """
-    LeastSquares()
+    LeastSquaresLoss()
 
 Loss corresponding to conventional CP decomposition.
 Corresponds to a statistical assumption of Gaussian data `X`
@@ -63,13 +55,13 @@ with mean given by the low-rank model tensor `M`.
 + **Loss function:** ``f(x,m) = (x-m)^2``
 + **Domain:** ``m \\in \\mathbb{R}``
 """
-struct LeastSquares <: AbstractLoss end
-value(::LeastSquares, x, m) = (x - m)^2
-deriv(::LeastSquares, x, m) = 2 * (m - x)
-domain(::LeastSquares) = Interval(-Inf, +Inf)
+struct LeastSquaresLoss <: AbstractLoss end
+value(::LeastSquaresLoss, x, m) = (x - m)^2
+deriv(::LeastSquaresLoss, x, m) = 2 * (m - x)
+domain(::LeastSquaresLoss) = Interval(-Inf, +Inf)
 
 """
-    NonnegativeLeastSquares()
+    NonnegativeLeastSquaresLoss()
 
 Loss corresponding to nonnegative CP decomposition.
 Corresponds to a statistical assumption of Gaussian data `X`
@@ -80,13 +72,13 @@ with nonnegative mean given by the low-rank model tensor `M`.
 + **Loss function:** ``f(x,m) = (x-m)^2``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct NonnegativeLeastSquares <: AbstractLoss end
-value(::NonnegativeLeastSquares, x, m) = (x - m)^2
-deriv(::NonnegativeLeastSquares, x, m) = 2 * (m - x)
-domain(::NonnegativeLeastSquares) = Interval(0.0, Inf)
+struct NonnegativeLeastSquaresLoss <: AbstractLoss end
+value(::NonnegativeLeastSquaresLoss, x, m) = (x - m)^2
+deriv(::NonnegativeLeastSquaresLoss, x, m) = 2 * (m - x)
+domain(::NonnegativeLeastSquaresLoss) = Interval(0.0, Inf)
 
 """
-    Poisson(eps::Real = 1e-10)
+    PoissonLoss(eps::Real = 1e-10)
 
 Loss corresponding to a statistical assumption of Poisson data `X`
 with rate given by the low-rank model tensor `M`.
@@ -96,19 +88,19 @@ with rate given by the low-rank model tensor `M`.
 + **Loss function:** ``f(x,m) = m - x \\log(m + \\epsilon)``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct Poisson{T<:Real} <: AbstractLoss
+struct PoissonLoss{T<:Real} <: AbstractLoss
     eps::T
-    Poisson{T}(eps::T) where {T<:Real} =
+    PoissonLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
         throw(DomainError(eps, "Poisson loss requires nonnegative `eps`"))
 end
-Poisson(eps::T = 1e-10) where {T<:Real} = Poisson{T}(eps)
-value(loss::Poisson, x, m) = m - x * log(m + loss.eps)
-deriv(loss::Poisson, x, m) = one(m) - x / (m + loss.eps)
-domain(::Poisson) = Interval(0.0, +Inf)
+PoissonLoss(eps::T = 1e-10) where {T<:Real} = PoissonLoss{T}(eps)
+value(loss::PoissonLoss, x, m) = m - x * log(m + loss.eps)
+deriv(loss::PoissonLoss, x, m) = one(m) - x / (m + loss.eps)
+domain(::PoissonLoss) = Interval(0.0, +Inf)
 
 """
-    PoissonLog()
+    PoissonLogLoss()
 
 Loss corresponding to a statistical assumption of Poisson data `X`
 with log-rate given by the low-rank model tensor `M`.
@@ -118,13 +110,13 @@ with log-rate given by the low-rank model tensor `M`.
 + **Loss function:** ``f(x,m) = e^m - x m``
 + **Domain:** ``m \\in \\mathbb{R}``
 """
-struct PoissonLog <: AbstractLoss end
-value(::PoissonLog, x, m) = exp(m) - x * m
-deriv(::PoissonLog, x, m) = exp(m) - x
-domain(::PoissonLog) = Interval(-Inf, +Inf)
+struct PoissonLogLoss <: AbstractLoss end
+value(::PoissonLogLoss, x, m) = exp(m) - x * m
+deriv(::PoissonLogLoss, x, m) = exp(m) - x
+domain(::PoissonLogLoss) = Interval(-Inf, +Inf)
 
 """
-    Gamma(eps::Real = 1e-10)
+    GammaLoss(eps::Real = 1e-10)
 
 Loss corresponding to a statistical assumption of Gamma-distributed data `X`
 with scale given by the low-rank model tensor `M`.
@@ -134,19 +126,19 @@ with scale given by the low-rank model tensor `M`.
 + **Loss function:** ``f(x,m) = \\frac{x}{m + \\epsilon} + \\log(m + \\epsilon)``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct Gamma{T<:Real} <: AbstractLoss
+struct GammaLoss{T<:Real} <: AbstractLoss
     eps::T
-    Gamma{T}(eps::T) where {T<:Real} =
+    GammaLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
         throw(DomainError(eps, "Gamma loss requires nonnegative `eps`"))
 end
-Gamma(eps::T = 1e-10) where {T<:Real} = Gamma{T}(eps)
-value(loss::Gamma, x, m) = x / (m + loss.eps) + log(m + loss.eps)
-deriv(loss::Gamma, x, m) = -x / (m + loss.eps)^2 + inv(m + loss.eps)
-domain(::Gamma) = Interval(0.0, +Inf)
+GammaLoss(eps::T = 1e-10) where {T<:Real} = GammaLoss{T}(eps)
+value(loss::GammaLoss, x, m) = x / (m + loss.eps) + log(m + loss.eps)
+deriv(loss::GammaLoss, x, m) = -x / (m + loss.eps)^2 + inv(m + loss.eps)
+domain(::GammaLoss) = Interval(0.0, +Inf)
 
 """
-    Rayleigh(eps::Real = 1e-10)
+    RayleighLoss(eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Rayleigh data `X`
 with scale given by the low-rank model tensor `M`
@@ -157,19 +149,20 @@ with scale given by the low-rank model tensor `M`
   ``f(x, m) = 2\\log(m + \\epsilon) + \\frac{\\pi}{4}(\\frac{x}{m + \\epsilon})^2``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct Rayleigh{T<:Real} <: AbstractLoss
+struct RayleighLoss{T<:Real} <: AbstractLoss
     eps::T
-    Rayleigh{T}(eps::T) where {T<:Real} =
+    RayleighLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
         throw(DomainError(eps, "Rayleigh loss requires nonnegative `eps`"))
 end
-Rayleigh(eps::T = 1e-10) where {T<:Real} = Rayleigh{T}(eps)
-value(loss::Rayleigh, x, m) = 2 * log(m + loss.eps) + (pi / 4) * ((x / (m + loss.eps))^2)
-deriv(loss::Rayleigh, x, m) = 2 / (m + loss.eps) - (pi / 2) * (x^2 / (m + loss.eps)^3)
-domain(::Rayleigh) = Interval(0.0, +Inf)
+RayleighLoss(eps::T = 1e-10) where {T<:Real} = RayleighLoss{T}(eps)
+value(loss::RayleighLoss, x, m) =
+    2 * log(m + loss.eps) + (pi / 4) * ((x / (m + loss.eps))^2)
+deriv(loss::RayleighLoss, x, m) = 2 / (m + loss.eps) - (pi / 2) * (x^2 / (m + loss.eps)^3)
+domain(::RayleighLoss) = Interval(0.0, +Inf)
 
 """
-    BernoulliOdds(eps::Real = 1e-10)
+    BernoulliOddsLoss(eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Bernouli data `X`
 with odds-sucess rate given by the low-rank model tensor `M`
@@ -179,19 +172,19 @@ with odds-sucess rate given by the low-rank model tensor `M`
 + **Loss function:** ``f(x, m) = \\log(m + 1) - x\\log(m + \\epsilon)``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct BernoulliOdds{T<:Real} <: AbstractLoss
+struct BernoulliOddsLoss{T<:Real} <: AbstractLoss
     eps::T
-    BernoulliOdds{T}(eps::T) where {T<:Real} =
+    BernoulliOddsLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
         throw(DomainError(eps, "BernoulliOdds requires nonnegative `eps`"))
 end
-BernoulliOdds(eps::T = 1e-10) where {T<:Real} = BernoulliOdds{T}(eps)
-value(loss::BernoulliOdds, x, m) = log(m + 1) - x * log(m + loss.eps)
-deriv(loss::BernoulliOdds, x, m) = 1 / (m + 1) - (x / (m + loss.eps))
-domain(::BernoulliOdds) = Interval(0.0, +Inf)
+BernoulliOddsLoss(eps::T = 1e-10) where {T<:Real} = BernoulliOddsLoss{T}(eps)
+value(loss::BernoulliOddsLoss, x, m) = log(m + 1) - x * log(m + loss.eps)
+deriv(loss::BernoulliOddsLoss, x, m) = 1 / (m + 1) - (x / (m + loss.eps))
+domain(::BernoulliOddsLoss) = Interval(0.0, +Inf)
 
 """
-    BernoulliLogit(eps::Real = 1e-10)
+    BernoulliLogitLoss(eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Bernouli data `X`
 with log odds-success rate given by the low-rank model tensor `M`
@@ -201,19 +194,19 @@ with log odds-success rate given by the low-rank model tensor `M`
 + **Loss function:** ``f(x, m) = \\log(1 + e^m) - xm``
 + **Domain:** ``m \\in \\mathbb{R}``
 """
-struct BernoulliLogit{T<:Real} <: AbstractLoss
+struct BernoulliLogitLoss{T<:Real} <: AbstractLoss
     eps::T
-    BernoulliLogit{T}(eps::T) where {T<:Real} =
+    BernoulliLogitLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
         throw(DomainError(eps, "BernoulliLogitsLoss requires nonnegative `eps`"))
 end
-BernoulliLogit(eps::T = 1e-10) where {T<:Real} = BernoulliLogit{T}(eps)
-value(::BernoulliLogit, x, m) = log(1 + exp(m)) - x * m
-deriv(::BernoulliLogit, x, m) = exp(m) / (1 + exp(m)) - x
-domain(::BernoulliLogit) = Interval(-Inf, +Inf)
+BernoulliLogitLoss(eps::T = 1e-10) where {T<:Real} = BernoulliLogitLoss{T}(eps)
+value(::BernoulliLogitLoss, x, m) = log(1 + exp(m)) - x * m
+deriv(::BernoulliLogitLoss, x, m) = exp(m) / (1 + exp(m)) - x
+domain(::BernoulliLogitLoss) = Interval(-Inf, +Inf)
 
 """
-    NegativeBinomialOdds(r::Integer, eps::Real = 1e-10)
+    NegativeBinomialOddsLoss(r::Integer, eps::Real = 1e-10)
 
 Loss corresponding to the statistical assumption of Negative Binomial
 data `X` with log odds failure rate given by the low-rank model tensor `M`
@@ -223,10 +216,10 @@ data `X` with log odds failure rate given by the low-rank model tensor `M`
 + **Loss function:** ``f(x, m) = (r + x) \\log(1 + m) - x\\log(m + \\epsilon) ``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct NegativeBinomialOdds{S<:Integer,T<:Real} <: AbstractLoss
+struct NegativeBinomialOddsLoss{S<:Integer,T<:Real} <: AbstractLoss
     r::S
     eps::T
-    function NegativeBinomialOdds{S,T}(r::S, eps::T) where {S<:Integer,T<:Real}
+    function NegativeBinomialOddsLoss{S,T}(r::S, eps::T) where {S<:Integer,T<:Real}
         eps >= zero(eps) ||
             throw(DomainError(eps, "NegativeBinomialOdds requires nonnegative `eps`"))
         r >= zero(r) ||
@@ -234,14 +227,15 @@ struct NegativeBinomialOdds{S<:Integer,T<:Real} <: AbstractLoss
         return new(r, eps)
     end
 end
-NegativeBinomialOdds(r::S, eps::T = 1e-10) where {S<:Integer,T<:Real} =
-    NegativeBinomialOdds{S,T}(r, eps)
-value(loss::NegativeBinomialOdds, x, m) = (loss.r + x) * log(1 + m) - x * log(m + loss.eps)
-deriv(loss::NegativeBinomialOdds, x, m) = (loss.r + x) / (1 + m) - x / (m + loss.eps)
-domain(::NegativeBinomialOdds) = Interval(0.0, +Inf)
+NegativeBinomialOddsLoss(r::S, eps::T = 1e-10) where {S<:Integer,T<:Real} =
+    NegativeBinomialOddsLoss{S,T}(r, eps)
+value(loss::NegativeBinomialOddsLoss, x, m) =
+    (loss.r + x) * log(1 + m) - x * log(m + loss.eps)
+deriv(loss::NegativeBinomialOddsLoss, x, m) = (loss.r + x) / (1 + m) - x / (m + loss.eps)
+domain(::NegativeBinomialOddsLoss) = Interval(0.0, +Inf)
 
 """
-    Huber(Δ::Real)
+    HuberLoss(Δ::Real)
 
 Huber Loss for given Δ
 
@@ -250,19 +244,20 @@ Huber Loss for given Δ
     2\\Delta\\abs(x - m) - \\Delta^2 otherwise``
 + **Domain:** ``m \\in \\mathbb{R}``
 """
-struct Huber{T<:Real} <: AbstractLoss
+struct HuberLoss{T<:Real} <: AbstractLoss
     Δ::T
-    Huber{T}(Δ::T) where {T<:Real} =
+    HuberLoss{T}(Δ::T) where {T<:Real} =
         Δ >= zero(Δ) ? new(Δ) : throw(DomainError(Δ, "Huber requires nonnegative `Δ`"))
 end
-Huber(Δ::T) where {T<:Real} = Huber{T}(Δ)
-value(loss::Huber, x, m) =
+HuberLoss(Δ::T) where {T<:Real} = HuberLoss{T}(Δ)
+value(loss::HuberLoss, x, m) =
     abs(x - m) <= loss.Δ ? (x - m)^2 : 2 * loss.Δ * abs(x - m) - loss.Δ^2
-deriv(loss::Huber, x, m) = abs(x - m) <= loss.Δ ? -2 * (x - m) : -2 * loss.Δ * sign(x - m)
-domain(::Huber) = Interval(-Inf, +Inf)
+deriv(loss::HuberLoss, x, m) =
+    abs(x - m) <= loss.Δ ? -2 * (x - m) : -2 * loss.Δ * sign(x - m)
+domain(::HuberLoss) = Interval(-Inf, +Inf)
 
 """
-    BetaDivergence(β::Real, eps::Real)
+    BetaDivergenceLoss(β::Real, eps::Real)
 
 BetaDivergence Loss for given β
 
@@ -273,15 +268,16 @@ BetaDivergence Loss for given β
                  \\frac{x}{m} + \\log(m) if \\beta = 0``
 + **Domain:** ``m \\in [0, \\infty)``
 """
-struct BetaDivergence{S<:Real,T<:Real} <: AbstractLoss
+struct BetaDivergenceLoss{S<:Real,T<:Real} <: AbstractLoss
     β::T
     eps::T
-    BetaDivergence{S,T}(β::S, eps::T) where {S<:Real,T<:Real} =
+    BetaDivergenceLoss{S,T}(β::S, eps::T) where {S<:Real,T<:Real} =
         eps >= zero(eps) ? new(β, eps) :
         throw(DomainError(eps, "BetaDivergence requires nonnegative `eps`"))
 end
-BetaDivergence(β::S, eps::T = 1e-10) where {S<:Real,T<:Real} = BetaDivergence{S,T}(β, eps)
-function value(loss::BetaDivergence, x, m)
+BetaDivergenceLoss(β::S, eps::T = 1e-10) where {S<:Real,T<:Real} =
+    BetaDivergenceLoss{S,T}(β, eps)
+function value(loss::BetaDivergenceLoss, x, m)
     if loss.β == 0
         return x / (m + loss.eps) + log(m + loss.eps)
     elseif loss.β == 1
@@ -290,7 +286,7 @@ function value(loss::BetaDivergence, x, m)
         return 1 / loss.β * m^loss.β - 1 / (loss.β - 1) * x * m^(loss.β - 1)
     end
 end
-function deriv(loss::BetaDivergence, x, m)
+function deriv(loss::BetaDivergenceLoss, x, m)
     if loss.β == 0
         return -x / (m + loss.eps)^2 + 1 / (m + loss.eps)
     elseif loss.β == 1
@@ -299,12 +295,12 @@ function deriv(loss::BetaDivergence, x, m)
         return m^(loss.β - 1) - x * m^(loss.β - 2)
     end
 end
-domain(::BetaDivergence) = Interval(0.0, +Inf)
+domain(::BetaDivergenceLoss) = Interval(0.0, +Inf)
 
 # User-defined loss
 
 """
-    UserDefined
+    UserDefinedLoss
 
 Type for user-defined loss functions ``f(x,m)``,
 where ``x`` is the data entry and ``m`` is the model entry.
@@ -316,17 +312,17 @@ Contains the following fields:
   ``\\partial_m f(x,m)`` with respect to ``m``
 + `domain::Interval` : `Interval` from IntervalSets.jl defining the domain for ``m``
 
-The constructor is `UserDefined(func; deriv, domain)`.
+The constructor is `UserDefinedLoss(func; deriv, domain)`.
 If not provided,
 
 + `deriv` is automatically computed from `func` using forward-mode automatic differentiation
 + `domain` gets a default value of `Interval(-Inf, +Inf)`
 """
-struct UserDefined <: AbstractLoss
+struct UserDefinedLoss <: AbstractLoss
     func::Function
     deriv::Function
     domain::Interval
-    function UserDefined(
+    function UserDefinedLoss(
         func::Function;
         deriv::Function = (x, m) -> ForwardDiff.derivative(m -> func(x, m), m),
         domain::Interval = Interval(-Inf, Inf),
@@ -338,23 +334,21 @@ struct UserDefined <: AbstractLoss
         return new(func, deriv, domain)
     end
 end
-value(loss::UserDefined, x, m) = loss.func(x, m)
-deriv(loss::UserDefined, x, m) = loss.deriv(x, m)
-domain(loss::UserDefined) = loss.domain
+value(loss::UserDefinedLoss, x, m) = loss.func(x, m)
+deriv(loss::UserDefinedLoss, x, m) = loss.deriv(x, m)
+domain(loss::UserDefinedLoss) = loss.domain
 
 # Loss coming from another package
 
 """
-    Wrapped
+    WrappedLoss
 
 Wrapper type for loss functions coming from other packages.
 """
-struct Wrapped{T} <: AbstractLoss
+struct WrappedLoss{T} <: AbstractLoss
     loss::T
     source::Module
 end
-value(loss::Wrapped, x, m) = value(loss.loss, x, m)
-deriv(loss::Wrapped, x, m) = deriv(loss.loss, x, m)
-domain(loss::Wrapped) = domain(loss.loss)
-
-end
+value(loss::WrappedLoss, x, m) = value(loss.loss, x, m)
+deriv(loss::WrappedLoss, x, m) = deriv(loss.loss, x, m)
+domain(loss::WrappedLoss) = domain(loss.loss)

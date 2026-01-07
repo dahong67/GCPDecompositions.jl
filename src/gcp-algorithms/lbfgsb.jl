@@ -38,7 +38,7 @@ function _gcp!(
     rng::AbstractRNG,
     M::CPD{Float64,N},
     X::Array{<:Union{Real,Missing},N},
-    loss::GCPLosses.AbstractLoss,
+    loss::AbstractLoss,
     constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
     algorithm::GCPAlgorithms.LBFGSB,
 ) where {N}
@@ -49,7 +49,7 @@ function _gcp!(
     lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
 
     # Error for unsupported loss/constraint combinations
-    dom = GCPLosses.domain(loss)
+    dom = domain(loss)
     if dom == Interval(-Inf, +Inf)
         lower in (-Inf, 0.0) ||
             error("only lower bound constraints of `-Inf` or `0` are (currently) \

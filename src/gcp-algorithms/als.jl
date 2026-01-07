@@ -18,7 +18,7 @@ function _gcp!(
     rng::AbstractRNG,
     M::CPD{Float64,N},
     X::Array{<:Real,N},
-    loss::GCPLosses.LeastSquares,
+    loss::LeastSquaresLoss,
     constraints::Tuple{},
     algorithm::GCPAlgorithms.ALS,
 ) where {N}

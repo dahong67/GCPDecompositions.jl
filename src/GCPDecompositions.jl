@@ -6,8 +6,9 @@ module GCPDecompositions
 
 # Imports
 using Base.Order: Ordering, Reverse
-using LinearAlgebra: Diagonal, LinearAlgebra, mul!, norm
+using ForwardDiff: ForwardDiff
 using IntervalSets: Interval
+using LinearAlgebra: Diagonal, LinearAlgebra, mul!, norm
 using Random: default_rng
 using SparseArrays: sparse
 
@@ -30,11 +31,27 @@ export CPD,
     sortcomps,
     sortcomps!
 
+# Losses
+include("losses.jl")
+export AbstractLoss, deriv, domain, value
+export LeastSquaresLoss,
+    NonnegativeLeastSquaresLoss,
+    PoissonLoss,
+    PoissonLogLoss,
+    GammaLoss,
+    RayleighLoss,
+    BernoulliOddsLoss,
+    BernoulliLogitLoss,
+    NegativeBinomialOddsLoss,
+    HuberLoss,
+    BetaDivergenceLoss,
+    UserDefinedLoss,
+    WrappedLoss
+
 # Exports
 export gcp, default_gcp_constraints, default_gcp_algorithm, default_gcp_init
-export GCPLosses, GCPConstraints, GCPAlgorithms
+export GCPConstraints, GCPAlgorithms
 
-include("gcp-losses.jl")
 include("gcp-constraints.jl")
 include("gcp-algorithms.jl")
 include("api-gcp.jl")

@@ -6,7 +6,6 @@ Algorithms for Generalized CP Decomposition.
 module GCPAlgorithms
 
 using ..GCPDecompositions
-using ..GCPLosses: value, deriv, domain
 using ..GCPConstraints: project!
 using IntervalSets: Interval
 using LinearAlgebra: lu!, mul!, norm, rdiv!, rmul!, Diagonal

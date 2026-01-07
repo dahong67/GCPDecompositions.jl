@@ -5,11 +5,10 @@ using IntervalSets
 
 const SupportedLosses = Union{LossFunctions.DistanceLoss,LossFunctions.MarginLoss}
 
-Base.convert(::Type{GCPLosses.AbstractLoss}, loss::SupportedLosses) =
-    GCPLosses.Wrapped(loss, LossFunctions)
+Base.convert(::Type{AbstractLoss}, loss::SupportedLosses) = WrappedLoss(loss, LossFunctions)
 
-GCPLosses.value(loss::SupportedLosses, x, m) = loss(m, x)
-GCPLosses.deriv(loss::SupportedLosses, x, m) = LossFunctions.deriv(loss, m, x)
-GCPLosses.domain(::SupportedLosses)          = Interval(-Inf, Inf)
+GCPDecompositions.value(loss::SupportedLosses, x, m) = loss(m, x)
+GCPDecompositions.deriv(loss::SupportedLosses, x, m) = LossFunctions.deriv(loss, m, x)
+GCPDecompositions.domain(::SupportedLosses)          = Interval(-Inf, Inf)
 
 end
