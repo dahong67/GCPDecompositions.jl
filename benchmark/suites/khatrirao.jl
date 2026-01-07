@@ -66,11 +66,8 @@ append!(
 for SETUP in SETUPS
     Random.seed!(0)
     U = [randn(In, SETUP.rank) for In in SETUP.size]
-    SUITE["size=$(SETUP.size), rank=$(SETUP.rank)"] = @benchmarkable(
-        GCPDecompositions.TensorKernels.khatrirao($U...),
-        seconds = 2,
-        samples = 5,
-    )
+    SUITE["size=$(SETUP.size), rank=$(SETUP.rank)"] =
+        @benchmarkable(GCPDecompositions.khatrirao($U...), seconds = 2, samples = 5,)
 end
 
 end

@@ -8,6 +8,11 @@ import Base: IndexStyle
 
 # Imports: Overloads for specializing outputs
 import Base: similar, show, summary
+import ..GCPDecompositions: mttkrp!, create_mttkrp_buffer, _checked_mttkrp_dims
+
+# Other imports (will be removed later)
+using SparseArrays
+using LinearAlgebra
 
 # Exports
 export SparseArrayCOO, numstored
@@ -150,7 +155,7 @@ end
 
 IndexStyle(::Type{<:SparseArrayCOO}) = IndexCartesian()
 
-## Overloads for specializing outputs
+## Overloads for specialized implementations
 
 similar(::SparseArrayCOO{<:Any,Ti}, ::Type{Tv}, dims::Dims{N}) where {Tv,Ti<:Integer,N} =
     SparseArrayCOO{Tv,Ti,N}(undef, dims)
@@ -254,6 +259,37 @@ function summary(io::IO, A::SparseArrayCOO)
     invoke(summary, Tuple{IO,AbstractArray}, io, A)
     nstored = numstored(A)
     return print(io, " with ", nstored, " stored ", nstored == 1 ? "entry" : "entries")
+end
+
+function mttkrp!(
+    G::TM,
+    X::SparseArrayCOO{T,<:Integer,N},
+    U::NTuple{N,TM},
+    n::Integer,
+    buffer = create_mttkrp_buffer(X, U, n),
+) where {TM<:AbstractMatrix,T,N}
+    I, _ = _checked_mttkrp_dims(X, U, n)
+    s = numstored(X)
+
+    # Check output dimensions
+    Base.require_one_based_indexing(G)
+    size(G) == size(U[n]) ||
+        throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
+
+    # Compute MTTKRP via sparse matrix multiplication
+    Yh = sparse(getindex.(X.inds, n), 1:s, X.vals, I[n], s)
+    Uh = reduce(.*, U[k][getindex.(X.inds, k), :] for k in 1:length(U) if k != n)
+    mul!(G, Yh, Uh)
+
+    return G
+end
+
+function create_mttkrp_buffer(
+    X::SparseArrayCOO{T,<:Integer,N},
+    U::NTuple{N,TM},
+    n::Integer,
+) where {TM<:AbstractMatrix,T,N}
+    return ()
 end
 
 ## Utilities

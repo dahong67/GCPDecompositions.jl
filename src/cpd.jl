@@ -110,8 +110,8 @@ function Base.copy!(dst::Array, src::CPD; buffers = create_copy_buffers(dst, src
 
     # Compute left and right khatrirao products (based on optimal split)
     k_split = argmin(k -> prod(sz[1:k]) + prod(sz[k+1:end]), 1:N-1)
-    TensorKernels.khatrirao!(buffers.KR_L, reverse(U[1:k_split])...)
-    TensorKernels.khatrirao!(buffers.KR_R, reverse(U[k_split+1:N])...)
+    khatrirao!(buffers.KR_L, reverse(U[1:k_split])...)
+    khatrirao!(buffers.KR_R, reverse(U[k_split+1:N])...)
 
     # Multiply into (appropriately matricized) dst array
     dst_mat = reshape(dst, size(buffers.KR_L, 1), size(buffers.KR_R, 1))

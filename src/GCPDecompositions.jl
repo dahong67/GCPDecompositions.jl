@@ -9,6 +9,13 @@ using Base.Order: Ordering, Reverse
 using LinearAlgebra: Diagonal, LinearAlgebra, mul!, norm
 using IntervalSets: Interval
 using Random: default_rng
+using SparseArrays: sparse
+
+# Tensor Kernels
+include("kernels/khatrirao.jl")
+include("kernels/mttkrp.jl")
+include("kernels/mttkrps.jl")
+export create_mttkrp_buffer, mttkrp, mttkrp!, mttkrps, mttkrps!, khatrirao, khatrirao!
 
 # Import sparse array module and export data type
 include("SparseArrayCOOs.jl")
@@ -22,7 +29,6 @@ export ncomps,
 export gcp, default_gcp_constraints, default_gcp_algorithm, default_gcp_init
 export GCPLosses, GCPConstraints, GCPAlgorithms
 
-include("tensor-kernels.jl")
 include("cpd.jl")
 include("gcp-losses.jl")
 include("gcp-constraints.jl")

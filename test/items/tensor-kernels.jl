@@ -2,7 +2,6 @@
 
 @testitem "mttkrp" begin
     using Random
-    using GCPDecompositions.TensorKernels
 
     @testset "size=$sz, rank=$r" for sz in [(10, 30, 40)], r in [5]
         Random.seed!(0)
@@ -24,7 +23,6 @@ end
 
 @testitem "khatrirao" begin
     using Random
-    using GCPDecompositions.TensorKernels
 
     @testset "size=$sz, rank=$r" for sz in [(10,), (10, 20), (10, 30, 40)], r in [5]
         Random.seed!(0)
@@ -36,7 +34,6 @@ end
 
 @testitem "mttkrps" begin
     using Random
-    using GCPDecompositions.TensorKernels
 
     @testset "size=$sz, rank=$r" for sz in [(10, 30), (10, 30, 40)], r in [5]
         Random.seed!(0)
