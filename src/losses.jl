@@ -198,7 +198,7 @@ struct BernoulliLogitLoss{T<:Real} <: AbstractLoss
     eps::T
     BernoulliLogitLoss{T}(eps::T) where {T<:Real} =
         eps >= zero(eps) ? new(eps) :
-        throw(DomainError(eps, "BernoulliLogitsLoss requires nonnegative `eps`"))
+        throw(DomainError(eps, "BernoulliLogitLoss requires nonnegative `eps`"))
 end
 BernoulliLogitLoss(eps::T = 1e-10) where {T<:Real} = BernoulliLogitLoss{T}(eps)
 value(::BernoulliLogitLoss, x, m) = log(1 + exp(m)) - x * m

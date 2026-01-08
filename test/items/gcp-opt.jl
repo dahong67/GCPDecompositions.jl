@@ -312,7 +312,7 @@ end
     end
 end
 
-@testitem "BernoulliLogitsLoss" begin
+@testitem "BernoulliLogitLoss" begin
     using Random, IntervalSets
     using Distributions
 
