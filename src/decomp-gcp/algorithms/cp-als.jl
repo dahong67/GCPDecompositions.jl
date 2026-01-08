@@ -1,7 +1,7 @@
-## Algorithm: ALS
+## Algorithm: CP_ALS
 
 """
-    ALS
+    CP_ALS
 
 **A**lternating **L**east **S**quares.
 Workhorse algorithm for `LeastSquares` loss with no constraints.
@@ -10,7 +10,7 @@ Algorithm parameters:
 
 + `maxiters::Int` : max number of iterations (default: `200`)
 """
-Base.@kwdef struct ALS <: AbstractAlgorithm
+Base.@kwdef struct CP_ALS <: AbstractGCPAlgorithm
     maxiters::Int = 200
 end
 
@@ -18,9 +18,9 @@ function _gcp!(
     rng::AbstractRNG,
     M::CPD{Float64,N},
     X::Array{<:Real,N},
-    loss::GCPLosses.LeastSquares,
+    loss::LeastSquaresLoss,
     constraints::Tuple{},
-    algorithm::GCPAlgorithms.ALS,
+    algorithm::CP_ALS,
 ) where {N}
     # Pre-allocate MTTKRP buffers
     mttkrp_buffers = ntuple(n -> create_mttkrp_buffer(X, M.U, n), N)

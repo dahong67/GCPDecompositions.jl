@@ -1,7 +1,7 @@
-## Algorithm: Adam
+## Algorithm: GCP_Adam
 
 """
-    Adam
+    GCP_Adam
 
 Stochastic gradient-based optimization with
 **ada**ptive **m**oment estimation.
@@ -22,10 +22,11 @@ We employ a few common modifications with the following parameters:
 
 And the final parameter defines what sampler to use:
 
-  - `fsampler::AbstractSampler` : sampler to use for function value
-  - `gsampler::AbstractSampler` : sampler to use for gradients
+  - `fsampler::AbstractGCPSampler` : sampler to use for function value
+  - `gsampler::AbstractGCPSampler` : sampler to use for gradients
 """
-Base.@kwdef struct Adam{FS<:AbstractSampler,GS<:AbstractSampler} <: AbstractAlgorithm
+Base.@kwdef struct GCP_Adam{FS<:AbstractGCPSampler,GS<:AbstractGCPSampler} <:
+                   AbstractGCPAlgorithm
     α::Float64 = 0.001
     β1::Float64 = 0.9
     β2::Float64 = 0.999
@@ -42,9 +43,9 @@ function _gcp!(
     rng::AbstractRNG,
     M::CPD{Float64,N},
     X::Union{Array{<:Union{Real,Missing},N},SparseArrayCOO{<:Real,<:Integer,N}},
-    loss::GCPLosses.AbstractLoss,
-    constraints::Tuple{Vararg{GCPConstraints.LowerBound}},
-    algorithm::GCPAlgorithms.Adam,
+    loss::AbstractLoss,
+    constraints::Tuple{Vararg{LowerBoundConstraint}},
+    algorithm::GCP_Adam,
 ) where {N}
     r = ncomps(M)
     T = Float64    # Simpler for now
@@ -53,7 +54,7 @@ function _gcp!(
     lower = maximum(constraint.value for constraint in constraints; init = T(-Inf))
 
     # Error for unsupported loss/constraint combinations
-    dom = GCPLosses.domain(loss)
+    dom = domain(loss)
     if dom == Interval(-Inf, +Inf)
         lower in (-Inf, 0.0) || error(
             "only lower bound constraints of `-Inf` or `0` are (currently) supported for loss functions with a domain of `-Inf .. Inf`",
@@ -72,10 +73,10 @@ function _gcp!(
     normalizecomps!(M; dims = :λ, distribute_to = 1:ndims(M))
     M.U[1] .*= permutedims(sign.(M.λ))
     M.λ .= oneunit(T)
-    project!(M, GCPConstraints.LowerBound(lower))
+    project!(M, LowerBoundConstraint(lower))
 
     # Setup fsampler
-    fsampler = SampleOnce(X, algorithm.fsampler)
+    fsampler = GCPSampleOnce(X, algorithm.fsampler)
 
     # Initialize
     A = M.U       # factor matrices

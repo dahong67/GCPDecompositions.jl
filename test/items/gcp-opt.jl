@@ -13,53 +13,53 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.UserDefined((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
     )
 
     # Exercise `_gcp!`
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.LeastSquares(),
-        constraints = (GCPConstraints.LowerBound(1),),
+        loss = LeastSquaresLoss(),
+        constraints = (LowerBoundConstraint(1),),
     )
-    @test_throws ErrorException gcp(X, r; loss = GCPLosses.Poisson(), constraints = ())
+    @test_throws ErrorException gcp(X, r; loss = PoissonLoss(), constraints = ())
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.UserDefined((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
-        constraints = (GCPConstraints.LowerBound(1),),
+        loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        constraints = (LowerBoundConstraint(1),),
     )
 
     # Exercise `_gcp!` for Adam
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.LeastSquares(),
-        constraints = (GCPConstraints.LowerBound(1),),
-        algorithm = GCPAlgorithms.Adam(;
-            fsampler = GCPAlgorithms.UniformSampler(10),
-            gsampler = GCPAlgorithms.UniformSampler(10),
+        loss = LeastSquaresLoss(),
+        constraints = (LowerBoundConstraint(1),),
+        algorithm = GCP_Adam(;
+            fsampler = UniformGCPSampler(10),
+            gsampler = UniformGCPSampler(10),
         ),
     )
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.Poisson(),
+        loss = PoissonLoss(),
         constraints = (),
-        algorithm = GCPAlgorithms.Adam(;
-            fsampler = GCPAlgorithms.UniformSampler(10),
-            gsampler = GCPAlgorithms.UniformSampler(10),
+        algorithm = GCP_Adam(;
+            fsampler = UniformGCPSampler(10),
+            gsampler = UniformGCPSampler(10),
         ),
     )
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = GCPLosses.UserDefined((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
-        constraints = (GCPConstraints.LowerBound(1),),
-        algorithm = GCPAlgorithms.Adam(;
-            fsampler = GCPAlgorithms.UniformSampler(10),
-            gsampler = GCPAlgorithms.UniformSampler(10),
+        loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        constraints = (LowerBoundConstraint(1),),
+        algorithm = GCP_Adam(;
+            fsampler = UniformGCPSampler(10),
+            gsampler = UniformGCPSampler(10),
         ),
     )
 
@@ -67,14 +67,14 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        constraints = (GCPConstraints.LowerBound(0),),
-        algorithm = GCPAlgorithms.ALS(),
+        constraints = (LowerBoundConstraint(0),),
+        algorithm = CP_ALS(),
     )
 end
 
 @testitem "default_gcp_init" begin
     X = randn(2, 3, 4)
-    M = default_gcp_init(X, 2, GCPLosses.LeastSquares(), (), GCPAlgorithms.ALS())
+    M = default_gcp_init(X, 2, LeastSquaresLoss(), (), CP_ALS())
     @test M isa CPD
 end
 
@@ -85,12 +85,12 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquares())
+        Mh = gcp(X, r; loss = LeastSquaresLoss())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquares())
+        Mm = gcp(Xm, r; loss = LeastSquaresLoss())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
@@ -102,12 +102,12 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquares())
+        Mh = gcp(X, r; loss = LeastSquaresLoss())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquares())
+        Mm = gcp(Xm, r; loss = LeastSquaresLoss())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
@@ -122,12 +122,12 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquares())
+        Mh = gcp(X, r; loss = LeastSquaresLoss())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.LeastSquares())
+        Mm = gcp(Xm, r; loss = LeastSquaresLoss())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Mh = gcp(X, r) # test default (least-squares) loss
@@ -139,7 +139,7 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.LeastSquares(), algorithm = GCPAlgorithms.ALS())
+        Mh = gcp(X, r; loss = LeastSquaresLoss(), algorithm = CP_ALS())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -151,12 +151,12 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = GCPLosses.NonnegativeLeastSquares())
+        Mh = gcp(X, r; loss = NonnegativeLeastSquaresLoss())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
 
         Xm = convert(Array{Union{Missing,eltype(X)}}, X)
         Xm[1, 1, 1] = missing
-        Mm = gcp(Xm, r; loss = GCPLosses.NonnegativeLeastSquares())
+        Mm = gcp(Xm, r; loss = NonnegativeLeastSquaresLoss())
         @test maximum(I -> abs(Mm[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -175,18 +175,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> m - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.Poisson())
+        Mh = gcp(X, r; loss = PoissonLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -205,18 +205,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> exp(m) - x * m;
                 deriv = (x, m) -> exp(m) - x,
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.PoissonLog())
+        Mh = gcp(X, r; loss = PoissonLogLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -236,18 +236,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> log(m + 1e-10) + x / (m + 1e-10);
                 deriv = (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.Gamma())
+        Mh = gcp(X, r; loss = GammaLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -266,18 +266,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> 2 * log(m + 1e-10) + (pi / 4) * ((x / (m + 1e-10))^2);
                 deriv = (x, m) -> 2 / (m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.Rayleigh())
+        Mh = gcp(X, r; loss = RayleighLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -296,18 +296,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> log(m + 1) - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.BernoulliOdds())
+        Mh = gcp(X, r; loss = BernoulliOddsLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -328,18 +328,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> log(1 + exp(m)) - x * m;
                 deriv = (x, m) -> exp(m) / (1 + exp(m)) - x,
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.BernoulliLogit())
+        Mh = gcp(X, r; loss = BernoulliLogitLoss())
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -362,18 +362,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10);
                 deriv = (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.NegativeBinomialOdds(num_failures))
+        Mh = gcp(X, r; loss = NegativeBinomialOddsLoss(num_failures))
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -393,19 +393,19 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2;
                 deriv = (x, m) ->
                     abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.Huber(Δ))
+        Mh = gcp(X, r; loss = HuberLoss(Δ))
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -450,18 +450,18 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> beta_value(β, x, m);
                 deriv = (x, m) -> beta_deriv(β, x, m),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
         Random.seed!(0)
-        Mh = gcp(X, r; loss = GCPLosses.BetaDivergence(β))
+        Mh = gcp(X, r; loss = BetaDivergenceLoss(β))
         @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -480,18 +480,18 @@ end
             Mr = gcp(
                 X,
                 r;
-                loss = GCPLosses.UserDefined(
+                loss = UserDefinedLoss(
                     (x, m) -> (x - m)^2;
                     deriv = (x, m) -> 2 * (m - x),
                     domain = Interval(-Inf, +Inf),
                 ),
                 constraints = (),
-                algorithm = GCPAlgorithms.LBFGSB(),
+                algorithm = GCP_LBFGSB(),
             )
 
             # Test
             Random.seed!(0)
-            Mh = gcp(X, r; loss = GCPLosses.UserDefined((x, m) -> (x - m)^2))
+            Mh = gcp(X, r; loss = UserDefinedLoss((x, m) -> (x - m)^2))
             @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
         end
     end
@@ -507,13 +507,13 @@ end
             Mr = gcp(
                 X,
                 r;
-                loss = GCPLosses.UserDefined(
+                loss = UserDefinedLoss(
                     (x, m) -> m - x * log(m + 1e-10);
                     deriv = (x, m) -> 1 - x / (m + 1e-10),
                     domain = Interval(0.0, +Inf),
                 ),
-                constraints = (GCPConstraints.LowerBound(0.0),),
-                algorithm = GCPAlgorithms.LBFGSB(),
+                constraints = (LowerBoundConstraint(0.0),),
+                algorithm = GCP_LBFGSB(),
             )
 
             # Test
@@ -521,7 +521,7 @@ end
             Mh = gcp(
                 X,
                 r;
-                loss = GCPLosses.UserDefined(
+                loss = UserDefinedLoss(
                     (x, m) -> m - x * log(m + 1e-10);
                     domain = 0.0 .. Inf,
                 ),
@@ -545,13 +545,13 @@ end
         Mr = gcp(
             X,
             r;
-            loss = GCPLosses.UserDefined(
+            loss = UserDefinedLoss(
                 (x, m) -> log(m + 1) - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
             ),
-            constraints = (GCPConstraints.LowerBound(0.0),),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            constraints = (LowerBoundConstraint(0.0),),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Uniform sampling with dense data tensor
@@ -559,12 +559,12 @@ end
         Mh = gcp(
             X,
             r;
-            loss = GCPLosses.BernoulliOdds(),
-            algorithm = GCPAlgorithms.Adam(;
+            loss = BernoulliOddsLoss(),
+            algorithm = GCP_Adam(;
                 α = 0.01,
                 epochiters = 100,
-                fsampler = GCPAlgorithms.UniformSampler(10^5),
-                gsampler = GCPAlgorithms.UniformSampler(10^4),
+                fsampler = UniformGCPSampler(10^5),
+                gsampler = UniformGCPSampler(10^4),
             ),
         )
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
@@ -574,12 +574,12 @@ end
         Mh = gcp(
             SparseArrayCOO(X),
             r;
-            loss = GCPLosses.BernoulliOdds(),
-            algorithm = GCPAlgorithms.Adam(;
+            loss = BernoulliOddsLoss(),
+            algorithm = GCP_Adam(;
                 α = 0.01,
                 epochiters = 100,
-                fsampler = GCPAlgorithms.StratifiedSampler(10^4, 10^4),
-                gsampler = GCPAlgorithms.StratifiedSampler(10^3, 10^1),
+                fsampler = StratifiedGCPSampler(10^4, 10^4),
+                gsampler = StratifiedGCPSampler(10^3, 10^1),
             ),
         )
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
@@ -589,12 +589,12 @@ end
         Mh = gcp(
             SparseArrayCOO(X),
             r;
-            loss = GCPLosses.BernoulliOdds(),
-            algorithm = GCPAlgorithms.Adam(;
+            loss = BernoulliOddsLoss(),
+            algorithm = GCP_Adam(;
                 α = 0.01,
                 epochiters = 100,
-                fsampler = GCPAlgorithms.SemistratifiedSampler(10^4, 10^4),
-                gsampler = GCPAlgorithms.SemistratifiedSampler(10^3, 10^3),
+                fsampler = SemistratifiedGCPSampler(10^4, 10^4),
+                gsampler = SemistratifiedGCPSampler(10^3, 10^3),
             ),
         )
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
@@ -612,28 +612,17 @@ end
         Xs = SparseArrayCOO(X)
 
         # Compute references
-        Fr = GCPAlgorithms.gcp_objective(M, X, GCPLosses.LeastSquares())
-        Gr = GCPAlgorithms.gcp_grad_U!(similar.(M.U), M, X, GCPLosses.LeastSquares())
+        Fr = gcp_objective(M, X, LeastSquaresLoss())
+        Gr = gcp_grad_U!(similar.(M.U), M, X, LeastSquaresLoss())
 
         # Dense data samplers
-        @testset "sampler=$sampler" for sampler in [GCPAlgorithms.UniformSampler(10)]
+        @testset "sampler=$sampler" for sampler in [UniformGCPSampler(10)]
             Random.seed!(0)
             F = mean(1:100) do _
-                return GCPAlgorithms.gcp_stoch_objective(
-                    M,
-                    X,
-                    GCPLosses.LeastSquares(),
-                    sampler,
-                )
+                return gcp_stoch_objective(M, X, LeastSquaresLoss(), sampler)
             end
             G = mean(1:10000) do _
-                Gtuple = GCPAlgorithms.gcp_stoch_grad_U!(
-                    similar.(M.U),
-                    M,
-                    X,
-                    GCPLosses.LeastSquares(),
-                    sampler,
-                )
+                Gtuple = gcp_stoch_grad_U!(similar.(M.U), M, X, LeastSquaresLoss(), sampler)
                 return collect(Gtuple)
             end
             @test abs2(F - Fr) / abs2(Fr) < 1e-2
@@ -642,26 +631,16 @@ end
 
         # Sparse data samplers
         @testset "sampler=$sampler" for sampler in [
-            GCPAlgorithms.StratifiedSampler(10, 2),
-            GCPAlgorithms.SemistratifiedSampler(10, 10),
+            StratifiedGCPSampler(10, 2),
+            SemistratifiedGCPSampler(10, 10),
         ]
             Random.seed!(0)
             F = mean(1:100) do _
-                return GCPAlgorithms.gcp_stoch_objective(
-                    M,
-                    Xs,
-                    GCPLosses.LeastSquares(),
-                    sampler,
-                )
+                return gcp_stoch_objective(M, Xs, LeastSquaresLoss(), sampler)
             end
             G = mean(1:10000) do _
-                Gtuple = GCPAlgorithms.gcp_stoch_grad_U!(
-                    similar.(M.U),
-                    M,
-                    Xs,
-                    GCPLosses.LeastSquares(),
-                    sampler,
-                )
+                Gtuple =
+                    gcp_stoch_grad_U!(similar.(M.U), M, Xs, LeastSquaresLoss(), sampler)
                 return collect(Gtuple)
             end
             @test abs2(F - Fr) / abs2(Fr) < 1e-2

@@ -1,7 +1,7 @@
-## Algorithm: FastALS
+## Algorithm: CP_FastALS
 
 """
-    FastALS
+    CP_FastALS
 
 **Fast** **A**lternating **L**east **S**quares.
 
@@ -17,7 +17,7 @@ Algorithm parameters:
 + `maxiters::Int` : max number of iterations (default: `200`)
 
 """
-Base.@kwdef struct FastALS <: AbstractAlgorithm
+Base.@kwdef struct CP_FastALS <: AbstractGCPAlgorithm
     maxiters::Int = 200
 end
 
@@ -25,9 +25,9 @@ function _gcp!(
     rng::AbstractRNG,
     M::CPD{Float64,N},
     X::Array{<:Real,N},
-    loss::GCPLosses.LeastSquares,
+    loss::LeastSquaresLoss,
     constraints::Tuple{},
-    algorithm::GCPAlgorithms.FastALS,
+    algorithm::CP_FastALS,
 ) where {N}
     # Determine order of modes of MTTKRP to compute
     Jns = [prod(size(X)[1:n]) for n in 1:N]
@@ -36,23 +36,23 @@ function _gcp!(
     n_star = findlast(n -> Jns[n] <= Kn_minus_ones[n], 1:N)
     order = vcat([i for i in n_star:-1:1], [i for i in (n_star+1):N])
 
-    buffers = create_FastALS_buffers(M.U, order, Jns, Kns)
+    buffers = create_CP_FastALS_buffers(M.U, order, Jns, Kns)
 
     for _ in 1:algorithm.maxiters
-        FastALS_iter!(X, M, order, Jns, Kns, buffers)
+        CP_FastALS_iter!(X, M, order, Jns, Kns, buffers)
     end
 
     return M
 end
 
 """
-    FastALS_iter!(X, U, λ) 
+    CP_FastALS_iter!(X, U, λ) 
 
 Algorithm for computing MTTKRP sequences is from "Fast Alternating LS Algorithms
 for High Order CANDECOMP/PARAFAC Tensor Factorizations" by Phan et al., specifically
 section III-C.
 """
-function FastALS_iter!(X, M, order, Jns, Kns, buffers)
+function CP_FastALS_iter!(X, M, order, Jns, Kns, buffers)
     N = ndims(X)
     R = size(M.U[1])[2]
 
@@ -187,7 +187,7 @@ function _lr_outer_multiplication!(Zn, U, kr_buffer, n)
     end
 end
 
-function create_FastALS_buffers(
+function create_CP_FastALS_buffers(
     U::NTuple{N,TM},
     order,
     Jns,
