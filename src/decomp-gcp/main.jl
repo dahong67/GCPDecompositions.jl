@@ -16,7 +16,7 @@ with respect to the loss function `loss` and return a `CPD` object.
 Keyword arguments:
 + `loss`        : loss function of type `AbstractLoss`
 + `constraints` : a `Tuple` of constraints of type `AbstractConstraint`
-+ `algorithm`   : algorithm of type `GCPAlgorithms.AbstractAlgorithm`
++ `algorithm`   : algorithm of type `AbstractAlgorithm`
 + `rng`         : random number generator (used by `default_gcp_init` and some algorithms)
 
 Conventional CP corresponds to the default `LeastSquaresLoss()` loss
@@ -26,7 +26,7 @@ If the LossFunctions.jl package is also loaded,
 `loss` can also be a `DistanceLoss` or `MarginLoss` from that package;
 `gcp` will automatically wrap it into a `WrappedLoss` loss.
 
-See also: `CPD`, `AbstractLoss`, `AbstractConstraint`, `GCPAlgorithms`.
+See also: `CPD`, `AbstractLoss`, `AbstractConstraint`, `AbstractAlgorithm`.
 """
 function gcp(
     X,
@@ -50,7 +50,7 @@ function gcp(
     _M = deepcopy(init)
 
     # Check if algorithm supports those inputs
-    if !applicable(GCPAlgorithms._gcp!, rng, _M, X, _loss, _constraints, algorithm)
+    if !applicable(_gcp!, rng, _M, X, _loss, _constraints, algorithm)
         error_str = """
         Algorithm `$(Base.nameof(typeof(algorithm)))` does not currently have \
         an implementation supporting the provided types:
@@ -65,13 +65,13 @@ function gcp(
         - we are adding more methods over time!
 
         The currently implemented methods for `$(Base.nameof(typeof(algorithm)))` are:
-        $(methods(GCPAlgorithms._gcp!, (Any, Any, Any, Any, Any, typeof(algorithm))))
+        $(methods(_gcp!, (Any, Any, Any, Any, Any, typeof(algorithm))))
         """
         throw(ErrorException(error_str))
     end
 
     # Call internal function with normalized inputs
-    return GCPAlgorithms._gcp!(rng, _M, X, _loss, _constraints, algorithm)
+    return _gcp!(rng, _M, X, _loss, _constraints, algorithm)
 end
 
 # Default constraints
@@ -111,8 +111,8 @@ See also: `gcp`.
 default_gcp_algorithm(X, r, loss, constraints) =
     default_gcp_algorithm(X, r, convert(AbstractLoss, loss), constraints)
 default_gcp_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
-    GCPAlgorithms.FastALS()
-default_gcp_algorithm(X, r, loss::AbstractLoss, constraints) = GCPAlgorithms.LBFGSB()
+    FastALS()
+default_gcp_algorithm(X, r, loss::AbstractLoss, constraints) = LBFGSB()
 
 # Default initialization
 

@@ -27,7 +27,7 @@ function _gcp!(
     X::Array{<:Real,N},
     loss::LeastSquaresLoss,
     constraints::Tuple{},
-    algorithm::GCPAlgorithms.FastALS,
+    algorithm::FastALS,
 ) where {N}
     # Determine order of modes of MTTKRP to compute
     Jns = [prod(size(X)[1:n]) for n in 1:N]

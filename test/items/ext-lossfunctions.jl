@@ -35,7 +35,7 @@ end
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = GCPAlgorithms.LBFGSB(),
+            algorithm = LBFGSB(),
         )
 
         # Test

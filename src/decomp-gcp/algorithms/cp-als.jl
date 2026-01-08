@@ -20,7 +20,7 @@ function _gcp!(
     X::Array{<:Real,N},
     loss::LeastSquaresLoss,
     constraints::Tuple{},
-    algorithm::GCPAlgorithms.ALS,
+    algorithm::ALS,
 ) where {N}
     # Pre-allocate MTTKRP buffers
     mttkrp_buffers = ntuple(n -> create_mttkrp_buffer(X, M.U, n), N)

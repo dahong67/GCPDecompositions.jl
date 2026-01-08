@@ -44,7 +44,7 @@ function _gcp!(
     X::Union{Array{<:Union{Real,Missing},N},SparseArrayCOO{<:Real,<:Integer,N}},
     loss::AbstractLoss,
     constraints::Tuple{Vararg{LowerBoundConstraint}},
-    algorithm::GCPAlgorithms.Adam,
+    algorithm::Adam,
 ) where {N}
     r = ncomps(M)
     T = Float64    # Simpler for now

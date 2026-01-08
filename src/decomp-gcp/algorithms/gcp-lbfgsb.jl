@@ -40,7 +40,7 @@ function _gcp!(
     X::Array{<:Union{Real,Missing},N},
     loss::AbstractLoss,
     constraints::Tuple{Vararg{LowerBoundConstraint}},
-    algorithm::GCPAlgorithms.LBFGSB,
+    algorithm::LBFGSB,
 ) where {N}
     r = ncomps(M)
     T = Float64    # LBFGSB.jl seems to only support Float64
