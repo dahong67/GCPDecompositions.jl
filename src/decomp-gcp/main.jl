@@ -16,7 +16,7 @@ with respect to the loss function `loss` and return a `CPD` object.
 Keyword arguments:
 + `loss`        : loss function of type `AbstractLoss`
 + `constraints` : a `Tuple` of constraints of type `AbstractConstraint`
-+ `algorithm`   : algorithm of type `AbstractAlgorithm`
++ `algorithm`   : algorithm of type `AbstractGCPAlgorithm`
 + `rng`         : random number generator (used by `default_gcp_init` and some algorithms)
 
 Conventional CP corresponds to the default `LeastSquaresLoss()` loss
@@ -26,7 +26,7 @@ If the LossFunctions.jl package is also loaded,
 `loss` can also be a `DistanceLoss` or `MarginLoss` from that package;
 `gcp` will automatically wrap it into a `WrappedLoss` loss.
 
-See also: `CPD`, `AbstractLoss`, `AbstractConstraint`, `AbstractAlgorithm`.
+See also: `CPD`, `AbstractLoss`, `AbstractConstraint`, `AbstractGCPAlgorithm`.
 """
 function gcp(
     X,
@@ -111,8 +111,8 @@ See also: `gcp`.
 default_gcp_algorithm(X, r, loss, constraints) =
     default_gcp_algorithm(X, r, convert(AbstractLoss, loss), constraints)
 default_gcp_algorithm(X::Array{<:Real}, r, loss::LeastSquaresLoss, constraints::Tuple{}) =
-    FastALS()
-default_gcp_algorithm(X, r, loss::AbstractLoss, constraints) = LBFGSB()
+    CP_FastALS()
+default_gcp_algorithm(X, r, loss::AbstractLoss, constraints) = GCP_LBFGSB()
 
 # Default initialization
 

@@ -1,7 +1,7 @@
-## Algorithm: LBFGSB
+## Algorithm: GCP_LBFGSB
 
 """
-    LBFGSB
+    GCP_LBFGSB
 
 **L**imited-memory **BFGS** with **B**ox constraints.
 
@@ -25,7 +25,7 @@ Notes:
 
 See documentation of [LBFGSB.jl](https://github.com/Gnimuc/LBFGSB.jl) for more details.
 """
-Base.@kwdef struct LBFGSB <: AbstractAlgorithm
+Base.@kwdef struct GCP_LBFGSB <: AbstractGCPAlgorithm
     m::Int         = 10
     factr::Float64 = 1e7
     pgtol::Float64 = 1e-5
@@ -40,7 +40,7 @@ function _gcp!(
     X::Array{<:Union{Real,Missing},N},
     loss::AbstractLoss,
     constraints::Tuple{Vararg{LowerBoundConstraint}},
-    algorithm::LBFGSB,
+    algorithm::GCP_LBFGSB,
 ) where {N}
     r = ncomps(M)
     T = Float64    # LBFGSB.jl seems to only support Float64

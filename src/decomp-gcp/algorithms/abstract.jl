@@ -1,15 +1,15 @@
 # Abstract algorithm type and associated functions
 
 """
-    AbstractAlgorithm
+    AbstractGCPAlgorithm
 
 Abstract type for GCP algorithms.
 
-Concrete types `ConcreteAlgorithm <: AbstractAlgorithm` should implement
+Concrete types `ConcreteAlgorithm <: AbstractGCPAlgorithm` should implement
 `_gcp!(rng, M, X, loss, constraints, algorithm::ConcreteAlgorithm)`
 that modifies the initialization `M` and returns the modified version.
 """
-abstract type AbstractAlgorithm end
+abstract type AbstractGCPAlgorithm end
 
 """
     _gcp!(rng, M, X, loss, constraints, algorithm)

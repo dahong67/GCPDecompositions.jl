@@ -68,8 +68,8 @@ include("decomp-gcp/stoch-obj-grad/abstract.jl")
 include("decomp-gcp/stoch-obj-grad/uniform.jl")
 include("decomp-gcp/stoch-obj-grad/stratified.jl")
 include("decomp-gcp/stoch-obj-grad/semistratified.jl")
-export AbstractSampler, SampleOnce, gcp_stoch_objective, gcp_stoch_grad_U!
-export UniformSampler, StratifiedSampler, SemistratifiedSampler
+export AbstractGCPSampler, GCPSampleOnce, gcp_stoch_objective, gcp_stoch_grad_U!
+export UniformGCPSampler, StratifiedGCPSampler, SemistratifiedGCPSampler
 
 # Algorithms
 include("decomp-gcp/algorithms/abstract.jl")
@@ -77,6 +77,6 @@ include("decomp-gcp/algorithms/cp-als.jl")
 include("decomp-gcp/algorithms/cp-fastals.jl")
 include("decomp-gcp/algorithms/gcp-lbfgsb.jl")
 include("decomp-gcp/algorithms/gcp-adam.jl")
-export AbstractAlgorithm, ALS, FastALS, Adam, LBFGSB
+export AbstractGCPAlgorithm, CP_ALS, CP_FastALS, GCP_Adam, GCP_LBFGSB
 
 end

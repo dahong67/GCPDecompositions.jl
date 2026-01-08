@@ -1,7 +1,7 @@
-## Algorithm: Adam
+## Algorithm: GCP_Adam
 
 """
-    Adam
+    GCP_Adam
 
 Stochastic gradient-based optimization with
 **ada**ptive **m**oment estimation.
@@ -22,10 +22,11 @@ We employ a few common modifications with the following parameters:
 
 And the final parameter defines what sampler to use:
 
-  - `fsampler::AbstractSampler` : sampler to use for function value
-  - `gsampler::AbstractSampler` : sampler to use for gradients
+  - `fsampler::AbstractGCPSampler` : sampler to use for function value
+  - `gsampler::AbstractGCPSampler` : sampler to use for gradients
 """
-Base.@kwdef struct Adam{FS<:AbstractSampler,GS<:AbstractSampler} <: AbstractAlgorithm
+Base.@kwdef struct GCP_Adam{FS<:AbstractGCPSampler,GS<:AbstractGCPSampler} <:
+                   AbstractGCPAlgorithm
     α::Float64 = 0.001
     β1::Float64 = 0.9
     β2::Float64 = 0.999
@@ -44,7 +45,7 @@ function _gcp!(
     X::Union{Array{<:Union{Real,Missing},N},SparseArrayCOO{<:Real,<:Integer,N}},
     loss::AbstractLoss,
     constraints::Tuple{Vararg{LowerBoundConstraint}},
-    algorithm::Adam,
+    algorithm::GCP_Adam,
 ) where {N}
     r = ncomps(M)
     T = Float64    # Simpler for now
@@ -75,7 +76,7 @@ function _gcp!(
     project!(M, LowerBoundConstraint(lower))
 
     # Setup fsampler
-    fsampler = SampleOnce(X, algorithm.fsampler)
+    fsampler = GCPSampleOnce(X, algorithm.fsampler)
 
     # Initialize
     A = M.U       # factor matrices

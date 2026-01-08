@@ -5,19 +5,19 @@
     This page of the docs is still a work-in-progress. Check back later!
 
 ```@docs
-AbstractAlgorithm
+AbstractGCPAlgorithm
 gcp_objective
 gcp_grad_U!
 gcp_stoch_objective
 gcp_stoch_grad_U!
-AbstractSampler
-SampleOnce
-UniformSampler
-StratifiedSampler
-SemistratifiedSampler
+AbstractGCPSampler
+GCPSampleOnce
+UniformGCPSampler
+StratifiedGCPSampler
+SemistratifiedGCPSampler
 ```
 
 ```@autodocs
 Modules = [GCPDecompositions]
-Filter = t -> t in subtypes(AbstractAlgorithm) || (t isa Function && t != GCPDecompositions._gcp!)
+Filter = t -> t in subtypes(AbstractGCPAlgorithm) || (t isa Function && t != GCPDecompositions._gcp!)
 ```

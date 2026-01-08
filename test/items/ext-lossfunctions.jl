@@ -35,7 +35,7 @@ end
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test

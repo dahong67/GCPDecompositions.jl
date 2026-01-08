@@ -1,17 +1,17 @@
 ## Stochastic GCP objective and gradient functions: Abstract types and functions
 
 """
-    AbstractSampler
+    AbstractGCPSampler
 
 Abstract type for samplers to use in stochastic evaluation
 of the objective and gradients.
 
-Concrete types `ConcreteSampler <: AbstractSampler` should implement
+Concrete types `ConcreteSampler <: AbstractGCPSampler` should implement
 
 + `gcp_stoch_objective(rng, M, X, loss, sampler::ConcreteSampler)`
 + `gcp_stoch_grad_U!(rng, GU, M, X, loss, sampler::ConcreteSampler)`
 """
-abstract type AbstractSampler end
+abstract type AbstractGCPSampler end
 
 """
     gcp_stoch_objective([rng=default_rng()], M::CPD, X::AbstractArray, loss, sampler)
@@ -35,7 +35,7 @@ gcp_stoch_grad_U!(GU, M::CPD, X::AbstractArray, loss, sampler) =
     gcp_stoch_grad_U!(default_rng(), GU, M::CPD, X::AbstractArray, loss, sampler)
 
 """
-    SampleOnce(X::AbstractArray, sampler::AbstractSampler)
+    GCPSampleOnce(X::AbstractArray, sampler::AbstractGCPSampler)
 
 Wrapped sampler that samples entries from `X` using `sampler` only
 the first time, then reuses the same indices every time after that.
@@ -44,7 +44,7 @@ For use with `gcp_stoch_objective`.
 The internal field `cache` stores cached values - the particular choice
 of what is stored is an implementation detail defined by each `sampler`.
 """
-struct SampleOnce{S<:AbstractSampler,C} <: AbstractSampler
+struct GCPSampleOnce{S<:AbstractGCPSampler,C} <: AbstractGCPSampler
     sampler::S
     cache::C
 end

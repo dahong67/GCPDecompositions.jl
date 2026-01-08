@@ -1,13 +1,13 @@
 ## Stochastic GCP objective and gradient functions: Stratified sampler
 
 """
-    StratifiedSampler(num_nonzeros::Int, num_zeros::Int)
+    StratifiedGCPSampler(num_nonzeros::Int, num_zeros::Int)
 
 Stratified sampling of `num_nonzeros` nonzero entries
 and `num_zeros` zero entries with replacement.
 For `SparseArrayCOO` tensors, stored entries are all treated as nonzero.
 """
-struct StratifiedSampler <: AbstractSampler
+struct StratifiedGCPSampler <: AbstractGCPSampler
     num_nonzeros::Int
     num_zeros::Int
 end
@@ -17,19 +17,19 @@ function gcp_stoch_objective(
     M::CPD{T,N},
     X::SparseArrayCOO{TX,TI,N},
     loss,
-    sampler::StratifiedSampler,
+    sampler::StratifiedGCPSampler,
 ) where {T,TX,TI,N}
-    return gcp_stoch_objective(rng, M, X, loss, SampleOnce(X, sampler))
+    return gcp_stoch_objective(rng, M, X, loss, GCPSampleOnce(X, sampler))
 end
 
-SampleOnce(::SparseArrayCOO{TX,TI,N}, sampler::StratifiedSampler) where {TX,TI,N} =
-    SampleOnce(sampler, (; nzptrs = Vector{Int}(), zinds = Vector{NTuple{N,TI}}()))
+GCPSampleOnce(::SparseArrayCOO{TX,TI,N}, sampler::StratifiedGCPSampler) where {TX,TI,N} =
+    GCPSampleOnce(sampler, (; nzptrs = Vector{Int}(), zinds = Vector{NTuple{N,TI}}()))
 function gcp_stoch_objective(
     rng::AbstractRNG,
     M::CPD{T,N},
     X::SparseArrayCOO{TX,TI,N},
     loss,
-    (; sampler, cache)::SampleOnce{<:StratifiedSampler},
+    (; sampler, cache)::GCPSampleOnce{<:StratifiedGCPSampler},
 ) where {T,TX,TI,N}
     # Extract parameters
     n, η, ζ = size(X), numstored(X), length(X) - numstored(X)
@@ -65,7 +65,7 @@ function gcp_stoch_grad_U!(
     M::CPD{T,N},
     X::SparseArrayCOO{TX,TI,N},
     loss,
-    sampler::StratifiedSampler,
+    sampler::StratifiedGCPSampler,
 ) where {T,TX,TI,N,TGU<:AbstractMatrix{T}}
     # Extract parameters
     n, η, ζ = size(X), numstored(X), length(X) - numstored(X)

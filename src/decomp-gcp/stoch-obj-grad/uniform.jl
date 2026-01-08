@@ -1,11 +1,11 @@
 ## Stochastic GCP objective and gradient functions: Uniform sampler
 
 """
-    UniformSampler(numsamples::Int)
+    UniformGCPSampler(numsamples::Int)
 
 Uniform sampling of `numsamples` entries with replacement.
 """
-struct UniformSampler <: AbstractSampler
+struct UniformGCPSampler <: AbstractGCPSampler
     numsamples::Int
 end
 
@@ -14,19 +14,19 @@ function gcp_stoch_objective(
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
-    sampler::UniformSampler,
+    sampler::UniformGCPSampler,
 ) where {T,TX,N}
-    return gcp_stoch_objective(rng, M, X, loss, SampleOnce(X, sampler))
+    return gcp_stoch_objective(rng, M, X, loss, GCPSampleOnce(X, sampler))
 end
 
-SampleOnce(X::Array, sampler::UniformSampler) =
-    SampleOnce(sampler, Vector{NTuple{ndims(X),Int}}())
+GCPSampleOnce(X::Array, sampler::UniformGCPSampler) =
+    GCPSampleOnce(sampler, Vector{NTuple{ndims(X),Int}}())
 function gcp_stoch_objective(
     rng::AbstractRNG,
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
-    (; sampler, cache)::SampleOnce{<:UniformSampler},
+    (; sampler, cache)::GCPSampleOnce{<:UniformGCPSampler},
 ) where {T,TX,N}
     n, ω, s, inds = size(X), length(X), sampler.numsamples, cache
     if isempty(inds)
@@ -44,7 +44,7 @@ function gcp_stoch_grad_U!(
     M::CPD{T,N},
     X::Array{TX,N},
     loss,
-    sampler::UniformSampler,
+    sampler::UniformGCPSampler,
 ) where {T,TX,N,TGU<:AbstractMatrix{T}}
     n, ω, s = size(X), length(X), sampler.numsamples
     inds = sample!(rng, CartesianIndices(n), Vector{NTuple{ndims(X),Int}}(undef, s))

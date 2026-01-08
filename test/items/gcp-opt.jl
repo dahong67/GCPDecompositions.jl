@@ -37,21 +37,30 @@
         r;
         loss = LeastSquaresLoss(),
         constraints = (LowerBoundConstraint(1),),
-        algorithm = Adam(; fsampler = UniformSampler(10), gsampler = UniformSampler(10)),
+        algorithm = GCP_Adam(;
+            fsampler = UniformGCPSampler(10),
+            gsampler = UniformGCPSampler(10),
+        ),
     )
     @test_throws ErrorException gcp(
         X,
         r;
         loss = PoissonLoss(),
         constraints = (),
-        algorithm = Adam(; fsampler = UniformSampler(10), gsampler = UniformSampler(10)),
+        algorithm = GCP_Adam(;
+            fsampler = UniformGCPSampler(10),
+            gsampler = UniformGCPSampler(10),
+        ),
     )
     @test_throws ErrorException gcp(
         X,
         r;
         loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
         constraints = (LowerBoundConstraint(1),),
-        algorithm = Adam(; fsampler = UniformSampler(10), gsampler = UniformSampler(10)),
+        algorithm = GCP_Adam(;
+            fsampler = UniformGCPSampler(10),
+            gsampler = UniformGCPSampler(10),
+        ),
     )
 
     # Exercise check in `gcp` for supported inputs to algorithm
@@ -59,13 +68,13 @@
         X,
         r;
         constraints = (LowerBoundConstraint(0),),
-        algorithm = ALS(),
+        algorithm = CP_ALS(),
     )
 end
 
 @testitem "default_gcp_init" begin
     X = randn(2, 3, 4)
-    M = default_gcp_init(X, 2, LeastSquaresLoss(), (), ALS())
+    M = default_gcp_init(X, 2, LeastSquaresLoss(), (), CP_ALS())
     @test M isa CPD
 end
 
@@ -130,7 +139,7 @@ end
         Random.seed!(0)
         M = CPD(ones(r), rand.(sz, r))
         X = [M[I] for I in CartesianIndices(size(M))]
-        Mh = gcp(X, r; loss = LeastSquaresLoss(), algorithm = ALS())
+        Mh = gcp(X, r; loss = LeastSquaresLoss(), algorithm = CP_ALS())
         @test maximum(I -> abs(Mh[I] - X[I]), CartesianIndices(X)) <= 1e-5
     end
 end
@@ -172,7 +181,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test
@@ -202,7 +211,7 @@ end
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test
@@ -233,7 +242,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -263,7 +272,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -293,7 +302,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -325,7 +334,7 @@ end
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -359,7 +368,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -391,7 +400,7 @@ end
                 domain = Interval(-Inf, +Inf),
             ),
             constraints = (),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -447,7 +456,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Test 
@@ -477,7 +486,7 @@ end
                     domain = Interval(-Inf, +Inf),
                 ),
                 constraints = (),
-                algorithm = LBFGSB(),
+                algorithm = GCP_LBFGSB(),
             )
 
             # Test
@@ -504,7 +513,7 @@ end
                     domain = Interval(0.0, +Inf),
                 ),
                 constraints = (LowerBoundConstraint(0.0),),
-                algorithm = LBFGSB(),
+                algorithm = GCP_LBFGSB(),
             )
 
             # Test
@@ -542,7 +551,7 @@ end
                 domain = Interval(0.0, +Inf),
             ),
             constraints = (LowerBoundConstraint(0.0),),
-            algorithm = LBFGSB(),
+            algorithm = GCP_LBFGSB(),
         )
 
         # Uniform sampling with dense data tensor
@@ -551,11 +560,11 @@ end
             X,
             r;
             loss = BernoulliOddsLoss(),
-            algorithm = Adam(;
+            algorithm = GCP_Adam(;
                 α = 0.01,
                 epochiters = 100,
-                fsampler = UniformSampler(10^5),
-                gsampler = UniformSampler(10^4),
+                fsampler = UniformGCPSampler(10^5),
+                gsampler = UniformGCPSampler(10^4),
             ),
         )
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
@@ -566,11 +575,11 @@ end
             SparseArrayCOO(X),
             r;
             loss = BernoulliOddsLoss(),
-            algorithm = Adam(;
+            algorithm = GCP_Adam(;
                 α = 0.01,
                 epochiters = 100,
-                fsampler = StratifiedSampler(10^4, 10^4),
-                gsampler = StratifiedSampler(10^3, 10^1),
+                fsampler = StratifiedGCPSampler(10^4, 10^4),
+                gsampler = StratifiedGCPSampler(10^3, 10^1),
             ),
         )
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
@@ -581,11 +590,11 @@ end
             SparseArrayCOO(X),
             r;
             loss = BernoulliOddsLoss(),
-            algorithm = Adam(;
+            algorithm = GCP_Adam(;
                 α = 0.01,
                 epochiters = 100,
-                fsampler = SemistratifiedSampler(10^4, 10^4),
-                gsampler = SemistratifiedSampler(10^3, 10^3),
+                fsampler = SemistratifiedGCPSampler(10^4, 10^4),
+                gsampler = SemistratifiedGCPSampler(10^3, 10^3),
             ),
         )
         @test sum(abs2, Array(Mh) - Array(Mr)) / sum(abs2, Array(Mr)) < 0.1
@@ -607,7 +616,7 @@ end
         Gr = gcp_grad_U!(similar.(M.U), M, X, LeastSquaresLoss())
 
         # Dense data samplers
-        @testset "sampler=$sampler" for sampler in [UniformSampler(10)]
+        @testset "sampler=$sampler" for sampler in [UniformGCPSampler(10)]
             Random.seed!(0)
             F = mean(1:100) do _
                 return gcp_stoch_objective(M, X, LeastSquaresLoss(), sampler)
@@ -622,8 +631,8 @@ end
 
         # Sparse data samplers
         @testset "sampler=$sampler" for sampler in [
-            StratifiedSampler(10, 2),
-            SemistratifiedSampler(10, 10),
+            StratifiedGCPSampler(10, 2),
+            SemistratifiedGCPSampler(10, 10),
         ]
             Random.seed!(0)
             F = mean(1:100) do _
