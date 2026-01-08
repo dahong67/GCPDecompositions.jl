@@ -9,7 +9,7 @@ using Base.Order: Ordering, Reverse
 using ForwardDiff: ForwardDiff
 using IntervalSets: Interval
 using LBFGSB: lbfgsb
-using LinearAlgebra: Diagonal, LinearAlgebra, lu!, mul!, norm, rdiv!, rmul!
+using LinearAlgebra: LinearAlgebra, Diagonal, lu!, mul!, norm, rdiv!, rmul!
 using Random: AbstractRNG, default_rng
 using SparseArrays: sparse
 using StatsBase: sample, sample!
