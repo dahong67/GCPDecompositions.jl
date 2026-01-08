@@ -300,7 +300,7 @@ domain(::BetaDivergenceLoss) = Interval(0.0, +Inf)
 # User-defined loss
 
 """
-    UserDefinedLoss
+    CustomLoss
 
 Type for user-defined loss functions ``f(x,m)``,
 where ``x`` is the data entry and ``m`` is the model entry.
@@ -312,17 +312,17 @@ Contains the following fields:
   ``\\partial_m f(x,m)`` with respect to ``m``
 + `domain::Interval` : `Interval` from IntervalSets.jl defining the domain for ``m``
 
-The constructor is `UserDefinedLoss(func; deriv, domain)`.
+The constructor is `CustomLoss(func; deriv, domain)`.
 If not provided,
 
 + `deriv` is automatically computed from `func` using forward-mode automatic differentiation
 + `domain` gets a default value of `Interval(-Inf, +Inf)`
 """
-struct UserDefinedLoss <: AbstractLoss
+struct CustomLoss <: AbstractLoss
     func::Function
     deriv::Function
     domain::Interval
-    function UserDefinedLoss(
+    function CustomLoss(
         func::Function;
         deriv::Function = (x, m) -> ForwardDiff.derivative(m -> func(x, m), m),
         domain::Interval = Interval(-Inf, Inf),
@@ -334,9 +334,9 @@ struct UserDefinedLoss <: AbstractLoss
         return new(func, deriv, domain)
     end
 end
-value(loss::UserDefinedLoss, x, m) = loss.func(x, m)
-deriv(loss::UserDefinedLoss, x, m) = loss.deriv(x, m)
-domain(loss::UserDefinedLoss) = loss.domain
+value(loss::CustomLoss, x, m) = loss.func(x, m)
+deriv(loss::CustomLoss, x, m) = loss.deriv(x, m)
+domain(loss::CustomLoss) = loss.domain
 
 # Loss coming from another package
 

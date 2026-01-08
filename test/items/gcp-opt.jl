@@ -13,7 +13,7 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        loss = CustomLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
     )
 
     # Exercise `_gcp!`
@@ -27,7 +27,7 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        loss = CustomLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
         constraints = (LowerBoundConstraint(1),),
     )
 
@@ -55,7 +55,7 @@
     @test_throws ErrorException gcp(
         X,
         r;
-        loss = UserDefinedLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
+        loss = CustomLoss((x, m) -> (x - m)^2; domain = Interval(1, Inf)),
         constraints = (LowerBoundConstraint(1),),
         algorithm = GCP_Adam(;
             fsampler = UniformGCPSampler(10),
@@ -175,7 +175,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> m - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
@@ -205,7 +205,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> exp(m) - x * m;
                 deriv = (x, m) -> exp(m) - x,
                 domain = Interval(-Inf, +Inf),
@@ -236,7 +236,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> log(m + 1e-10) + x / (m + 1e-10);
                 deriv = (x, m) -> -1 * (x / (m + 1e-10)^2) + (1 / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
@@ -266,7 +266,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> 2 * log(m + 1e-10) + (pi / 4) * ((x / (m + 1e-10))^2);
                 deriv = (x, m) -> 2 / (m + 1e-10) - (pi / 2) * (x^2 / (m + 1e-10)^3),
                 domain = Interval(0.0, +Inf),
@@ -296,7 +296,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> log(m + 1) - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),
@@ -328,7 +328,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> log(1 + exp(m)) - x * m;
                 deriv = (x, m) -> exp(m) / (1 + exp(m)) - x,
                 domain = Interval(-Inf, +Inf),
@@ -362,7 +362,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> (num_failures + x) * log(1 + m) - x * log(m + 1e-10);
                 deriv = (x, m) -> (num_failures + x) / (1 + m) - x / (m + 1e-10),
                 domain = Interval(0.0, +Inf),
@@ -393,7 +393,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> abs(x - m) <= Δ ? (x - m)^2 : 2 * Δ * abs(x - m) - Δ^2;
                 deriv = (x, m) ->
                     abs(x - m) <= Δ ? -2 * (x - m) : -2 * sign(x - m) * Δ * x,
@@ -450,7 +450,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> beta_value(β, x, m);
                 deriv = (x, m) -> beta_deriv(β, x, m),
                 domain = Interval(0.0, +Inf),
@@ -480,7 +480,7 @@ end
             Mr = gcp(
                 X,
                 r;
-                loss = UserDefinedLoss(
+                loss = CustomLoss(
                     (x, m) -> (x - m)^2;
                     deriv = (x, m) -> 2 * (m - x),
                     domain = Interval(-Inf, +Inf),
@@ -491,7 +491,7 @@ end
 
             # Test
             Random.seed!(0)
-            Mh = gcp(X, r; loss = UserDefinedLoss((x, m) -> (x - m)^2))
+            Mh = gcp(X, r; loss = CustomLoss((x, m) -> (x - m)^2))
             @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
         end
     end
@@ -507,7 +507,7 @@ end
             Mr = gcp(
                 X,
                 r;
-                loss = UserDefinedLoss(
+                loss = CustomLoss(
                     (x, m) -> m - x * log(m + 1e-10);
                     deriv = (x, m) -> 1 - x / (m + 1e-10),
                     domain = Interval(0.0, +Inf),
@@ -521,10 +521,7 @@ end
             Mh = gcp(
                 X,
                 r;
-                loss = UserDefinedLoss(
-                    (x, m) -> m - x * log(m + 1e-10);
-                    domain = 0.0 .. Inf,
-                ),
+                loss = CustomLoss((x, m) -> m - x * log(m + 1e-10); domain = 0.0 .. Inf),
             )
             @test maximum(I -> abs(Mh[I] - Mr[I]), CartesianIndices(X)) <= 1e-5
         end
@@ -545,7 +542,7 @@ end
         Mr = gcp(
             X,
             r;
-            loss = UserDefinedLoss(
+            loss = CustomLoss(
                 (x, m) -> log(m + 1) - x * log(m + 1e-10);
                 deriv = (x, m) -> 1 / (m + 1) - (x / (m + 1e-10)),
                 domain = Interval(0.0, +Inf),

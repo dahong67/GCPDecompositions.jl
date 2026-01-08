@@ -47,7 +47,7 @@ export LeastSquaresLoss,
     NegativeBinomialOddsLoss,
     HuberLoss,
     BetaDivergenceLoss,
-    UserDefinedLoss,
+    CustomLoss,
     WrappedLoss
 
 # Constraints
