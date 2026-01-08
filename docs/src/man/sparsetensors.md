@@ -4,12 +4,11 @@
 
     This page of the docs is still a work-in-progress. Check back later!
 
-```@autodocs
+```@docs
 SparseArrayCOO
-check_Ti
-check_coo_buffers
-check_coo_inds
-checkbounds_dims
-checkbounds_dims
 numstored
+GCPDecompositions.check_Ti
+GCPDecompositions.check_coo_buffers
+GCPDecompositions.check_coo_inds
+GCPDecompositions.checkbounds_dims
 ```

@@ -19,5 +19,9 @@ SemistratifiedGCPSampler
 
 ```@autodocs
 Modules = [GCPDecompositions]
-Filter = t -> t in subtypes(AbstractGCPAlgorithm) || (t isa Function && t != GCPDecompositions._gcp!)
+Filter = t -> t in subtypes(AbstractGCPAlgorithm)
+```
+
+```@docs
+GCPDecompositions.CP_FastALS_iter!
 ```
