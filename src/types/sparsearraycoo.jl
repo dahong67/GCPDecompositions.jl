@@ -115,7 +115,11 @@ function Base.getindex(A::SparseArrayCOO{Tv,<:Integer,N}, I::Vararg{Int,N}) wher
     return out
 end
 
-function Base.setindex!(A::SparseArrayCOO{Tv,Ti,N}, v, I::Vararg{Int,N}) where {Tv,Ti<:Integer,N}
+function Base.setindex!(
+    A::SparseArrayCOO{Tv,Ti,N},
+    v,
+    I::Vararg{Int,N},
+) where {Tv,Ti<:Integer,N}
     @boundscheck checkbounds(A, I...)
     ind, val = convert(NTuple{N,Ti}, I), convert(Tv, v)
     done = false
@@ -140,8 +144,11 @@ Base.IndexStyle(::Type{<:SparseArrayCOO}) = IndexCartesian()
 
 ## Overloads for specialized implementations
 
-Base.similar(::SparseArrayCOO{<:Any,Ti}, ::Type{Tv}, dims::Dims{N}) where {Tv,Ti<:Integer,N} =
-    SparseArrayCOO{Tv,Ti,N}(undef, dims)
+Base.similar(
+    ::SparseArrayCOO{<:Any,Ti},
+    ::Type{Tv},
+    dims::Dims{N},
+) where {Tv,Ti<:Integer,N} = SparseArrayCOO{Tv,Ti,N}(undef, dims)
 
 Base.show(io::IO, A::SparseArrayCOO) = invoke(show, Tuple{IO,Any}, io, A)
 function Base.show(io::IO, ::MIME"text/plain", A::SparseArrayCOO)
@@ -372,4 +379,3 @@ function checkbounds_dims(dims::Dims{N}, I::Vararg{Integer,N}) where {N}
         throw(ArgumentError("index (= $I) out of bounds (dims = $dims)"))
     return nothing
 end
-
