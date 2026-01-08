@@ -15,14 +15,14 @@ using SparseArrays: sparse
 using StatsBase: sample, sample!
 
 # Tensor Kernels
-include("kernels/khatrirao.jl")
-include("kernels/mttkrp.jl")
-include("kernels/mttkrps.jl")
+include("base-kernels/khatrirao.jl")
+include("base-kernels/mttkrp.jl")
+include("base-kernels/mttkrps.jl")
 export create_mttkrp_buffer, mttkrp, mttkrp!, mttkrps, mttkrps!, khatrirao, khatrirao!
 
 # Tensor Types
-include("types/sparsearraycoo.jl")
-include("types/cpd.jl")
+include("base-types/sparsearraycoo.jl")
+include("base-types/cpd.jl")
 export SparseArrayCOO, numstored
 export CPD,
     ncomps,
