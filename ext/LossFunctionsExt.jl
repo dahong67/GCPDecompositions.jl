@@ -1,7 +1,8 @@
 module LossFunctionsExt
 
-using GCPDecompositions, LossFunctions
-using IntervalSets
+using GCPDecompositions
+using LossFunctions: LossFunctions
+using IntervalSets: Interval
 
 const SupportedLosses = Union{LossFunctions.DistanceLoss,LossFunctions.MarginLoss}
 
