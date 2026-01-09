@@ -17,7 +17,9 @@ end
 
 @testitem "Non-public imports" begin
     using ExplicitImports
-    @test check_all_explicit_imports_are_public(GCPDecompositions) === nothing
+    if VERSION >= v"1.11-"  # public only declared on Julia 1.11+
+        @test check_all_explicit_imports_are_public(GCPDecompositions) === nothing
+    end
 end
 
 @testitem "Non-owner qualified accesses" begin
@@ -27,9 +29,18 @@ end
 
 @testitem "Non-public qualified accesses" begin
     using ExplicitImports
-    ignore =
-        (:checkbounds_indices, :derivative, :throw_boundserror, :require_one_based_indexing)
-    @test check_all_qualified_accesses_are_public(GCPDecompositions; ignore) === nothing
+    if VERSION >= v"1.11-"  # public only declared on Julia 1.11+
+        ignore = (
+            :checkbounds_indices,         # from Base
+            :require_one_based_indexing,  # from Base
+            :throw_boundserror,           # from Base
+            :derivative,                  # from ForwardDiff
+            :DistanceLoss,                # from LossFunctions
+            :MarginLoss,                  # from LossFunctions
+            :deriv,                       # from LossFunctions
+        )
+        @test check_all_qualified_accesses_are_public(GCPDecompositions; ignore) === nothing
+    end
 end
 
 @testitem "Self-qualified accesses" begin
