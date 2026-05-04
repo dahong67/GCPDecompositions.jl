@@ -57,3 +57,48 @@ function _checked_khatrirao_dims(A::Vararg{AbstractMatrix})
     )
     return size.(A, 1), size(A[1], 2)
 end
+
+"""
+    unique_kr_double!(Ktilde, A)
+
+Compute only the unique rows of the Khatri-Rao product of A with itself,
+store the result in Ktilde.
+"""
+function unique_kr_double!(Ktilde::AbstractMatrix, A::AbstractMatrix)
+    n, r = size(A)
+    for k in 1:r
+        row = 1
+        for i in 1:n
+            a_ik = A[i,k]
+            for j in i:n
+                Ktilde[row, k] = a_ik * A[j,k]
+                row += 1
+            end
+        end
+    end
+    return Ktilde
+end
+
+"""
+    unique_kr_triple!(Ktilde, A)
+
+Compute only the unique rows of the Khatri-Rao product of A with itself 3 times,
+store the result in Ktilde.
+"""
+function unique_kr_triple!(Ktilde::AbstractMatrix, A::AbstractMatrix)
+    n, r = size(A)
+    for k in 1:r
+        row = 1
+        for i in 1:n
+            a_ik = A[i,k]
+            for j in i:n
+                a_jk = A[j,k]
+                for l in j:n
+                    Ktilde[row, k] = a_ik * a_jk * A[l,k]
+                    row += 1
+                end
+            end
+        end
+    end
+    return Ktilde
+end

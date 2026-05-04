@@ -6,7 +6,7 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, sparse_mttkrp!, sparse_mttkrps!, checksym, khatrirao
+using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, sparse_mttkrp!, sparse_mttkrps!, checksym, khatrirao, symmetric_mttkrp_fullsym!, unique_kr_triple!
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using SparseArrayKit: SparseArray, nonzero_keys, nonzero_values
@@ -114,15 +114,37 @@ function grad_U_λ!(
     sym_data,
     γ,
 ) where {T,TX,N,K}
-    Y = [
-        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
-        I in CartesianIndices(X)
-    ]
+    # TODO: Figure out how to form non-matricized derivative tensor which will have correct columns in matricization removed
+    if sym_data
+        # Only for fully symmetric 3 way case right now
+        sz = size(X,1)
+        Y_mode1_mat = similar(X, sz, (sz*(sz+1))÷2)
+        # What loop order for cache efficiency?
+        for row in 1:sz
+            col = 1
+            for i in 1:sz
+                for j in i:sz
+                    if i == j
+                        Y_mode1_mat[row,col] = ismissing(X[row,i,j]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[row,i,j], M[row,i,j])
+                    else
+                        Y_mode1_mat[row,col] = ismissing(X[row,i,j]) ? zero(nonmissingtype(eltype(X))) : 2 * deriv(loss, X[row,i,j], M[row,i,j])
+                    end
+                    col += 1
+                end
+            end
+        end
+    else
+        Y = [
+            ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
+            I in CartesianIndices(X)
+        ]
+    end
 
     # Factor matrix gradients
     for j in 1:K
         if sym_data
-            mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
+            # mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
+            symmetric_mttkrp_fullsym!(GU_λ[j], Y_mode1_mat, M.U)
             rmul!(GU_λ[j], count(M.S .== j))
         else
             for (index, mode) in enumerate(findall(M.S .== j))
@@ -140,7 +162,30 @@ function grad_U_λ!(
     end
 
     # Weights gradient
-    GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
+    if sym_data
+        # Only for fully symmetric 3 way case right now
+        sz = size(X,1)
+        Y_vec = similar(X, (sz*(sz+1)*(sz+2))÷6)
+        # mult_idx = Vector{Int64}(undef, 3)
+        #counts = Vector{Int64}(undef, 3)
+        # What loop order for cache efficiency?
+        idx = 1
+        # idx_counts = Dict{Int64, Int64}()
+        for i in 1:sz
+            for j in i:sz
+                for k in j:sz
+                    # α = 6 / prod(factorial.(values(idx_counts)))
+                    α = i == j ? (j == k ? 1 : 3) : (j == k ? 3 : 6)
+                    Y_vec[idx] = ismissing(X[i,j,k]) ? zero(nonmissingtype(eltype(X))) : α * deriv(loss, X[i,j,k], M[i,j,k])
+                    idx += 1
+                end
+            end
+        end
+        kr_tilde = similar(M.U[1], (sz*(sz+1)*(sz+2)) ÷ 6, size(M.U[1],2))
+        GU_λ[K+1] .= unique_kr_triple!(kr_tilde, M.U[1])' * Y_vec
+    else
+        GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
+    end
 
     return GU_λ
 end
@@ -526,3 +571,33 @@ deriv(loss::UserDefined, x, m) = loss.deriv(x, m)
 domain(loss::UserDefined) = loss.domain
 
 end
+
+
+function form_sym(X, M, loss)
+    sz = size(X,1)
+    Y_mode1_mat = similar(X, sz, (sz*(sz+1))÷2)
+    # What loop order for cache efficiency?
+    for row in 1:sz
+        col = 1
+        for i in 1:sz
+            for j in i:sz
+                if i == j
+                    Y_mode1_mat[row,col] = ismissing(X[row,i,j]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[row,i,j], M[row,i,j])
+                else
+                    Y_mode1_mat[row,col] = ismissing(X[row,i,j]) ? zero(nonmissingtype(eltype(X))) : 2 * deriv(loss, X[row,i,j], M[row,i,j])
+                end
+                col += 1
+            end
+        end
+    end
+    return Y_mode1_mat
+end
+
+function form_nonsym(X, M, loss)
+    Y = [
+        ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
+        I in CartesianIndices(X)
+    ]
+    return Y
+end
+

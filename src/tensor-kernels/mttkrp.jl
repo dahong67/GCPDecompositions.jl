@@ -187,3 +187,52 @@ function _checked_mttkrp_dims(
 
     return I, r
 end
+
+"""
+    symmetric_mttkrp_fullsym!(G, X, (U1,), n, buffer = create_symmetric_mttkrp_fullsym_buffer(X, U, n))
+
+Compute the Matricized Tensor Times Khatri-Rao Product (MTTKRP)
+of X, the mode-1 matricization of a fully symmetric 3-way tensor with the matrices U1, U1 along mode n,
+exploiting symmetry for efficient computation, and store the result in G.
+
+Optionally, provide a `buffer` for intermediate calculations.
+"""
+function symmetric_mttkrp_fullsym!(
+    G::TM, 
+    X::AbstractArray{T,2}, 
+    U::NTuple{1,TU}, 
+    buffer = create_symmetric_mttkrp_fullsym_buffer(X, U),
+) where {TM<:AbstractMatrix,T,TU<:AbstractMatrix}
+    # I, r = _checked_mttkrp_dims(X, U, n)
+
+    # Check output dimensions
+    Base.require_one_based_indexing(G)
+    size(G) == size(U[1]) ||
+        throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
+
+    # Compute unique Khatri-Rao product
+    unique_kr_double!(buffer.kr_tilde, U[1])
+    mul!(G, X, buffer.kr_tilde)
+
+end
+
+"""
+    create_symmetric_mttkrp_fullsym_buffer(X, U, n)
+
+Create buffer to hold intermediate calculations in `symmetric_mttkrp_fullsym!`.
+
+See also: `symmetric_mttkrp_fullsym!`
+"""
+function create_symmetric_mttkrp_fullsym_buffer(
+    X::AbstractArray{T,2},
+    U::NTuple{1,TM},
+) where {TM<:AbstractMatrix,T}
+    # I, r = _checked_mttkrp_dims(X, U, n)
+    I = size(X,1)
+    r = size(U[1],2)
+    # Allocate buffer
+    return (;
+        kr_tilde = similar(U[1], (I[1] * (I[1] + 1)) ÷ 2, r)
+    )
+
+end
