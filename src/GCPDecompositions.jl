@@ -7,7 +7,7 @@ module GCPDecompositions
 import Base: ndims, size, show, summary
 import Base: getindex
 import Base: AbstractArray, Array
-import LinearAlgebra: norm
+import LinearAlgebra: norm, Diagonal, mul!
 using IntervalSets: Interval
 using Random: default_rng
 using SparseArrays: spzeros
