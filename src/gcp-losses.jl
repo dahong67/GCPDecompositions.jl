@@ -169,9 +169,29 @@ Forms reduced mode-n matricization of derivative tensor Y where duplicate column
 @generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
     set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
     quote
+        num_rows = size(X,n)
         col_inds_pos = setdiff(1:$N,n)
         S_reduced = M.S[col_inds_pos]
-        idx = zeros(MVector{N, Int})
+        idx = zeros(MVector{$N, Int})
+        col = 1
+        @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+            $(set_idx...)
+            for row in 1:num_rows
+                idx[n] = row
+                x = X[idx...]
+                Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[idx...])
+            end
+            col += 1
+        end
+    end
+end
+
+@generated function fill_reduced_Y_mode_n_old!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
+    quote
+        col_inds_pos = setdiff(1:$N,n)
+        S_reduced = M.S[col_inds_pos]
+        idx = zeros(MVector{$N, Int})
         for row in 1:size(X,n)
             col = 1
             idx[n] = row
