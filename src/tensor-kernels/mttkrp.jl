@@ -189,50 +189,58 @@ function _checked_mttkrp_dims(
 end
 
 """
-    symmetric_mttkrp_fullsym!(G, X, (U1,), n, buffer = create_symmetric_mttkrp_fullsym_buffer(X, U, n))
+    symmetric_mttkrp!(G, X, S, (U1, U2, ..., UK), n, buffer = create_symmetric_mttkrp_buffer(X, U, n))
 
-Compute the Matricized Tensor Times Khatri-Rao Product (MTTKRP)
-of X, the mode-1 matricization of a fully symmetric 3-way tensor with the matrices U1, U1 along mode n,
+Compute the Matricized Tensor Times Khatri-Rao Product (MTTKRP) of X, 
+the reduced mode-n matricization of the tensor with symmetry given by S,
+with the reduced Khatri-Rao product of the factor matrices U1, .., UK,
 exploiting symmetry for efficient computation, and store the result in G.
 
 Optionally, provide a `buffer` for intermediate calculations.
 """
-function symmetric_mttkrp_fullsym!(
+function symmetric_mttkrp!(
     G::TM, 
     X::AbstractArray{T,2}, 
-    U::NTuple{1,TU}, 
-    buffer = create_symmetric_mttkrp_fullsym_buffer(X, U),
-) where {TM<:AbstractMatrix,T,TU<:AbstractMatrix}
-    # I, r = _checked_mttkrp_dims(X, U, n)
+    U::NTuple{K,TU}, 
+    S::NTuple{N},
+    n::Integer,
+    buffer = create_symmetric_mttkrp_buffer(X, U),
+) where {TM<:AbstractMatrix,T,K,TU<:AbstractMatrix,N}
 
     # Check output dimensions
     Base.require_one_based_indexing(G)
-    size(G) == size(U[1]) ||
-        throw(DimensionMismatch("Output `G` must have the same size as `U[n]`"))
+    size(G) == size(U[S[n]]) ||
+        throw(DimensionMismatch("Output `G` must have the same size as `U[S[n]]`"))
 
-    # Compute unique Khatri-Rao product
-    unique_kr_double!(buffer.kr_tilde, U[1])
+    # Compute reduced Khatri-Rao product
+    S_reduced = S[setdiff(1:N,n)]
+    ngroups = maximum(S)
+    flip_group_ordering(k) = ngroups - k + 1
+    symmetric_kr!(buffer.kr_tilde, reverse(flip_group_ordering.(S_reduced)), reverse(U)...)
+
+    # Matrix multiply
     mul!(G, X, buffer.kr_tilde)
 
+    # Rescale by number of modes in cell
+    num_modes_in_group = count(S .== S[n])
+    if num_modes_in_group > 1
+        rmul!(G, num_modes_in_group)
+    end
+
+    return G
 end
 
 """
-    create_symmetric_mttkrp_fullsym_buffer(X, U, n)
+    create_symmetric_mttkrp_buffer(X, U)
 
 Create buffer to hold intermediate calculations in `symmetric_mttkrp_fullsym!`.
-
-See also: `symmetric_mttkrp_fullsym!`
+See also: `symmetric_mttkrp!`
 """
-function create_symmetric_mttkrp_fullsym_buffer(
+function create_symmetric_mttkrp_buffer(
     X::AbstractArray{T,2},
-    U::NTuple{1,TM},
-) where {TM<:AbstractMatrix,T}
-    # I, r = _checked_mttkrp_dims(X, U, n)
-    I = size(X,1)
-    r = size(U[1],2)
-    # Allocate buffer
+    U::NTuple{K,TM},
+) where {TM<:AbstractMatrix,T,K}
     return (;
-        kr_tilde = similar(U[1], (I[1] * (I[1] + 1)) ÷ 2, r)
-    )
-
+            kr_tilde = similar(U[1], size(X,2), size(U[1],2))
+        )
 end

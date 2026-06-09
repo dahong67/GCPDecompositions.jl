@@ -6,11 +6,11 @@ Loss functions for Generalized CP Decomposition.
 module GCPLosses
 
 using ..GCPDecompositions
-using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, sparse_mttkrp!, sparse_mttkrps!, checksym, khatrirao, symmetric_mttkrp_fullsym!, unique_kr_triple!
+using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, sparse_mttkrp!, sparse_mttkrps!, checksym, khatrirao, symmetric_mttkrp!, symmetric_kr!
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using SparseArrayKit: SparseArray, nonzero_keys, nonzero_values
-using StatsBase: countmap
+using Base.Cartesian: @nloops, @ntuple
 import ForwardDiff
 
 # Abstract type
@@ -114,38 +114,33 @@ function grad_U_λ!(
     sym_data,
     γ,
 ) where {T,TX,N,K}
-    # TODO: Figure out how to form non-matricized derivative tensor which will have correct columns in matricization removed
+    if !sym_data
+        missing_or_deriv(x, m) = ismissing(x) ? zero(nonmissingtype(typeof(x))) : deriv(loss, x, m)
+        Y = Array(convertCPD(M))
+        Y .= missing_or_deriv.(X, Y)
+    end
+
+    # Weights gradient
     if sym_data
-        # Only for fully symmetric 3 way case right now
-        sz = size(X,1)
-        Y_mode1_mat = similar(X, sz, (sz*(sz+1))÷2)
-        # What loop order for cache efficiency?
-        for row in 1:sz
-            col = 1
-            for i in 1:sz
-                for j in i:sz
-                    if i == j
-                        Y_mode1_mat[row,col] = ismissing(X[row,i,j]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[row,i,j], M[row,i,j])
-                    else
-                        Y_mode1_mat[row,col] = ismissing(X[row,i,j]) ? zero(nonmissingtype(eltype(X))) : 2 * deriv(loss, X[row,i,j], M[row,i,j])
-                    end
-                    col += 1
-                end
-            end
-        end
+        vec_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(M.S .== k))÷factorial(count(M.S .== k)), unique(M.S))
+        Y_vec = similar(X, vec_size)
+        fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N))
+        kr_tilde = similar(M.U[1], vec_size, ncomps(M))
+        flip_group_ordering(k) = ngroups(M) - k + 1
+        GU_λ[K+1] .= symmetric_kr!(kr_tilde, reverse(flip_group_ordering.(M.S)), reverse(M.U)...)' * Y_vec
     else
-        Y = [
-            ismissing(X[I]) ? zero(nonmissingtype(eltype(X))) : deriv(loss, X[I], M[I]) for
-            I in CartesianIndices(X)
-        ]
+        GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
     end
 
     # Factor matrix gradients
     for j in 1:K
         if sym_data
-            # mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), findall(M.S .== j)[1])
-            symmetric_mttkrp_fullsym!(GU_λ[j], Y_mode1_mat, M.U)
-            rmul!(GU_λ[j], count(M.S .== j))
+            mode = findall(M.S .== j)[1]
+            S_reduced = M.S[setdiff(1:N,mode)]
+            mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
+            Y_mat = similar(X, size(X, mode), mat_size)
+            fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+            symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
         else
             for (index, mode) in enumerate(findall(M.S .== j))
                 if index == 1  # Overwrite
@@ -161,34 +156,119 @@ function grad_U_λ!(
         GU_λ[j] .+= mapslices(x -> 4γ * (norm(x)^2 - 1) * x, M.U[j]; dims=1)
     end
 
-    # Weights gradient
-    if sym_data
-        # Only for fully symmetric 3 way case right now
-        sz = size(X,1)
-        Y_vec = similar(X, (sz*(sz+1)*(sz+2))÷6)
-        # mult_idx = Vector{Int64}(undef, 3)
-        #counts = Vector{Int64}(undef, 3)
-        # What loop order for cache efficiency?
-        idx = 1
-        # idx_counts = Dict{Int64, Int64}()
-        for i in 1:sz
-            for j in i:sz
-                for k in j:sz
-                    # α = 6 / prod(factorial.(values(idx_counts)))
-                    α = i == j ? (j == k ? 1 : 3) : (j == k ? 3 : 6)
-                    Y_vec[idx] = ismissing(X[i,j,k]) ? zero(nonmissingtype(eltype(X))) : α * deriv(loss, X[i,j,k], M[i,j,k])
-                    idx += 1
-                end
-            end
-        end
-        kr_tilde = similar(M.U[1], (sz*(sz+1)*(sz+2)) ÷ 6, size(M.U[1],2))
-        GU_λ[K+1] .= unique_kr_triple!(kr_tilde, M.U[1])' * Y_vec
-    else
-        GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
-    end
-
     return GU_λ
 end
+
+"""
+    fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N})
+
+Forms reduced mode-n matricization of derivative tensor Y where duplicate columns due to symmetry are removed.
+"""
+@generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    quote
+        S_reduced = M.S[setdiff(1:$N,n)]
+        for row in 1:size(X,n)
+            col = 1
+            @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+                col_inds = @ntuple $(N-1) i    
+                idx = (col_inds[1:n-1]..., row, col_inds[n:end]...)
+                Y_mat[row,col] = ismissing(X[idx...]) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, X[idx...], M[idx...])
+                col += 1
+            end
+        end
+    end
+end
+
+
+"""
+    fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N})
+
+Forms reduced vectorization of derivative tensor Y where duplicate entries due to symmetry are removed.
+"""
+@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    quote
+        idx = 1
+        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+            tensor_idx = @ntuple $N i
+            Y_vec[idx] = ismissing(X[tensor_idx...]) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, X[tensor_idx...], M[tensor_idx...])
+            idx += 1
+        end
+    end
+end
+
+# function fill_reduced_Y_mode1_mat_from_vec_order3!(Y_mode1_mat::AbstractMatrix, Y_vec::AbstractVector)
+#     sz = size(Y_mode1_mat, 1)
+#     start_col = 1
+#     start_row = 1
+#     vec_idx = 1
+#     for block in 1:sz
+#         block_size = sz-block+1
+#         # Fill in unique, then duplciate entries below first row in symmetric sub-matrices
+#         for (col_idx, col) in enumerate(start_col:start_col+block_size)
+#             for (row_idx, row) in enumerate(start_row+col_idx-1:sz)
+#                 Y_mode1_mat[row,col] = Y_vec[vec_idx]
+#                 if row_idx != 1 && col_idx != 1 && col_idx != sz  # Skip top row which is handled later
+#                     Y_mode1_mat[start_row+col_idx-1, col+row_idx-1] = Y_vec[vec_idx]
+#                 end
+#                 vec_idx += 1
+#             end
+#         end
+#         start_col += block_size
+#         start_row = block + 1
+#     end
+
+#     # Fill in remaining rows above sub-matrices
+#     row = 1
+#     start_col = 2
+#     num_cols = prod(i -> sz+i-1, 1:2)÷factorial(2)
+#     vec_idx = 2
+#     for block in 1:sz
+#         block_size = sz-block+1
+#         for col in start_col:num_cols
+#             Y_mode1_mat[row, col] = Y_vec[vec_idx]
+#             vec_idx += 1
+#         end
+#         row += 1
+#         start_col += block_size
+#         vec_idx += 1 # Skip entry already filled in
+#     end
+# end
+
+# function fill_reduced_Y_mode1_mat_from_vec_order4!(Y_mode1_mat::AbstractMatrix, Y_vec::AbstractVector)
+#     sz = size(Y_mode1_mat, 1)
+#     start_col = 1
+#     vec_idx = 1
+#     # Fill in unique, then duplciate entries below first row in symmetric sub-matrices
+#     for outer_block in 1:sz
+#         start_row = outer_block
+#         inner_block_initial_sz = sz-(outer_block-1)
+#         num_inner_blocks = sz - outer_block + 1
+#         for inner_block in 1:num_inner_blocks
+#             inner_block_sz = inner_block_initial_sz - inner_block + 1
+#             for (col_idx, col) in enumerate(start_col:start_col+inner_block_sz)
+#                 for (row_idx, row) in enumerate(start_row+col_idx-1:sz)
+#                     Y_mode1_mat[row,col] = Y_vec[vec_idx]
+#                     if row_idx != 1 && col_idx != 1 && col_idx != inner_block_sz  # Skip top row which is handled later
+#                         Y_mode1_mat[start_row+col_idx-1, col+row_idx-1] = Y_vec[vec_idx]
+#                     end
+#                     vec_idx += 1
+#                 end
+#             end
+#             start_col += inner_block_sz
+#             start_row += 1
+#         end
+#     end
+#     # Fill in remaining rows above sub-matrices
+#     for outer_block in 1:sz
+#         num_inner_blocks = sz - outer_block + 1
+#         for inner_block in 1:num_inner_blocks
+#             row = 1
+#             start_col = 2
+#             num_cols = num_cols = prod(i -> sz+i-1, 1:N-1)÷factorial(N-1)
+#             vec_idx = 2
+#         end
+#     end
+# end
 
 
 """
