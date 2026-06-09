@@ -165,24 +165,6 @@ end
 
 Forms reduced mode-n matricization of derivative tensor Y where duplicate columns due to symmetry are removed.
 """
-# @generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
-#     quote
-#         S_reduced = M.S[setdiff(1:$N,n)]
-#         idx = (_ -> 1, 1:$N)
-#         for row in 1:size(X,n)
-#             col = 1
-#             idx[n] = row
-#             @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
-#                 col_inds = @ntuple $(N-1) i    
-#                 # idx = (col_inds[1:n-1]..., row, col_inds[n:end]...)
-#                 idx[1:n-1] = col_inds[1:n-1]
-#                 idx[n+1:end] = col_inds[n:end]
-#                 Y_mat[row,col] = ismissing(X[idx...]) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, X[idx...], M[idx...])
-#                 col += 1
-#             end
-#         end
-#     end
-# end
 
 @generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
     set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
@@ -210,12 +192,15 @@ end
 Forms reduced vectorization of derivative tensor Y where duplicate entries due to symmetry are removed.
 """
 @generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
     quote
-        idx = 1
+        tensor_idx = zeros(MVector{N, Int})
+        vec_idx = 1
         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
-            tensor_idx = @ntuple $N i
-            Y_vec[idx] = ismissing(X[tensor_idx...]) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, X[tensor_idx...], M[tensor_idx...])
-            idx += 1
+            $(set_idx...)
+            x = X[tensor_idx...]
+            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
+            vec_idx += 1
         end
     end
 end
