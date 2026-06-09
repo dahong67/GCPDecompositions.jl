@@ -10,6 +10,7 @@ using ..TensorKernels: mttkrps!, mttkrp, mttkrp!, sparse_mttkrp!, sparse_mttkrps
 using IntervalSets: Interval
 using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using SparseArrayKit: SparseArray, nonzero_keys, nonzero_values
+using StaticArrays: MVector
 using Base.Cartesian: @nloops, @ntuple
 import ForwardDiff
 
@@ -164,15 +165,38 @@ end
 
 Forms reduced mode-n matricization of derivative tensor Y where duplicate columns due to symmetry are removed.
 """
+# @generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+#     quote
+#         S_reduced = M.S[setdiff(1:$N,n)]
+#         idx = (_ -> 1, 1:$N)
+#         for row in 1:size(X,n)
+#             col = 1
+#             idx[n] = row
+#             @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+#                 col_inds = @ntuple $(N-1) i    
+#                 # idx = (col_inds[1:n-1]..., row, col_inds[n:end]...)
+#                 idx[1:n-1] = col_inds[1:n-1]
+#                 idx[n+1:end] = col_inds[n:end]
+#                 Y_mat[row,col] = ismissing(X[idx...]) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, X[idx...], M[idx...])
+#                 col += 1
+#             end
+#         end
+#     end
+# end
+
 @generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
     quote
-        S_reduced = M.S[setdiff(1:$N,n)]
+        col_inds_pos = setdiff(1:$N,n)
+        S_reduced = M.S[col_inds_pos]
+        idx = zeros(MVector{N, Int})
         for row in 1:size(X,n)
             col = 1
+            idx[n] = row
             @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
-                col_inds = @ntuple $(N-1) i    
-                idx = (col_inds[1:n-1]..., row, col_inds[n:end]...)
-                Y_mat[row,col] = ismissing(X[idx...]) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, X[idx...], M[idx...])
+                $(set_idx...)
+                x = X[idx...]
+                Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[idx...])
                 col += 1
             end
         end
