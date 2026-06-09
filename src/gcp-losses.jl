@@ -194,7 +194,7 @@ Forms reduced vectorization of derivative tensor Y where duplicate entries due t
 @generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
     quote
-        tensor_idx = zeros(MVector{N, Int})
+        tensor_idx = zeros(MVector{$N, Int})
         vec_idx = 1
         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
             $(set_idx...)
