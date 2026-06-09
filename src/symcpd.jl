@@ -250,5 +250,5 @@ Create a CPD object from a SymCPD
 """
 function convertCPD(M::SymCPD)
     # Make a copy of corresponding factor matrix in M for each new factor matrix
-    return CPD(deepcopy(M.λ), Tuple([deepcopy(M.U[M.S[dim]]) for dim in M.S]))
+    return CPD(deepcopy(M.λ), Tuple([deepcopy(M.U[n]) for n in M.S]))
 end
