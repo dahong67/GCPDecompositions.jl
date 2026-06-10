@@ -138,9 +138,22 @@ function grad_U_λ!(
         if sym_data
             mode = findall(M.S .== j)[1]
             S_reduced = M.S[setdiff(1:N,mode)]
-            mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
-            Y_mat = similar(X, size(X, mode), mat_size)
-            fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+            # Form reduced matricization, splitting out some special cases
+            if count(M.S .== j) == 1 && mode == 1
+                Y_mat = reshape(Y_vec, size(X,mode), :)
+            else
+                mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
+                Y_mat = similar(X, size(X, mode), mat_size)
+                if count(M.S .== j) == 1 && mode == N
+                    vec_idx = 1
+                    for row in 1:size(X, mode)
+                        Y_mat[row,:] = Y_vec[vec_idx:vec_idx+mat_size-1]
+                        vec_idx += mat_size
+                    end
+                else
+                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                end
+            end
             symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
         else
             for (index, mode) in enumerate(findall(M.S .== j))
