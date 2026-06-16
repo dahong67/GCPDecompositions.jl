@@ -223,16 +223,24 @@ end
 end
 
 # M = N + 1
-function get_vec_idx(idx::MVector{M, Int}, size) where M
+# function get_vec_idx(idx::MVector{M, Int}, size) where M
+#     rank = 1
+#     for m in 1:M-1
+#         for w in idx[m+1]:idx[m]-1
+#             binom_arg1 = size-w+m-1
+#             binom_arg2 = m-1
+#             if binom_arg1 >= binom_arg2
+#                 rank += binomial(size-w+m-1,m-1)
+#             end
+#         end
+#     end
+#     return rank
+# end
+
+function get_vec_idx(idx::MVector{M,Int}, size) where M
     rank = 1
     for m in 1:M-1
-        for w in idx[m+1]:idx[m]-1
-            binom_arg1 = size-w+m-1
-            binom_arg2 = m-1
-            if binom_arg1 >= binom_arg2
-                rank += binomial(size-w+m-1,m-1)
-            end
-        end
+        rank += binomial(size - idx[m+1] + m, m) - binomial(size - idx[m] + m, m)
     end
     return rank
 end
