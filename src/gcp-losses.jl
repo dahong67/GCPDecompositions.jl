@@ -151,7 +151,8 @@ function grad_U_λ!(
                         vec_idx += mat_size
                     end
                 else
-                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    fill_reduced_Y_mode_n_from_vec_fullsym!(Y_mat, Y_vec, mode, M, Val(N))
                 end
             end
             symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
@@ -199,24 +200,107 @@ Forms reduced mode-n matricization of derivative tensor Y where duplicate column
     end
 end
 
-@generated function fill_reduced_Y_mode_n_old!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
-    set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
+@generated function fill_reduced_Y_mode_n_from_vec_fullsym!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n::Integer, M::SymCPD, ::Val{N}) where {N}
+    set_idx = [:(tensor_idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
     quote
+        num_rows = size(Y_mat, 1)
         col_inds_pos = setdiff(1:$N,n)
         S_reduced = M.S[col_inds_pos]
-        idx = zeros(MVector{$N, Int})
-        for row in 1:size(X,n)
-            col = 1
-            idx[n] = row
-            @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+        tensor_idx = ones(MVector{$N+1, Int})  # Extra index at end for use when computing vec idx
+        col = 1
+        @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+            for row in 1:num_rows
                 $(set_idx...)
-                x = X[idx...]
-                Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[idx...])
-                col += 1
+                tensor_idx[n] = row
+                # Get lexigraphically forward permutation
+                sort!(tensor_idx, rev=true)
+                # Copy from corresponding entry in vec
+                Y_mat[row,col] = Y_vec[get_vec_idx(tensor_idx, num_rows)]
             end
+            col += 1
         end
     end
 end
+
+# M = N + 1
+function get_vec_idx(idx::MVector{M, Int}, size) where M
+    rank = 1
+    for m in 1:M-1
+        for w in idx[m+1]:idx[m]-1
+            binom_arg1 = size-w+m-1
+            binom_arg2 = m-1
+            if binom_arg1 >= binom_arg2
+                rank += binomial(size-w+m-1,m-1)
+            end
+        end
+    end
+    return rank
+end
+
+# function fill_reduced_Y_mode_n_from_vec_third_order_fullsym!(Y_mat::AbstractMatrix, Y_vec::AbstractVector)
+#     n = size(Y_mat, 1)
+#     vec_idx = 1
+#     col = 1
+#     idx = zeros(MVector{3, Int})
+#     for i3 in 1:n
+#         for i2 in i3:n
+#             for row in 1:n
+#                 idx[1] = i1
+#                 idx[2] = i2
+#                 idx[3] = i3
+#                 if row >= i2
+#                     Y_mat[row,col] = Y_vec[vec_idx]
+#                     vec_idx += 1
+#                 else
+#                     # Get lexigraphically forward permutation
+#                     sort!(idx, rev=true)
+#                     # Copy from corresponding entry in vec
+#                     Y_mat[row,col] = 0
+#                 end
+#             end
+#             col += 1
+#         end
+#     end
+# end
+
+# function compute_symmetric_linear_index(idx::MVector{3,Int}) 
+
+# end
+
+# @generated function fill_reduced_Y_mode_n_from_vec_unique!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n::Integer, X::Array, M::SymCPD, ::Val{N}) where {N}
+#     quote
+#         num_rows = size(X,n)
+#         col_inds_pos = setdiff(1:$N,n)
+#         S_reduced = M.S[col_inds_pos]
+#         vec_idx = 1
+#         start_col = 1
+#         for row in 1:num_rows
+#             col = start_col
+#             @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+#                 Y_mat[row,col] = Y_vec[vec_idx]
+#                 col += 1
+#             end
+#             start_col += size(X,n)-row+1
+#         end
+#     end
+# end
+
+# @generated function fill_reduced_Y_mode_n_from_vec_one_mode_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n::Integer, X::Array, M::SymCPD, ::Val{N}) where {N}
+#     quote
+#         num_rows = size(X,n)
+#         col_inds_pos = setdiff(1:$N,n)
+#         S_reduced = M.S[col_inds_pos]
+#         col = 1
+#         vec_idx = 1
+#         @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+#             for row in 1:num_rows
+#                 Y_mat[row,col] = Y_vec[vec_idx]
+#                 vec_idx += 1
+#             end
+#             col += 1
+#         end
+#     end
+# end
 
 
 """
