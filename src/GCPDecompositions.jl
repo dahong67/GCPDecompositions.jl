@@ -7,15 +7,17 @@ module GCPDecompositions
 import Base: ndims, size, show, summary
 import Base: getindex
 import Base: AbstractArray, Array
+import Base.Cartesian: @nloops
 import LinearAlgebra: norm, Diagonal, mul!
 using IntervalSets: Interval
 using Random: default_rng
 using SparseArrays: spzeros
+using StaticArrays: MVector
 
 # Exports
 export CPD
 export ncomps, normalizecomps, normalizecomps!, permutecomps, permutecomps!
-export SymCPD, convertCPD, ngroups
+export SymCPD, convertCPD, ngroups, unique_entries_dict
 export checksym
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms

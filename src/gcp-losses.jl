@@ -119,13 +119,17 @@ function grad_U_λ!(
         missing_or_deriv(x, m) = ismissing(x) ? zero(nonmissingtype(typeof(x))) : deriv(loss, x, m)
         Y = Array(convertCPD(M))
         Y .= missing_or_deriv.(X, Y)
+    else
+        # Materialize all unique entries of M
+        M_unique_dict = unique_entries_dict(M, Val(N))
     end
 
     # Weights gradient
     if sym_data
         vec_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(M.S .== k))÷factorial(count(M.S .== k)), unique(M.S))
         Y_vec = similar(X, vec_size)
-        fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N))
+        # fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N))
+        fill_reduced_Y_vec!(Y_vec, X, M, M_unique_dict, loss, Val(N))
         kr_tilde = similar(M.U[1], vec_size, ncomps(M))
         flip_group_ordering(k) = ngroups(M) - k + 1
         GU_λ[K+1] .= symmetric_kr!(kr_tilde, reverse(flip_group_ordering.(M.S)), reverse(M.U)...)' * Y_vec
@@ -152,7 +156,8 @@ function grad_U_λ!(
                     end
                 else
                     # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    fill_reduced_Y_mode_n_from_vec_fullsym!(Y_mat, Y_vec, mode, M, Val(N))
+                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, M_unique_dict, loss, Val(N))
+                    # fill_reduced_Y_mode_n_from_vec_fullsym!(Y_mat, Y_vec, mode, M, Val(N))
                 end
             end
             symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
@@ -179,8 +184,26 @@ end
 
 Forms reduced mode-n matricization of derivative tensor Y where duplicate columns due to symmetry are removed.
 """
-
-@generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+# @generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+#     set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
+#     quote
+#         num_rows = size(X,n)
+#         col_inds_pos = setdiff(1:$N,n)
+#         S_reduced = M.S[col_inds_pos]
+#         idx = zeros(MVector{$N, Int})
+#         col = 1
+#         @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+#             $(set_idx...)
+#             for row in 1:num_rows
+#                 idx[n] = row
+#                 x = X[idx...]
+#                 Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[idx...])
+#             end
+#             col += 1
+#         end
+#     end
+# end
+@generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, M_unique_entries_dict, loss, ::Val{N}) where {N}
     set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
     quote
         num_rows = size(X,n)
@@ -189,14 +212,26 @@ Forms reduced mode-n matricization of derivative tensor Y where duplicate column
         idx = zeros(MVector{$N, Int})
         col = 1
         @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
-            $(set_idx...)
             for row in 1:num_rows
+                $(set_idx...)
                 idx[n] = row
                 x = X[idx...]
-                Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[idx...])
+                # sort!(idx, rev=true)
+                sort_lexicographic!(idx, M.S)
+                m = M_unique_entries_dict[idx]
+                Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
             end
             col += 1
         end
+    end
+end
+
+function sort_lexicographic!(idx::MVector{N,Int}, S) where N
+    start_idx = 1
+    for cell in unique(S)
+        end_idx = start_idx + count(S .== cell) - 1
+        sort!(@view(idx[start_idx:end_idx]), rev=true)
+        start_idx = end_idx + 1
     end
 end
 
@@ -245,31 +280,43 @@ function get_vec_idx(idx::MVector{M,Int}, size) where M
     return rank
 end
 
-# function fill_reduced_Y_mode_n_from_vec_third_order_fullsym!(Y_mat::AbstractMatrix, Y_vec::AbstractVector)
-#     n = size(Y_mat, 1)
-#     vec_idx = 1
-#     col = 1
-#     idx = zeros(MVector{3, Int})
-#     for i3 in 1:n
-#         for i2 in i3:n
-#             for row in 1:n
-#                 idx[1] = i1
-#                 idx[2] = i2
-#                 idx[3] = i3
-#                 if row >= i2
-#                     Y_mat[row,col] = Y_vec[vec_idx]
-#                     vec_idx += 1
-#                 else
-#                     # Get lexigraphically forward permutation
-#                     sort!(idx, rev=true)
-#                     # Copy from corresponding entry in vec
-#                     Y_mat[row,col] = 0
-#                 end
-#             end
-#             col += 1
-#         end
-#     end
-# end
+function fill_reduced_Y_mode_n_from_vec_third_order_fullsym!(Y_mat::AbstractMatrix, Y_vec::AbstractVector)
+    n = size(Y_mat, 1)
+    vec_idx = 1
+    col = 1
+    idx = zeros(MVector{3, Int})
+    for i3 in 1:n
+        for i2 in i3:n
+            for row in 1:n
+                idx[1] = row
+                idx[2] = i2
+                idx[3] = i3
+                if row >= i2
+                    Y_mat[row,col] = Y_vec[vec_idx]
+                    vec_idx += 1
+                end
+            end
+            col += 1
+        end
+    end
+    vec_idx = 1
+    for row in 1:n
+        col = 1
+        for i3 in 1:n
+            for i2 in i3:n
+                idx[1] = row
+                idx[2] = i2
+                idx[3] = i3
+                if row <= i2 && row <= i3
+                    println((row,i2,i3), "  ", vec_idx)
+                    Y_mat[row,col] = Y_vec[vec_idx]
+                    vec_idx += 1
+                end
+                col += 1
+            end
+        end
+    end
+end
 
 # function compute_symmetric_linear_index(idx::MVector{3,Int}) 
 
@@ -316,7 +363,20 @@ end
 
 Forms reduced vectorization of derivative tensor Y where duplicate entries due to symmetry are removed.
 """
-@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+# @generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+#     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+#     quote
+#         tensor_idx = zeros(MVector{$N, Int})
+#         vec_idx = 1
+#         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+#             $(set_idx...)
+#             x = X[tensor_idx...]
+#             Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
+#             vec_idx += 1
+#         end
+#     end
+# end
+@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M, M_unique_entries_dict, loss, ::Val{N}) where {N}
     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
     quote
         tensor_idx = zeros(MVector{$N, Int})
@@ -324,7 +384,8 @@ Forms reduced vectorization of derivative tensor Y where duplicate entries due t
         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
             $(set_idx...)
             x = X[tensor_idx...]
-            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
+            m = M_unique_entries_dict[tensor_idx]
+            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
             vec_idx += 1
         end
     end
