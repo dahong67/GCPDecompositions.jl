@@ -261,14 +261,13 @@ Among indices which are equal due to symmetry, store the permutation
 which is lexicographically forward.
 Each idx is a MVector from StaticArrays.
 """
-@generated function unique_entries_dict(M::SymCPD, ::Val{N}) where N
-    set_idx = [:(idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+@generated function unique_entries_dict(M::SymCPD, num_unique::Integer, ::Val{N}) where N
     quote
-        entries_dict = Dict()
-        idx = zeros(MVector{$N, Int})
+        entries_dict = Dict{NTuple{$N, Int}, eltype(M.U[1])}()
+        sizehint!(entries_dict, num_unique)
         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
-            $(set_idx...)
-            entries_dict[copy(idx)] = M[idx...]
+            idx = @ntuple $N i
+            entries_dict[idx] = M[idx...]
         end
         return entries_dict
     end

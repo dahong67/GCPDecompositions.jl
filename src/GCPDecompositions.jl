@@ -7,7 +7,7 @@ module GCPDecompositions
 import Base: ndims, size, show, summary
 import Base: getindex
 import Base: AbstractArray, Array
-import Base.Cartesian: @nloops
+import Base.Cartesian: @nloops, @ntuple, @nexprs
 import LinearAlgebra: norm, Diagonal, mul!
 using IntervalSets: Interval
 using Random: default_rng
