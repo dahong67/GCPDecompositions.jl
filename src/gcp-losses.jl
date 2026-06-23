@@ -116,7 +116,7 @@ function grad_U_λ!(
     sym_data,
     γ,
 ) where {T,TX,N,K}
-    if !sym_data
+    if !sym_data || maximum(M.S) >= N-1
         missing_or_deriv(x, m) = ismissing(x) ? zero(nonmissingtype(typeof(x))) : deriv(loss, x, m)
         Y = Array(convertCPD(M))
         Y .= missing_or_deriv.(X, Y)
@@ -142,6 +142,8 @@ function grad_U_λ!(
             # Form reduced matricization, splitting out some special cases
             if count(M.S .== j) == 1 && mode == 1
                 Y_mat = reshape(Y_vec, size(X,mode), :)
+            elseif maximum(M.S) >= N-1 && count(M.S .== j) > 1
+                Y_mat = reshape(Y, size(X,mode), :)
             else
                 mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
                 Y_mat = similar(X, size(X, mode), mat_size)
@@ -160,7 +162,7 @@ function grad_U_λ!(
                     # elseif ndims(M) == 4 && ngroups(M) == 1
                     #     fill_reduced_Y_mode_n_from_vec_fullsym_order4!(Y_mat, Y_vec)
                     # if count(M.S .== j) == 1
-                    #     fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, Val(mode), M, Val(N))
+                    #     fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
                     #     # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
                     # elseif count(M.S .== j) == 2
                     #     # fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
@@ -201,7 +203,9 @@ function grad_U_λ!(
     γ,
 ) where {T,TX,N,K}
 
-    if !sym_data
+    # If there will be a MTTKP that cannot reduce size,
+    # will form full derivative tensor and reshape later
+    if !sym_data || maximum(M.S) >= N-1
         missing_or_deriv(x, m) = ismissing(x) ? zero(nonmissingtype(typeof(x))) : deriv(loss, x, m)
         Y = missing_or_deriv.(X, M_array)
     end
@@ -226,6 +230,8 @@ function grad_U_λ!(
             # Form reduced matricization, splitting out some special cases
             if count(M.S .== j) == 1 && mode == 1
                 Y_mat = reshape(Y_vec, size(X,mode), :)
+            elseif maximum(M.S) >= N-1 && count(M.S .== j) > 1
+                Y_mat = reshape(Y, size(X,mode), :)
             else
                 mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
                 Y_mat = similar(X, size(X, mode), mat_size)
@@ -237,7 +243,7 @@ function grad_U_λ!(
                     end
                 else
                     # if count(M.S .== j) == 1
-                    #     # fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, Val(mode), M, Val(N))
+                    #     fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, Val(mode), M, Val(N))
                     #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
                     # elseif count(M.S .== j) == 2
                     #     # fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
@@ -516,31 +522,48 @@ insert_row(row, t::Tuple) =
     row >= t[1] ? (row, t...) : (t[1], insert_row(row, t[2:end])...)
 
 # For mode-n MTTKRP where mode n is in a singleton cell
-@generated function fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, ::Val{n}, M::SymCPD, ::Val{N}) where {n,N}
-    num_parent_loops = N-n  
-    num_child_loops = n-1
+# @generated function fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, ::Val{n}, M::SymCPD, ::Val{N}) where {n,N}
+#     num_parent_loops = N-n  
+#     num_child_loops = n-1
+#     quote
+#         mode_sz = size(Y_mat, $n)
+#         full_inds = 1:$N
+#         parent_col_inds_pos = full_inds[$n+1:end]
+#         child_col_inds_pos = full_inds[1:$n-1]
+#         S_parent = M.S[parent_col_inds_pos]
+#         S_child = M.S[child_col_inds_pos]
+#         # col_inds_pos = setdiff(1:$N,n)
+#         # S_reduced = M.S[col_inds_pos]
+#         vec_idx = 1
+#         col = 1
+#         row_start_col = 1
+#         @nloops $(num_parent_loops) i k -> (k == $(num_parent_loops) ? 1 : S_parent[k+1] == S_parent[k] ? i_{k+1} : 1):size(M.U[S_parent[k]], 1) begin
+#             for row in 1:mode_sz
+#                 col = row_start_col
+#                 @nloops $(num_child_loops) j k -> (k == $(num_child_loops) ? 1 : S_child[k+1] == S_child[k] ? j_{k+1} : 1):size(M.U[S_child[k]], 1) begin
+#                     Y_mat[row,col] = Y_vec[vec_idx]
+#                     vec_idx += 1
+#                     col += 1
+#                 end
+#             end
+#             row_start_col = col
+#         end
+#     end
+# end
+
+@generated function fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, ::Val{N}) where {N}
     quote
-        mode_sz = size(Y_mat, $n)
-        full_inds = 1:$N
-        parent_col_inds_pos = full_inds[$n+1:end]
-        child_col_inds_pos = full_inds[1:$n-1]
-        S_parent = M.S[parent_col_inds_pos]
-        S_child = M.S[child_col_inds_pos]
-        # col_inds_pos = setdiff(1:$N,n)
-        # S_reduced = M.S[col_inds_pos]
+        mode_sz = size(Y_mat, n)
+        col_inds_pos = setdiff(1:$N,n)
+        S_reduced = M.S[col_inds_pos]
         vec_idx = 1
         col = 1
-        row_start_col = 1
-        @nloops $(num_parent_loops) i k -> (k == $(num_parent_loops) ? 1 : S_parent[k+1] == S_parent[k] ? i_{k+1} : 1):size(M.U[S_parent[k]], 1) begin
+        @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin 
             for row in 1:mode_sz
-                col = row_start_col
-                @nloops $(num_child_loops) j k -> (k == $(num_child_loops) ? 1 : S_child[k+1] == S_child[k] ? j_{k+1} : 1):size(M.U[S_child[k]], 1) begin
-                    Y_mat[row,col] = Y_vec[vec_idx]
-                    vec_idx += 1
-                    col += 1
-                end
+                Y_mat[row,col] = Y_vec[vec_idx]
+                vec_idx += 1
             end
-            row_start_col = col
+            col += 1
         end
     end
 end
