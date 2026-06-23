@@ -12,6 +12,7 @@ using LinearAlgebra: mul!, rmul!, Diagonal, norm
 using SparseArrayKit: SparseArray, nonzero_keys, nonzero_values
 using StaticArrays: MVector
 using Base.Cartesian: @nloops, @ntuple, @ncall
+using Combinatorics: with_replacement_combinations
 import ForwardDiff
 
 # Abstract type
@@ -158,18 +159,93 @@ function grad_U_λ!(
                     #     fill_reduced_Y_mode_n_from_vec_fullsym_order3!(Y_mat, Y_vec)
                     # elseif ndims(M) == 4 && ngroups(M) == 1
                     #     fill_reduced_Y_mode_n_from_vec_fullsym_order4!(Y_mat, Y_vec)
-                    if count(M.S .== j) == 1
-                        # fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
-                        fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    elseif count(M.S .== j) == 2
-                        # fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
-                        fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    elseif ngroups(M) == 1
-                        fill_reduced_Y_mode_n_from_vec_fullsym_orderN!(Y_mat, Y_vec, mode, M, Val(N))
-                    else 
-                        fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # if count(M.S .== j) == 1
+                    #     fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, Val(mode), M, Val(N))
+                    #     # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # elseif count(M.S .== j) == 2
+                    #     # fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
+                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # # elseif ngroups(M) == 1
+                    # #     fill_reduced_Y_mode_n_from_vec_fullsym_orderN!(Y_mat, Y_vec, mode, M, Val(N))
+                    # else 
+                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # end
+                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                end
+            end
+            symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
+        else
+            for (index, mode) in enumerate(findall(M.S .== j))
+                if index == 1  # Overwrite
+                    mttkrp!(GU_λ[j], Y, tuple([M.U[k] for k in M.S]...), mode)
+                else  # Add in-place
+                    added_factor = similar(GU_λ[j])
+                    mttkrp!(added_factor, Y, tuple([M.U[k] for k in M.S]...), mode)
+                    GU_λ[j] .= GU_λ[j] + added_factor
+                end
+            end
+        end
+        rmul!(GU_λ[j], Diagonal(M.λ))
+        GU_λ[j] .+= mapslices(x -> 4γ * (norm(x)^2 - 1) * x, M.U[j]; dims=1)
+    end
+
+    return GU_λ
+end
+function grad_U_λ!(
+    GU_λ::Tuple,
+    M::SymCPD{T,N,K},
+    M_array::Array{T,N},
+    X::Array{TX,N},
+    loss,
+    sym_data,
+    γ,
+) where {T,TX,N,K}
+
+    if !sym_data
+        missing_or_deriv(x, m) = ismissing(x) ? zero(nonmissingtype(typeof(x))) : deriv(loss, x, m)
+        Y = missing_or_deriv.(X, M_array)
+    end
+
+    # Weights gradient
+    if sym_data
+        vec_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(M.S .== k))÷factorial(count(M.S .== k)), unique(M.S))
+        Y_vec = similar(X, vec_size)
+        fill_reduced_Y_vec!(Y_vec, X, M, M_array, loss, Val(N))
+        kr_tilde = similar(M.U[1], vec_size, ncomps(M))
+        flip_group_ordering(k) = ngroups(M) - k + 1
+        GU_λ[K+1] .= symmetric_kr!(kr_tilde, reverse(flip_group_ordering.(M.S)), reverse(M.U)...)' * Y_vec
+    else
+        GU_λ[K+1] .= khatrirao([M.U[k] for k in reverse(M.S)]...)' * vec(Y)
+    end
+
+    # Factor matrix gradients
+    for j in 1:K
+        if sym_data
+            mode = findall(M.S .== j)[1]
+            S_reduced = M.S[setdiff(1:N,mode)]
+            # Form reduced matricization, splitting out some special cases
+            if count(M.S .== j) == 1 && mode == 1
+                Y_mat = reshape(Y_vec, size(X,mode), :)
+            else
+                mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
+                Y_mat = similar(X, size(X, mode), mat_size)
+                if count(M.S .== j) == 1 && mode == N
+                    vec_idx = 1
+                    for row in 1:size(X, mode)
+                        Y_mat[row,:] = Y_vec[vec_idx:vec_idx+mat_size-1]
+                        vec_idx += mat_size
                     end
-                    # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                else
+                    # if count(M.S .== j) == 1
+                    #     # fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, Val(mode), M, Val(N))
+                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # elseif count(M.S .== j) == 2
+                    #     # fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
+                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
+                    # else 
+                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, M_array, loss, Val(N))
+                    # end
+                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, M_array, loss, Val(N))
                 end
             end
             symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
@@ -215,35 +291,259 @@ Forms reduced mode-n matricization of derivative tensor Y where duplicate column
         end
     end
 end
+@generated function fill_reduced_Y_mode_n!(Y_mat::AbstractMatrix, n::Integer, X::Array, M::SymCPD, M_array::Array, loss, ::Val{N}) where {N}
+    set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
+    quote
+        num_rows = size(X,n)
+        col_inds_pos = setdiff(1:$N,n)
+        S_reduced = M.S[col_inds_pos]
+        idx = zeros(MVector{$N, Int})
+        col = 1
+        @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+            $(set_idx...)
+            for row in 1:num_rows
+                idx[n] = row
+                I = CartesianIndex(Tuple(idx))
+                x = X[I]
+                Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M_array[I])
+            end
+            col += 1
+        end
+    end
+end
+
+# function lin_reduced(I::NTuple{2, Int}, n::Int)
+#     i1, i2 = I
+#     lin_idx = 1
+#     # Add i2 offset
+#     lin_idx += (i2-1)*(n+1) - binomial(i2, 2)
+#     # Add i1 offset
+#     lin_idx += i1 - i2
+#     return lin_idx
+# end
+
+# function lin_reduced(I::NTuple{3, Int}, n::Int)
+#     i1, i2, i3 = I
+#     lin_idx = 1
+#     # Add i3 offset
+#     for j in 1:(i3-1)
+#         lin_idx += binomial(n-j+2, 2)
+#     end
+#     # Add i2 offset
+#     k2 = i2 - i3
+#     lin_idx += (n-i3+2)*(k2) - binomial(k2+1, 2)
+#     # Add i1 offset
+#     lin_idx += i1 - i2
+#     return lin_idx
+# end
+
+# function lin_reduced(I::NTuple{4,Int}, n::Int)
+#     i1, i2, i3, i4 = I
+#     lin_idx = 1
+#     # Add i1 offset
+#     lin_idx += i1 - i2
+#     # Add i2 offset
+#     lin_idx += (n-i3+2)*(i2-i3) - binomial(i2-i3+1, 2)
+#     # Add i3 offset
+#     for j in 1:(i3-i4)
+#         lin_idx += binomial(n - i4 - j + 3, 2)
+#     end
+#     # Add i4 offset
+#     for j in 1:(i4-1)
+#         lin_idx += binomial(n - j + 3, 3)
+#     end
+#     return lin_idx
+# end
+
+# function lin_reduced(I::NTuple{M,Int}, n::Int) where M
+#     return binomial(n + M - 1, M) - sum(t -> binomial(n - I[t] + t - 1, t), 1:M)
+# end
+function lin_reduced(I::MVector{M,Int}, n::Int) where M
+    return binomial(n + M - 1, M) - sum(t -> binomial(n - I[t] + t - 1, t), 1:M)
+end
+
+# Fill by traversing Y_vec
+@generated function fill_reduced_Y_mode_n_from_vec_fullsym!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, ::Val{N}) where {N}
+    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+    quote
+        # col_indices_array = make_col_indices_array(Y_mat, M, 1, Val($N));
+        tensor_idx = zeros(MVector{$N, Int})
+        permuted_tensor_idx = zeros(MVector{$(N-1), Int})
+        unique_vals = zeros(MVector{$N, Int})
+        sz = size(M.U[1], 1)
+        vec_idx = 1
+        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+            $(set_idx...)
+            y = Y_vec[vec_idx]
+            # Iterate over all permutations of the indices where the last N-1 indices are non-decreasing
+            # This is equivalent to swapping i_1 with all unique elements in i_2, ..., i_N,
+            # and keeping order of remaining elements the same. 
+
+            # Find unique values
+            n_unique = 0
+            for val in tensor_idx
+                if val ∉ @view(unique_vals[1:n_unique])
+                    n_unique += 1
+                    unique_vals[n_unique] = val
+                end
+            end
+
+            # Iterate over unique values
+            for i in 1:n_unique
+                row = unique_vals[i]
+                # Find location
+                loc = 0
+                for j in 1:$N
+                    if tensor_idx[j] == row
+                        loc = j
+                        break
+                    end     
+                end
+                # Copy to permuted
+                idx = 1
+                for j in 1:$N
+                    if j != loc
+                        permuted_tensor_idx[idx] = tensor_idx[j]
+                        idx += 1
+                    end
+                end
+                
+                # col = col_indices_array[permuted_tensor_idx...]
+                col = lin_reduced(permuted_tensor_idx, sz)
+                Y_mat[row, col] = y
+            end
+
+            vec_idx += 1
+        end
+    end
+end
+
+# @generated function fill_reduced_Y_mode_n_from_vec_fullsym_precomputed_inds!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, col_indices_array, ::Val{N}) where {N}
+#     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+#     quote
+#         tensor_idx = zeros(MVector{$N, Int})
+#         permuted_tensor_idx = zeros(MVector{$(N-1), Int})
+#         unique_vals = zeros(MVector{$N, Int})
+#         vec_idx = 1
+#         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+#             $(set_idx...)
+#             y = Y_vec[vec_idx]
+#             # Iterate over all permutations of the indices where the last N-1 indices are non-decreasing
+#             # This is equivalent to swapping i_1 with all unique elements in i_2, ..., i_N,
+#             # and keeping order of remaining elements the same. 
+
+#             # Find unique values
+#             n_unique = 0
+#             for val in tensor_idx
+#                 if val ∉ @view(unique_vals[1:n_unique])
+#                     n_unique += 1
+#                     unique_vals[n_unique] = val
+#                 end
+#             end
+
+#             # Iterate over unique values
+#             for i in 1:n_unique
+#                 row = unique_vals[i]
+#                 # Find location
+#                 loc = 0
+#                 for j in 1:$N
+#                     if tensor_idx[j] == row
+#                         loc = j
+#                         break
+#                     end     
+#                 end
+#                 # Copy to permuted
+#                 idx = 1
+#                 for j in 1:$N
+#                     if j != loc
+#                         permuted_tensor_idx[idx] = tensor_idx[j]
+#                         idx += 1
+#                     end
+#                 end
+                
+#                 col = col_indices_array[permuted_tensor_idx...]
+#                 Y_mat[row, col] = y
+#             end
+
+
+
+#             # for t in unique(tensor_idx)
+#             #     loc = findfirst(==(t), tensor_idx)
+#             #     permuted_tensor_idx = tensor_idx[1:end .!= loc]
+#             #     col = col_indices_array[permuted_tensor_idx...]
+#             #     Y_mat[t, col] = y
+#             # end
+#             vec_idx += 1
+#         end
+#     end
+# end
+
+# @generated function make_col_indices_array(Y_mat, M, mode, ::Val{N}) where {N}
+#     quote
+#         col_inds_pos = setdiff(1:$N,mode)
+#         S_reduced = M.S[col_inds_pos]
+#         mode_size = size(Y_mat, 1)
+#         col_indices_array = Array{Int}(undef, ntuple(Returns(mode_size), Val($(N-1))))
+#         col = 1
+#         @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+#             col_indices_array[(@ntuple $(N-1) i)...] = col
+#             col += 1
+#         end
+#         return col_indices_array
+#     end
+# end
+
+
+# @generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+#     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+#     quote
+#         tensor_idx = zeros(MVector{$N, Int})
+#         vec_idx = 1
+#         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+#             $(set_idx...)
+#             x = X[tensor_idx...]
+#             Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
+#             vec_idx += 1
+#         end
+#     end
+# end
+
+
+
 
 insert_row(row, t::Tuple{}) = (row,)
 insert_row(row, t::Tuple) = 
     row >= t[1] ? (row, t...) : (t[1], insert_row(row, t[2:end])...)
 
 # For mode-n MTTKRP where mode n is in a singleton cell
-# @generated function fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, ::Val{N}) where {N}
-#     quote
-#         mode_sz = size(Y_mat, 1)
-#         col_inds_pos = setdiff(1:$N,n)
-#         S_reduced = M.S[col_inds_pos]
-#         vec_idx = 1
-#         col = 1
-#         num_parent_loops = $N-n  
-#         num_child_loops = n-1
-#         @nloops num_parent_loops i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
-
-#         end
-
-#         # Below is incorrect, need to break out into separate @nloops so row loop is in correct order
-#         @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
-#             for row in 1:mode_sz
-#                 Y_mat[row,col] = Y_vec[vec_idx]
-#                 vec_idx += 1
-#             end
-#             col += 1
-#         end
-#     end
-# end
+@generated function fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, ::Val{n}, M::SymCPD, ::Val{N}) where {n,N}
+    num_parent_loops = N-n  
+    num_child_loops = n-1
+    quote
+        mode_sz = size(Y_mat, $n)
+        full_inds = 1:$N
+        parent_col_inds_pos = full_inds[$n+1:end]
+        child_col_inds_pos = full_inds[1:$n-1]
+        S_parent = M.S[parent_col_inds_pos]
+        S_child = M.S[child_col_inds_pos]
+        # col_inds_pos = setdiff(1:$N,n)
+        # S_reduced = M.S[col_inds_pos]
+        vec_idx = 1
+        col = 1
+        row_start_col = 1
+        @nloops $(num_parent_loops) i k -> (k == $(num_parent_loops) ? 1 : S_parent[k+1] == S_parent[k] ? i_{k+1} : 1):size(M.U[S_parent[k]], 1) begin
+            for row in 1:mode_sz
+                col = row_start_col
+                @nloops $(num_child_loops) j k -> (k == $(num_child_loops) ? 1 : S_child[k+1] == S_child[k] ? j_{k+1} : 1):size(M.U[S_child[k]], 1) begin
+                    Y_mat[row,col] = Y_vec[vec_idx]
+                    vec_idx += 1
+                    col += 1
+                end
+            end
+            row_start_col = col
+        end
+    end
+end
 
 # For mode-n MTTKRP where mode n is in a cell with 2 modes
 @generated function fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, ::Val{N}) where {N}
@@ -548,6 +848,32 @@ Forms reduced vectorization of derivative tensor Y where duplicate entries due t
         end
     end
 end
+@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, M_array::Array, loss, ::Val{N}) where {N}
+    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+    quote
+        tensor_idx = zeros(MVector{$N, Int})
+        vec_idx = 1
+        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+            $(set_idx...)
+            x = X[tensor_idx...]
+            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M_array[tensor_idx...])
+            vec_idx += 1
+        end
+    end
+end
+
+# function fill_reduced_Y_vec_combin!(Y_vec::AbstractVector, X::Array{T,N}, M::SymCPD, loss) where {T,N}
+#     vec_idx = 1
+#     mode_size = size(X, 1)
+#     a = 0
+#     for multi_idx_vec in with_replacement_combinations(1:mode_size, N)
+#         # multi_idx = CartesianIndex(ntuple(i -> multi_idx_vec[i], Val(N)))
+#         # x = X[multi_idx]
+#         # Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[multi_idx])
+#         # vec_idx += 1
+#         a += 1
+#     end
+# end
 
 
 # function fill_reduced_Y_mode1_mat_from_vec_order3!(Y_mode1_mat::AbstractMatrix, Y_vec::AbstractVector)
