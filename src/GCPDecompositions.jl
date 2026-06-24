@@ -17,7 +17,7 @@ using StaticArrays: MVector
 # Exports
 export CPD
 export ncomps, normalizecomps, normalizecomps!, permutecomps, permutecomps!
-export SymCPD, convertCPD, ngroups, unique_entries_dict
+export SymCPD, convertCPD, ngroups, unique_entries_dict, form_reduced_linear_mapping_matrix
 export checksym
 export gcp
 export GCPLosses, GCPConstraints, GCPAlgorithms

@@ -8,6 +8,7 @@
         default_init_sym,
         GCPLosses.LeastSquares,
         GCPLosses.grad_U_λ!,
+        GCPLosses.grad_U_λ_symmetric!,
         SymCPD
     using LinearAlgebra: norm
     import ForwardDiff
@@ -29,8 +30,12 @@
 
         GU = (ones(size(M_star.U[1])), ones(size(M_star.λ)))
         GU_simplified = (ones(size(M_star.U[1])), ones(size(M_star.λ)))
+
+        # Create mappings to reduced linear indexes
+        idx_map_mats = (form_reduced_linear_mapping_matrix(M_star, 1, Val(3)),)
+
         computed_grad_solution_U, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false, 0)  # Without using simplified form for symmetric data
-        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ!(GU_simplified, M_star, X, loss, true, 0)  # With using simplified form for symmetric data
+        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M_star, X, idx_map_mats, loss, 0)  # With using simplified form for symmetric data
         @test isapprox(computed_grad_solution_U, zeros(eltype(computed_grad_solution_U), size(computed_grad_solution_U)), atol=1e-10)
         @test isapprox(computed_grad_solution_λ, zeros(eltype(computed_grad_solution_λ), size(computed_grad_solution_λ)), atol=1e-10)
         @test isapprox(computed_grad_solution_simplified_U, zeros(eltype(computed_grad_solution_simplified_U), size(computed_grad_solution_simplified_U)), atol=1e-10)
@@ -49,7 +54,7 @@
         GU = (similar(M0.U[1]), similar(M0.λ))
 
         computed_grad_solution_U, computed_grad_solution_λ = grad_U_λ!(GU, M0, X, loss, false, 0)
-        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ!(GU, M0, X, loss, true, 0)
+        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU, M0, X, idx_map_mats, loss, 0)
 
         auto_grad_solution = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), M0.λ))
         auto_grad_solution_U = reshape(auto_grad_solution[1:sz*r], size(M0.U[1]))
@@ -79,8 +84,12 @@
 
         GU = (similar(M_star.U[1]), similar(M_star.λ))
         GU_simplified = (similar(M_star.U[1]), similar(M_star.λ))
+
+        # Create mappings to reduced linear indexes
+        idx_map_mats = (form_reduced_linear_mapping_matrix(M_star, 1, Val(4)),)
+
         computed_grad_solution_U, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false, 0)  # Without using simplified form for symmetric data
-        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ!(GU_simplified, M_star, X, loss, true, 0)  # With using simplified form for symmetric data
+        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M_star, X, idx_map_mats, loss, 0)  # With using simplified form for symmetric data
         @test isapprox(computed_grad_solution_U, zeros(eltype(computed_grad_solution_U), size(computed_grad_solution_U)), atol=1e-10)
         @test isapprox(computed_grad_solution_λ, zeros(eltype(computed_grad_solution_λ), size(computed_grad_solution_λ)), atol=1e-10)
         @test isapprox(computed_grad_solution_simplified_U, zeros(eltype(computed_grad_solution_simplified_U), size(computed_grad_solution_simplified_U)), atol=1e-10)
@@ -100,7 +109,7 @@
         GU_simplified = (similar(M0.U[1]), similar(M0.λ))
 
         computed_grad_solution_U, computed_grad_solution_λ = grad_U_λ!(GU, M0, X, loss, false, 0)
-        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ!(GU_simplified, M0, X, loss, true, 0)
+        computed_grad_solution_simplified_U, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M0, X, idx_map_mats, loss, 0)
 
         auto_grad_solution = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), M0.λ))
         auto_grad_solution_U = reshape(auto_grad_solution[1:sz*r], size(M0.U[1]))
@@ -124,6 +133,7 @@ end
         GCPLosses.LeastSquares,
         ngroups,
         GCPLosses.grad_U_λ!,
+        GCPLosses.grad_U_λ_symmetric!,
         convertCPD,
         SymCPD
     using LinearAlgebra: norm
@@ -147,10 +157,13 @@ end
         @test isapprox([M_star[I] - X[I] for I in CartesianIndices(X)], zeros(eltype(X), size(X)), atol=1e-10)
 
         GU = (similar(U1_star), similar(U2_star), similar(λ_star))
-        # GU_simplified = (similar(U1_star), similar(U2_star), similar(λ_star))
         GU_simplified = (ones(size(U1_star)), ones(size(U2_star)), similar(λ_star))
+
+        # Create mappings to reduced linear indexes
+        idx_map_mats = tuple([form_reduced_linear_mapping_matrix(M_star, findfirst(S .== k), Val(3)) for k in unique(S)]...)
+
         computed_grad_solution_U1, computed_grad_solution_U2, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false, 0)  # Without using simplified form for symmetric data
-        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_λ = grad_U_λ!(GU_simplified, M_star, X, loss, true, 0)  # With using simplified form for symmetric data
+        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M_star, X, idx_map_mats, loss, 0)  # With using simplified form for symmetric data
         @test isapprox(computed_grad_solution_U1, zeros(eltype(computed_grad_solution_U1), size(computed_grad_solution_U1)), atol=1e-10)
         @test isapprox(computed_grad_solution_U2, zeros(eltype(computed_grad_solution_U2), size(computed_grad_solution_U2)), atol=1e-10)
         @test isapprox(computed_grad_solution_λ, zeros(eltype(computed_grad_solution_λ), size(computed_grad_solution_λ)), atol=1e-10)
@@ -173,7 +186,7 @@ end
         GU_simplified = (similar(M0.U[1]), similar(M0.U[2]), similar(M0.λ))
 
         computed_grad_U1, computed_grad_U2, computed_grad_λ = grad_U_λ!(GU, M0, X, loss, false, 0)
-        computed_grad_simplified_U1, computed_grad_simplified_U2, computed_grad_simplified_λ = grad_U_λ!(GU_simplified, M0, X, loss, true, 0)
+        computed_grad_simplified_U1, computed_grad_simplified_U2, computed_grad_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M0, X, idx_map_mats, loss, 0)
 
         auto_grad = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), vec(M0.U[2]), M0.λ))
         auto_grad_U1 = reshape(auto_grad[1:sz1*r], size(M_star.U[1]))
@@ -209,8 +222,12 @@ end
         GU = (similar(U1_star), similar(U2_star), similar(λ_star))
         # GU_simplified = (similar(U1_star), similar(U2_star), similar(λ_star))
         GU_simplified = (ones(size(U1_star)), ones(size(U2_star)), similar(λ_star))
+
+        # Create mappings to reduced linear indexes
+        idx_map_mats = tuple([form_reduced_linear_mapping_matrix(M_star, findfirst(S .== k), Val(4)) for k in unique(S)]...)
+
         computed_grad_solution_U1, computed_grad_solution_U2, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false, 0)  # Without using simplified form for symmetric data
-        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_λ = grad_U_λ!(GU_simplified, M_star, X, loss, true, 0)  # With using simplified form for symmetric data
+        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M_star, X, idx_map_mats, loss, 0)  # With using simplified form for symmetric data
         @test isapprox(computed_grad_solution_U1, zeros(eltype(computed_grad_solution_U1), size(computed_grad_solution_U1)), atol=1e-10)
         @test isapprox(computed_grad_solution_U2, zeros(eltype(computed_grad_solution_U2), size(computed_grad_solution_U2)), atol=1e-10)
         @test isapprox(computed_grad_solution_λ, zeros(eltype(computed_grad_solution_λ), size(computed_grad_solution_λ)), atol=1e-10)
@@ -233,7 +250,7 @@ end
         GU_simplified = (similar(M0.U[1]), similar(M0.U[2]), similar(M0.λ))
 
         computed_grad_U1, computed_grad_U2, computed_grad_λ = grad_U_λ!(GU, M0, X, loss, false, 0)
-        computed_grad_simplified_U1, computed_grad_simplified_U2, computed_grad_simplified_λ = grad_U_λ!(GU_simplified, M0, X, loss, true, 0)
+        computed_grad_simplified_U1, computed_grad_simplified_U2, computed_grad_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M0, X, idx_map_mats, loss, 0)
 
         auto_grad = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), vec(M0.U[2]), M0.λ))
         auto_grad_U1 = reshape(auto_grad[1:sz1*r], size(M_star.U[1]))
@@ -269,8 +286,12 @@ end
 
         GU = (similar(U1_star), similar(U2_star), similar(U3_star), similar(λ_star))
         GU_simplified = (ones(size(U1_star)), ones(size(U2_star)), ones(size(U3_star)), similar(λ_star))
+
+        # Create mappings to reduced linear indexes
+        idx_map_mats = tuple([form_reduced_linear_mapping_matrix(M_star, findfirst(S .== k), Val(5)) for k in unique(S)]...)
+
         computed_grad_solution_U1, computed_grad_solution_U2, computed_grad_solution_U3, computed_grad_solution_λ = grad_U_λ!(GU, M_star, X, loss, false, 0)  # Without using simplified form for symmetric data
-        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_U3, computed_grad_solution_simplified_λ = grad_U_λ!(GU_simplified, M_star, X, loss, true, 0)  # With using simplified form for symmetric data
+        computed_grad_solution_simplified_U1, computed_grad_solution_simplified_U2, computed_grad_solution_simplified_U3, computed_grad_solution_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M_star, X, idx_map_mats, loss, 0)  # With using simplified form for symmetric data
         @test isapprox(computed_grad_solution_U1, zeros(eltype(computed_grad_solution_U1), size(computed_grad_solution_U1)), atol=1e-10)
         @test isapprox(computed_grad_solution_U2, zeros(eltype(computed_grad_solution_U2), size(computed_grad_solution_U2)), atol=1e-10)
         @test isapprox(computed_grad_solution_U3, zeros(eltype(computed_grad_solution_U3), size(computed_grad_solution_U3)), atol=1e-10)
@@ -296,7 +317,7 @@ end
         GU_simplified = (similar(M0.U[1]), similar(M0.U[2]), similar(M0.U[3]), similar(M0.λ))
 
         computed_grad_U1, computed_grad_U2, computed_grad_U3, computed_grad_λ = grad_U_λ!(GU, M0, X, loss, false, 0)
-        computed_grad_simplified_U1, computed_grad_simplified_U2, computed_grad_simplified_U3, computed_grad_simplified_λ = grad_U_λ!(GU_simplified, M0, X, loss, true, 0)
+        computed_grad_simplified_U1, computed_grad_simplified_U2, computed_grad_simplified_U3, computed_grad_simplified_λ = grad_U_λ_symmetric!(GU_simplified, M0, X, idx_map_mats, loss, 0)
 
         auto_grad = ForwardDiff.gradient(objective, vcat(vec(M0.U[1]), vec(M0.U[2]), vec(M0.U[3]), M0.λ))
         auto_grad_U1 = reshape(auto_grad[1:sz1*r], size(M_star.U[1]))

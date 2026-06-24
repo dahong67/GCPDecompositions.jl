@@ -254,21 +254,101 @@ function convertCPD(M::SymCPD)
 end
 
 """
-    unique_entries_dict(M::SymCPD, ::Val{N})
+    lin_reduced(I::MVector{M,Int}, n::Int) where M
 
-Form dictionary of (idx, value) pairs for all unique entries in M.
-Among indices which are equal due to symmetry, store the permutation
-which is lexicographically forward.
-Each idx is a MVector from StaticArrays.
+Function to map from multilinear index of dimension M given by I
+to the corresponding reduced linear index (i.e., the corresponding index
+in the reduced vectorization). Valid for fully symmetric tensors of size n
+in each mode.
+
 """
-@generated function unique_entries_dict(M::SymCPD, num_unique::Integer, ::Val{N}) where N
-    quote
-        entries_dict = Dict{NTuple{$N, Int}, eltype(M.U[1])}()
-        sizehint!(entries_dict, num_unique)
-        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
-            idx = @ntuple $N i
-            entries_dict[idx] = M[idx...]
-        end
-        return entries_dict
+function lin_reduced(I::MVector{M,Int}, n::Int) where M
+    return binomial(n + M - 1, M) - sum(t -> binomial(n - I[t] + t - 1, t), 1:M)
+end
+
+
+function lin_reduced_general_sym(I::MVector{N, Int}, S::NTuple{N,Int}, sizes::Vector{Int}) where N
+    idx = 1
+    cell_offset = 1
+    for k in unique(S)
+        cell_modes = findall(S .== k)
+        num_modes = length(cell_modes)
+        mode_size = sizes[k]
+        total_idxs_cell = binomial(mode_size + num_modes - 1, num_modes)
+        idx += cell_offset * (total_idxs_cell - sum(t -> binomial(mode_size - I[cell_modes[t]] + t - 1, t), 1:num_modes) - 1)
+        cell_offset *= total_idxs_cell
+    end
+    return idx
+end
+
+function sort_cells_lexicographic!(idx::MVector{N,Int}, S) where N
+    start_idx = 1
+    for cell in unique(S)
+        end_idx = start_idx + count(S .== cell) - 1
+        sort!(@view(idx[start_idx:end_idx]), rev=true)
+        start_idx = end_idx + 1
     end
 end
+
+"""
+    form_reduced_linear_mapping_matrix(M::SymCPD, n::Int, ::Val{N}) where N
+
+Function to form reduced linear mapping matrix for fully symmetric case, i.e., 
+a matrix of size n x (n multichoose N-1) for N-way tensor of size n, where the [i,j]
+entry is the corresponding reduced linear index for the [i,j] entry of the reduced
+mode-1 matricization.
+"""
+@generated function form_reduced_linear_mapping_matrix(M::SymCPD, mode::Int, ::Val{N}) where N
+    set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
+    quote
+        row_mode_size = size(M, mode)
+        col_inds_pos = setdiff(1:$N,mode)
+        S_reduced = M.S[col_inds_pos]
+        # Collect mode size for each cell, and compute number of columns in matrix
+        cell_mode_sizes = Vector{Int}(undef, length(unique(M.S)))
+        num_cols = 1
+        for (i, k) in enumerate(unique(M.S))
+            mode_size = size(M.U[k], 1)
+            cell_mode_sizes[i] = mode_size
+            num_modes_cell = count(M.S .== k)
+            if M.S[mode] == k
+                num_cols *= binomial(mode_size + num_modes_cell - 2, num_modes_cell - 1)
+            else
+                num_cols *= binomial(mode_size + num_modes_cell - 1, num_modes_cell)
+            end
+        end
+        mapping_matrix = Array{Int}(undef, row_mode_size, num_cols)
+        idx = zeros(MVector{$N, Int})
+        col = 1
+        @nloops $(N-1) i k -> (k == $(N-1) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+            for row in 1:row_mode_size
+                $(set_idx...)
+                idx[mode] = row
+                sort_cells_lexicographic!(idx, M.S)
+                mapping_matrix[row,col] = lin_reduced_general_sym(idx, M.S, cell_mode_sizes)
+            end
+            col += 1
+        end
+        return mapping_matrix
+    end
+end
+
+# """
+#     unique_entries_dict(M::SymCPD, ::Val{N}) where N
+
+# Form dictionary of (idx, value) pairs for all unique entries in M.
+# Among indices which are equal due to symmetry, store the permutation
+# which is lexicographically forward.
+# Each idx is a MVector from StaticArrays.
+# """
+# @generated function unique_entries_dict(M::SymCPD, num_unique::Integer, ::Val{N}) where N
+#     quote
+#         entries_dict = Dict{NTuple{$N, Int}, eltype(M.U[1])}()
+#         sizehint!(entries_dict, num_unique)
+#         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+#             idx = @ntuple $N i
+#             entries_dict[idx] = M[idx...]
+#         end
+#         return entries_dict
+#     end
+# end
