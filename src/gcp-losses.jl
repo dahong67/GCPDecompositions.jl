@@ -117,22 +117,17 @@ function grad_U_λ!(
     γ,
 ) where {T,TX,N,K}
 
-    # Convert CPD to dense array for faster indexing
-    M_array = Array(convertCPD(M))
-
-    if !sym_data || maximum(M.S) >= N-1
+    if !sym_data
         missing_or_deriv(x, m) = ismissing(x) ? zero(nonmissingtype(typeof(x))) : deriv(loss, x, m)
-        # Y = Array(convertCPD(M))
-        # Y .= missing_or_deriv.(X, Y)
-        Y = missing_or_deriv.(X, M_array)
+        Y = Array(convertCPD(M))
+        Y .= missing_or_deriv.(X, Y)
     end
 
     # Weights gradient
     if sym_data
         vec_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(M.S .== k))÷factorial(count(M.S .== k)), unique(M.S))
         Y_vec = similar(X, vec_size)
-        # fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N))
-        fill_reduced_Y_vec!(Y_vec, X, M, M_array, loss, Val(N))
+        fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N))
         kr_tilde = similar(M.U[1], vec_size, ncomps(M))
         flip_group_ordering(k) = ngroups(M) - k + 1
         GU_λ[K+1] .= symmetric_kr!(kr_tilde, reverse(flip_group_ordering.(M.S)), reverse(M.U)...)' * Y_vec
@@ -160,25 +155,7 @@ function grad_U_λ!(
                         vec_idx += mat_size
                     end
                 else
-                    # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    # fill_reduced_Y_mode1_mat_from_vec_order3!(Y_mat, Y_vec)
-                    # fill_reduced_Y_mode_n_from_vec_fullsym!(Y_mat, Y_vec, mode, M, Val(N))
-                    # if ndims(M) == 3 && ngroups(M) == 1
-                    #     fill_reduced_Y_mode_n_from_vec_fullsym_order3!(Y_mat, Y_vec)
-                    # elseif ndims(M) == 4 && ngroups(M) == 1
-                    #     fill_reduced_Y_mode_n_from_vec_fullsym_order4!(Y_mat, Y_vec)
-                    # if count(M.S .== j) == 1
-                    #     fill_reduced_Y_mode_n_from_vec_singleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
-                    #     # fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    # elseif count(M.S .== j) == 2
-                    #     # fill_reduced_Y_mode_n_from_vec_doubleton_cell!(Y_mat, Y_vec, mode, M, Val(N))
-                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    # # elseif ngroups(M) == 1
-                    # #     fill_reduced_Y_mode_n_from_vec_fullsym_orderN!(Y_mat, Y_vec, mode, M, Val(N))
-                    # else 
-                    #     fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
-                    # end
-                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, M_array, loss, Val(N))
+                    fill_reduced_Y_mode_n!(Y_mat, mode, X, M, loss, Val(N))
                 end
             end
             symmetric_mttkrp!(GU_λ[j], Y_mat, M.U, M.S, mode)
