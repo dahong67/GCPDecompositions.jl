@@ -143,8 +143,6 @@ function grad_U_λ!(
             # Form reduced matricization, splitting out some special cases
             if count(M.S .== j) == 1 && mode == 1
                 Y_mat = reshape(Y_vec, size(X,mode), :)
-            elseif maximum(M.S) >= N-1 && count(M.S .== j) > 1
-                Y_mat = reshape(Y, size(X,mode), :)
             else
                 mat_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(S_reduced .== k))÷factorial(count(S_reduced .== k)), unique(S_reduced))
                 Y_mat = similar(X, size(X, mode), mat_size)
