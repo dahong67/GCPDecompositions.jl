@@ -187,7 +187,7 @@ function grad_U_λ_symmetric!(
     # Weights gradient
     vec_size = prod(k -> prod(i -> size(M.U[k],1)+i-1, 1:count(M.S .== k))÷factorial(count(M.S .== k)), unique(M.S))
     Y_vec = similar(X, vec_size)
-    fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N))
+    fill_reduced_Y_vec!(Y_vec, X, M, loss, Val(N), Val(ncomps(M)))
     kr_tilde = similar(M.U[1], vec_size, ncomps(M))
     flip_group_ordering(k) = ngroups(M) - k + 1
     GU_λ[K+1] .= symmetric_kr!(kr_tilde, reverse(flip_group_ordering.(M.S)), reverse(M.U)...)' * Y_vec
@@ -854,32 +854,58 @@ end
 
 Forms reduced vectorization of derivative tensor Y where duplicate entries due to symmetry are removed.
 """
-@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
-    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+# @generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+#     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+#     quote
+#         tensor_idx = zeros(MVector{$N, Int})
+#         vec_idx = 1
+#         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+#             $(set_idx...)
+#             x = X[tensor_idx...]
+#             Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
+#             vec_idx += 1
+#         end
+#     end
+# end
+@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}, ::Val{R}) where {N,R}
+    set_idx = [:(tensor_idx[$(k+1)] = $(Symbol("i_$k"))) for k in 0:N-1]
+    set_partial_m = map(1:R) do j
+        terms = [:(M.U[M.S[$k]][$(Symbol("i_$(k-1)")), $j]) for k in 2:N]
+        :(partial_m[$j] = M.λ[$j] * *( $(terms...) ))
+    end
     quote
         tensor_idx = zeros(MVector{$N, Int})
+        partial_m = zeros(MVector{$R, eltype(M.U[1])})
+        mode1_factors = M.U[M.S[1]]
         vec_idx = 1
-        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
-            $(set_idx...)
-            x = X[tensor_idx...]
-            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
-            vec_idx += 1
+        @nloops $(N-1) i k -> (k == $(N-1) ? 1 : M.S[k+2] == M.S[k+1] ? i_{k+1} : 1):size(M.U[M.S[k+1]], 1) begin
+            $(set_partial_m...) 
+            for i_0 in (M.S[2] == M.S[1] ? i_1 : 1):size(M.U[M.S[1]], 1)
+                $(set_idx...)
+                x = X[tensor_idx...]
+                m = zero(eltype(M.U[1]))
+                for r in 1:$R
+                    m += mode1_factors[i_0,r] * partial_m[r]
+                end
+                Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
+                vec_idx += 1
+            end
         end
     end
 end
-@generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, M_array::Array, loss, ::Val{N}) where {N}
-    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
-    quote
-        tensor_idx = zeros(MVector{$N, Int})
-        vec_idx = 1
-        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
-            $(set_idx...)
-            x = X[tensor_idx...]
-            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M_array[tensor_idx...])
-            vec_idx += 1
-        end
-    end
-end
+# @generated function fill_reduced_Y_vec!(Y_vec::AbstractVector, X::Array, M::SymCPD, M_array::Array, loss, ::Val{N}) where {N}
+#     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+#     quote
+#         tensor_idx = zeros(MVector{$N, Int})
+#         vec_idx = 1
+#         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+#             $(set_idx...)
+#             x = X[tensor_idx...]
+#             Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M_array[tensor_idx...])
+#             vec_idx += 1
+#         end
+#     end
+# end
 # @generated function fill_reduced_Y_vec_multi_inds!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
 #     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
 #     quote
