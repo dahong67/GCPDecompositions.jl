@@ -254,20 +254,27 @@ function convertCPD(M::SymCPD)
 end
 
 """
-    lin_reduced(I::MVector{M,Int}, n::Int) where M
+    lin_reduced_fullsym(I::MVector{N,Int}, n::Int) where {N}
 
-Function to map from multilinear index of dimension M given by I
+Function to map from multilinear index of dimension N given by I
 to the corresponding reduced linear index (i.e., the corresponding index
 in the reduced vectorization). Valid for fully symmetric tensors of size n
 in each mode.
 
 """
-function lin_reduced(I::MVector{M,Int}, n::Int) where M
-    return binomial(n + M - 1, M) - sum(t -> binomial(n - I[t] + t - 1, t), 1:M)
+function lin_reduced_fullsym(I::MVector{N,Int}, n::Int) where {N}
+    return binomial(n + N - 1, N) - sum(t -> binomial(n - I[t] + t - 1, t), 1:N)
 end
 
+"""
+    lin_reduced_general_sym(I::MVector{N,Int}, S::NTuple{N,Int}, sizes::Vector{Int}) where {N}
 
-function lin_reduced_general_sym(I::MVector{N, Int}, S::NTuple{N,Int}, sizes::Vector{Int}) where N
+Function to map from multilinear index of dimension N given by I
+to the corresponding reduced linear index (i.e., the corresponding index
+in the reduced vectorization), assuming symmetry pattern given by S and mode sizes for
+each cell in S given by sizes.
+"""
+function lin_reduced_general_sym(I::MVector{N, Int}, S::NTuple{N,Int}, sizes::Vector{Int}) where {N}
     idx = 1
     cell_offset = 1
     for k in unique(S)
@@ -281,7 +288,13 @@ function lin_reduced_general_sym(I::MVector{N, Int}, S::NTuple{N,Int}, sizes::Ve
     return idx
 end
 
-function sort_cells_lexicographic!(idx::MVector{N,Int}, S) where N
+"""
+    sort_cells!(idx::MVector{N,Int}, S) where {N}
+
+Function to sort indices in idx within each cell given by S
+in non-increasing order.
+"""
+function sort_cells!(idx::MVector{N,Int}, S) where {N}
     start_idx = 1
     for cell in unique(S)
         end_idx = start_idx + count(S .== cell) - 1
@@ -291,12 +304,11 @@ function sort_cells_lexicographic!(idx::MVector{N,Int}, S) where N
 end
 
 """
-    form_reduced_linear_mapping_matrix(M::SymCPD, n::Int, ::Val{N}) where N
+    form_reduced_linear_mapping_matrix(M::SymCPD, mode::Int, ::Val{N}) where N
 
-Function to form reduced linear mapping matrix for fully symmetric case, i.e., 
-a matrix of size n x (n multichoose N-1) for N-way tensor of size n, where the [i,j]
+Function to form reduced linear mapping matrix, i.e., a matrix where the [i,j]
 entry is the corresponding reduced linear index for the [i,j] entry of the reduced
-mode-1 matricization.
+matricization along the given mode.
 """
 @generated function form_reduced_linear_mapping_matrix(M::SymCPD, mode::Int, ::Val{N}) where N
     set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
@@ -324,7 +336,7 @@ mode-1 matricization.
             for row in 1:row_mode_size
                 $(set_idx...)
                 idx[mode] = row
-                sort_cells_lexicographic!(idx, M.S)
+                sort_cells!(idx, M.S)
                 mapping_matrix[row,col] = lin_reduced_general_sym(idx, M.S, cell_mode_sizes)
             end
             col += 1

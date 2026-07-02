@@ -59,26 +59,26 @@ function _checked_khatrirao_dims(A::Vararg{AbstractMatrix})
 end
 
 """
-    symmetric_kr!(Ktilde, S, A1, A2, ...)
+    symmetric_kr!(Ktilde, S_reduced, A1, A2, ...)
 
 Compute only the unique rows of the Khatri-Rao product of A1, A2, ..., AK,
-with symmetry given by S, rescaling each row with the number of times it is duplicated,
-and store the result in Ktilde. S has L groups of symmetric modes, and should not include
-mode n when computing the Khatri-Rao product for the mode-n MTTKRP.
+with symmetry given by S_reduced, rescaling each row with the number of times it is duplicated,
+and store the result in Ktilde. S_reduced has L groups of symmetric modes, and should include all
+modes except mode n when computing the Khatri-Rao product for the mode-n MTTKRP.
 """
-function symmetric_kr!(Ktilde::AbstractMatrix, S::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+function symmetric_kr!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
     if L == 1
         return symmetric_self_kr!(Ktilde, A[1], Val(N))
     else
         r = size(A[1], 2)
-        groups = unique(S)
-        intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S .== i))÷factorial(count(S .== i)), r) for i in groups]
+        groups = unique(S_reduced)
+        intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
         for (buffer_idx, sym_group) in enumerate(groups)
-            num_repeat = count(S .== sym_group)
+            num_repeat = count(S_reduced .== sym_group)
             if num_repeat == 1
                 intermediate_buffers[buffer_idx] .= A[sym_group]
             else
-                symmetric_self_kr!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S .== sym_group)))
+                symmetric_self_kr!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)))
             end
         end
         return khatrirao!(Ktilde, intermediate_buffers...)
