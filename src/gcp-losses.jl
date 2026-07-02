@@ -219,6 +219,18 @@ end
 Base.length(iter::FullySymmetricIndices{N}) where {N} = binomial(iter.sz+N-1, N)
 Base.eltype(iter::FullySymmetricIndices{N}) where {N} = CartesianIndex{N}
 
+function full_iter!(v, u, ::Val{m}) where {m}
+    n = length(u)
+    T = eltype(u)
+    for (i, I) in enumerate(FullySymmetricIndices{m}(n))
+        p = one(T)
+        for j in 1:m
+            @inbounds p *= u[I[j]]
+        end
+        @inbounds v[i] = p
+    end
+    return v
+end
 
 """
     fill_reduced_Y_vec_version_1a!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
@@ -230,15 +242,55 @@ using @nloops macro.
     set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
     quote
         tensor_idx = zeros(MVector{$N, Int})
+        T = eltype(M.U[1])
         vec_idx = 1
         @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
             $(set_idx...)
             x = X[tensor_idx...]
-            Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
+            @inbounds Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M[tensor_idx...])
             vec_idx += 1
         end
     end
 end
+@generated function fill_reduced_Y_vec_version_1a_directM!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+    quote
+        tensor_idx = zeros(MVector{$N, Int})
+        T = eltype(M.U[1])
+        vec_idx = 1
+        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+            $(set_idx...)
+            x = X[tensor_idx...]
+            m = zero(T)
+            for j in 1:ncomps(M)
+                p = M.λ[j]
+                for l in 1:$N
+                    p *= M.U[M.S[l]][tensor_idx[l], j]
+                end
+                @inbounds p = M.λ[j] * Base.Cartesian.@ncall $N (*) k -> M.U[M.S[k]][i_k,j]
+                m += p
+            end
+            @inbounds Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
+            vec_idx += 1
+        end
+    end
+end
+@generated function fill_reduced_Y_vec_version_1a_directM_rank1fullsym!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}) where {N}
+    set_idx = [:(tensor_idx[$k] = $(Symbol("i_$k"))) for k in 1:N]
+    quote
+        tensor_idx = zeros(MVector{$N, Int})
+        T = eltype(M.U[1])
+        vec_idx = 1
+        @nloops $N i k -> (k == $N ? 1 : M.S[k+1] == M.S[k] ? i_{k+1} : 1):size(M.U[M.S[k]], 1) begin
+            $(set_idx...)
+            x = X[tensor_idx...]
+            m = M.λ[1] * Base.Cartesian.@ncall $N (*) k -> M.U[1][i_k,1]
+            @inbounds Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
+            vec_idx += 1
+        end
+    end
+end
+
 
 """
     fill_reduced_Y_vec_version_1b!(Y_vec::AbstractVector, X::Array, M::SymCPD, loss, ::Val{N}, ::Val{R}) where {N,R}
@@ -286,12 +338,54 @@ function fill_reduced_Y_vec_version_2a!(Y_vec::AbstractVector, X::Array{T,N}, M:
     )
     _fill_reduced_Y_vec_version_2a!(Y_vec, X, M, loss, inds)
 end
-function _fill_reduced_Y_vec_version_2a!(Y_vec, X, M, loss, inds)
+function _fill_reduced_Y_vec_version_2a!(Y_vec, X::Array{T,N}, M, loss, inds) where {T,N}
     for (vec_idx, tensor_idx) in enumerate(inds)
         I = CartesianIndex(tensor_idx...)
         x = X[I]
         m = M[I]
-        Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
+        @inbounds Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
+    end
+end
+
+function fill_reduced_Y_vec_version_2a_directM!(Y_vec::AbstractVector, X::Array{T,N}, M::SymCPD{T,N,K}, loss) where {T,N,K}
+    sym_block_sizes = ntuple(k -> count(==(k), M.S), Val(K))
+    inds = Iterators.product(
+        ntuple(k -> FullySymmetricIndices{sym_block_sizes[k]}(size(M.U[k], 1)), Val(K))...
+    )
+    _fill_reduced_Y_vec_version_2a_directM!(Y_vec, X, M, loss, inds, Val(ncomps(M)))
+end
+function _fill_reduced_Y_vec_version_2a_directM!(Y_vec, X::Array{T,N}, M, loss, inds, ::Val{R}) where {T,N,R}
+    for (vec_idx, tensor_idx) in enumerate(inds)
+        I = CartesianIndex(tensor_idx...)
+        x = X[I]
+        m = zero(T)
+        for j in 1:R
+            p = one(T)
+            for l in 1:N
+                @inbounds p *= M.U[M.S[l]][I[l],j]
+            end
+            m += p
+        end
+        @inbounds Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
+    end
+end
+function fill_reduced_Y_vec_version_2a_directM_rank1fullsym!(Y_vec::AbstractVector, X::Array{T,N}, M::SymCPD{T,N,K}, loss) where {T,N,K}
+    sym_block_sizes = ntuple(k -> count(==(k), M.S), Val(K))
+    inds = Iterators.product(
+        ntuple(k -> FullySymmetricIndices{sym_block_sizes[k]}(size(M.U[k], 1)), Val(K))...
+    )
+    _fill_reduced_Y_vec_version_2a_directM_rank1fullsym!(Y_vec, X, M, loss, inds, Val(ncomps(M)))
+end
+function _fill_reduced_Y_vec_version_2a_directM_rank1fullsym!(Y_vec, X::Array{T,N}, M, loss, inds, ::Val{R}) where {T,N,R}
+    for (vec_idx, tensor_idx) in enumerate(inds)
+        I = CartesianIndex(tensor_idx...)
+        x = X[I]
+        m = zero(T)
+        for l in 1:N
+            @inbounds m *= M.U[1][I[l],1]
+        end
+        m *= M.λ[1]
+        @inbounds Y_vec[vec_idx] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, m)
     end
 end
 
@@ -454,6 +548,85 @@ rather than M.
                 Y_mat[row,col] = ismissing(x) ? zero(nonmissingtype(eltype(X))) : GCPDecompositions.GCPLosses.deriv(loss, x, M_array[I])
             end
             col += 1
+        end
+    end
+end
+
+"""
+    fill_reduced_Y_mode1_mat_from_vec_order3!(Y_mode1_mat::AbstractMatrix, Y_vec::AbstractVector)
+Fill in values of Y_mode1_mat from values in Y_vec with specialized algorithm for fully symmetric order 3 tensors.
+"""
+function fill_reduced_Y_mode1_mat_from_vec_order3_fullsym!(Y_mode1_mat::AbstractMatrix, Y_vec::AbstractVector)
+    sz = size(Y_mode1_mat,1)
+    start_col = 1
+    start_row = 1
+    vec_idx = 1
+    for block in 1:sz
+        block_size = sz-block+1
+        # Fill in unique, then duplciate entries below first row in symmetric sub-matrices
+        for (col_idx, col) in enumerate(start_col:start_col+block_size)
+            for (row_idx, row) in enumerate(start_row+col_idx-1:sz)
+                Y_mode1_mat[row,col] = Y_vec[vec_idx]
+                if row_idx != 1 && col_idx != 1 && col_idx != sz  # Skip top row which is handled later
+                    Y_mode1_mat[start_row+col_idx-1, col+row_idx-1] = Y_vec[vec_idx]
+                end
+                vec_idx += 1
+            end
+        end
+        start_col += block_size
+        start_row = block + 1
+    end
+
+    # Fill in remaining rows above sub-matrices
+    row = 1
+    start_col = 2
+    num_cols = prod(i -> sz+i-1, 1:2)÷2
+    vec_idx = 2
+    for block in 1:sz
+        block_size = sz-block+1
+        for col in start_col:num_cols
+            Y_mode1_mat[row, col] = Y_vec[vec_idx]
+            vec_idx += 1
+        end
+        row += 1
+        start_col += block_size
+        vec_idx += 1 # Skip entry already filled in
+    end
+end
+
+insert_row(row, t::Tuple{}) = (row,)
+insert_row(row, t::Tuple) = 
+    row >= t[1] ? (row, t...) : (t[1], insert_row(row, t[2:end])...)
+"""
+    fill_reduced_Y_mode_n_from_vec_fullsym_orderN!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, ::Val{N}) where {N}
+
+    Fill out values of Y_mat from values of Y_vec, using specialized algorithm for fully symmetric tensors.
+"""
+@generated function fill_reduced_Y_mode_n_from_vec_fullsym_orderN!(Y_mat::AbstractMatrix, Y_vec::AbstractVector, n, M::SymCPD, ::Val{N}) where {N}
+    quote
+        sz = size(Y_mat, 1)
+        col_inds_pos = setdiff(1:$N,n)
+        S_reduced = M.S[col_inds_pos]
+        vec_idx = 1
+        col = 1
+        col_starts = Array{Int}(undef, ntuple(Returns(sz), $(N-2)))
+        @nloops $(N-2) i k -> (k == $(N-2) ? 1 : S_reduced[k+1] == S_reduced[k] ? i_{k+1} : 1):size(M.U[S_reduced[k]], 1) begin
+            @ncall $(N-2) setindex! col_starts col i
+            for j in $(Symbol("i_1")):sz
+                for row in 1:sz
+                    if row >= j 
+                        Y_mat[row,col] = Y_vec[vec_idx]
+                        vec_idx += 1
+                    else
+                        # Sort indices lexicographically
+                        idx = insert_row(row, (j, (@ntuple $(N-2) i)...))
+                        # Copy from corresponding filled out entry
+                        target_col = col_starts[idx[3:end]...] + idx[2] - idx[3] # idx[2] - idx[3] is how many times j has been incremented since col_starts[idx[3:end]...]
+                        Y_mat[row, col] = Y_mat[idx[1], target_col]
+                    end
+                end
+                col += 1
+            end
         end
     end
 end
