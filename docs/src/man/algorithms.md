@@ -4,6 +4,9 @@
 
     This page of the docs is still a work-in-progress. Check back later!
 
+See also the [Developer Overview](@ref) for a summary of which algorithms support which
+data types, losses, and constraints, along with the current roadmap for new algorithms.
+
 ```@docs
 AbstractGCPAlgorithm
 gcp_objective

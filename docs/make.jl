@@ -48,8 +48,11 @@ makedocs(;
             "Tensor Toolbox (MATLAB)" => "related/tensortoolbox.md",
             "TensorLy (Python)" => "related/tensorly.md",
         ],
-        "Developer Docs" =>
-            ["Tensor Kernels" => "dev/kernels.md", "Private functions" => "dev/private.md"],
+        "Developer Docs" => [
+            "Overview" => "dev/overview.md",
+            "Tensor Kernels" => "dev/kernels.md",
+            "Private functions" => "dev/private.md",
+        ],
     ],
     format = Documenter.HTML(;
         canonical = "https://dahong67.github.io/GCPDecompositions.jl",
