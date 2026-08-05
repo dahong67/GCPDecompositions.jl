@@ -304,15 +304,16 @@ function sort_cells!(idx::MVector{N,Int}, S) where {N}
 end
 
 """
-    form_reduced_linear_mapping_matrix(M::SymCPD, mode::Int, ::Val{N}) where N
+    form_reduced_linear_mapping_matrix(M::SymCPD, cell::Int, ::Val{N}) where N
 
 Function to form reduced linear mapping matrix, i.e., a matrix where the [i,j]
 entry is the corresponding reduced linear index for the [i,j] entry of the reduced
-matricization along the given mode.
+matricization along the first mode for the given cell.
 """
-@generated function form_reduced_linear_mapping_matrix(M::SymCPD, mode::Int, ::Val{N}) where N
+@generated function form_reduced_linear_mapping_matrix(M::SymCPD, cell::Int, ::Val{N}) where N
     set_idx = [:(idx[col_inds_pos[$k]] = $(Symbol("i_$k"))) for k in 1:N-1]
     quote
+        mode = findfirst(==(cell), M.S)
         row_mode_size = size(M, mode)
         col_inds_pos = setdiff(1:$N,mode)
         S_reduced = M.S[col_inds_pos]

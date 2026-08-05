@@ -57,6 +57,95 @@ function _checked_khatrirao_dims(A::Vararg{AbstractMatrix})
     )
     return size.(A, 1), size(A[1], 2)
 end
+# """
+#     symmetric_kr_new!(Ktilde::AbstractMatrix, S::NTuple{N}, multinomial_coefs::Vector{TC}, A::Vararg{AbstractMatrix,L}) where {N,TC,L}
+
+# Compute only the unique rows of the Khatri-Rao product of the matrices in A in reverse order,
+# with symmetry pattern given by S, and store the result in Ktilde. 
+# """
+# @generated function symmetric_kr_new!(Ktilde::AbstractMatrix, S::NTuple{N,Int}, multinomial_coefs::AbstractVector, ::Val{N}, ::Val{R}, A::Vararg{AbstractMatrix,L}) where {N,R,L}
+#     prod_expr = Expr(:call, :*, (:(A[S[$k]][$(Symbol("i_$k")), col]) for k in 1:N)...)
+#     quote
+#         # Base.Cartesian.@nexprs $L k -> (A_k = A[k])
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops(
+#                 $N,
+#                 i,
+#                 k -> (k == $N ? 1 : S[k] == S[k+1] ? i_{k+1} : 1):size(A[S[k]], 1),
+#                 begin
+#                     Ktilde[row,col] = multinomial_coefs[row] * $prod_expr
+#                     row += 1
+#                 end
+#             )
+#         end
+#         return Ktilde
+#     end
+# end
+
+# """
+#     symmetric_kr_new_partial_products!(Ktilde::AbstractMatrix, S::NTuple{N,Int}, multinomial_coefs::AbstractVector, ::Val{N}, ::Val{R}, A::Vararg{AbstractMatrix,L}) where {N,R,L}
+
+# Compute only the unique rows of the Khatri-Rao product of the matrices in A,
+# with symmetry pattern given by S, and store the result in Ktilde.
+# """
+# @generated function symmetric_kr_new_partial_products!(Ktilde::AbstractMatrix, S::NTuple{N,Int}, multinomial_coefs::AbstractVector, ::Val{N}, ::Val{R}, A::Vararg{AbstractMatrix,L}) where {N,R,L}
+#     quote
+#         # Base.Cartesian.@nexprs $L k -> (A_k = A[k])
+#         # Base.Cartesian.@nexprs $N d -> d == 1 ? nothing : (x_k = zeros(MVector{$R, T}))
+#         Base.Cartesian.@nexprs $N d -> (A_d = A[S[d]])
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops(
+#                 $N,
+#                 i,
+#                 k -> (k == $N ? 1 : S[k] == S[k+1] ? i_{k+1} : 1):size(A_k, 1),
+#                 d -> d == 1 ? nothing :
+#                     d == $N ? x_d = A_d[i_d, col] :
+#                     begin # Prexprs
+#                         x_d = A_d[i_d, col] * x_{d+1}
+#                     end,
+#                 begin
+#                     # Ktilde[row,col] = multinomial_coefs[row] * $prod_expr
+#                     Ktilde[row,col] = multinomial_coefs[row] * A_1[i_1,col] * x_2
+#                     row += 1
+#                 end
+#             )
+#         end
+#         return Ktilde
+#     end
+# end
+
+# @generated function symmetric_kr_new_partial_products_v2!(Ktilde_T::AbstractMatrix, S::NTuple{N,Int}, multinomial_coefs::AbstractVector, ::Val{N}, ::Val{R}, A::Vararg{AbstractMatrix{T},L}) where {N,R,T,L}
+#     quote
+#         Base.Cartesian.@nexprs $N d -> (A_d_T = permutedims(A[S[d]]))
+#         Base.Cartesian.@nexprs $N d -> d == 1 ? nothing : (x_d = zeros(MVector{$R, T}))
+#         row = 1
+#         @inbounds @nloops(
+#             $N,
+#             i,
+#             k -> (k == $N ? 1 : S[k] == S[k+1] ? i_{k+1} : 1):size(A_k_T, 2),
+#             d -> d == 1 ? nothing : # Prexprs
+#                 d == $N ? 
+#                 for col in 1:$R
+#                     x_d[col] = A_d_T[col,i_d]
+#                 end
+#                 :
+#                 for col in 1:$R
+#                     x_d[col] = A_d_T[col,i_d] * x_{d+1}[col]
+#                 end,
+#             begin   # Body expr
+#                 for col in 1:$R
+#                     Ktilde_T[col,row] = multinomial_coefs[row] * A_1_T[col,i_1] * x_2[col]
+#                 end
+#                 row += 1
+#             end
+#         )
+#         return Ktilde_T'
+#     end
+# end
+
+
 
 """
     symmetric_kr!(Ktilde, S_reduced, A1, A2, ...)
@@ -66,12 +155,10 @@ with symmetry given by S_reduced, rescaling each row with the number of times it
 and store the result in Ktilde. S_reduced has L groups of symmetric modes, and should include all
 modes except mode n when computing the Khatri-Rao product for the mode-n MTTKRP.
 """
-function symmetric_kr!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+function symmetric_kr!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, multinomial_coefs::NTuple{L}, A::Vararg{AbstractMatrix,L}) where {N, L}
     R = size(Ktilde, 2)
     if L == 1
-        # return symmetric_self_kr!(Ktilde, A[1], Val(N))
-        return symmetric_self_kr_partial_products_v2!(Ktilde, A[1], Val(N), Val(R))
-        # return return symmetric_self_kr_iter_partial_products_v2!(Ktilde, A[1], Val(N), Val(R))
+        return symmetric_self_kr!(Ktilde, A[1], multinomial_coefs[1], Val(N), Val(R))
     else
         r = size(A[1], 2)
         groups = unique(S_reduced)
@@ -81,14 +168,235 @@ function symmetric_kr!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{A
             if num_repeat == 1
                 intermediate_buffers[buffer_idx] .= A[sym_group]
             else
-                # symmetric_self_kr!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)))
-                symmetric_self_kr_partial_products_v2!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
-                # symmetric_self_kr_iter_partial_products_v2!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+                symmetric_self_kr!(intermediate_buffers[buffer_idx], A[sym_group], multinomial_coefs[buffer_idx], Val(num_repeat), Val(R))
             end
         end
         return khatrirao!(Ktilde, intermediate_buffers...)
     end
 end
+@generated function symmetric_self_kr!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, multionmial_coefs::Vector, ::Val{N}, ::Val{R}) where {T,N,R}
+    quote
+        n = size(A, 1)
+        @inbounds for col in 1:$R
+            row = 1
+            @nloops(
+                $N,
+                i,
+                k -> (k == $N ? 1 : i_{k+1}):n,
+                d -> d == 1 ? nothing : d == $N ? a_d = A[i_d, col] : a_d = A[i_d, col] * a_{d+1},
+                begin
+                    α = multionmial_coefs[row]
+                    Ktilde[row,col] = α * A[i_1,col] * a_2
+                    row += 1
+                end
+            )
+        end
+        return Ktilde
+    end
+end
+
+"""
+    symmetric_kr_unweighted!(Ktilde_T, S_reduced, A1, A2, ...)
+
+Compute only the unique rows of the Khatri-Rao product of A1, A2, ..., AK,
+with symmetry given by S_reduced, without rescaling each row with the number of times it is duplicated,
+and store the result in Ktilde_T. S_reduced has L groups of symmetric modes, and should include all
+modes except mode n when computing the Khatri-Rao product for the mode-n MTTKRP.
+Used for KRP-TTSV function for factor gradients.
+"""
+function symmetric_kr_unweighted!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+    R = size(Ktilde, 2)
+    if L == 1
+        return symmetric_self_kr_unweighted!(Ktilde, A[1], Val(N), Val(R))
+    else
+        r = size(A[1], 2)
+        groups = unique(S_reduced)
+        intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
+        for (buffer_idx, sym_group) in enumerate(groups)
+            num_repeat = count(S_reduced .== sym_group)
+            if num_repeat == 1
+                intermediate_buffers[buffer_idx] .= A[sym_group]
+            else
+                symmetric_self_kr_unweighted!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+            end
+        end
+        return khatrirao!(Ktilde, intermediate_buffers...)
+    end
+end
+@generated function symmetric_self_kr_unweighted!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+    quote
+        n = size(A, 1)
+        @inbounds for col in 1:$R
+            row = 1
+            @nloops(
+                $N,
+                i,
+                k -> (k == $N ? 1 : i_{k+1}):n,
+                d -> d == 1 ? nothing : 
+                d == $N ? 
+                    a_d = A[i_d, col] 
+                : 
+                    a_d = A[i_d, col] * a_{d+1}
+                ,
+                begin
+                    Ktilde[row,col] = A[i_1,col] * a_2
+                    row += 1
+                end
+            )
+        end
+        return Ktilde
+    end
+end
+@generated function symmetric_self_kr_unweighted_test!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+    quote
+        n = size(A, 1)
+        accumulator = zero(eltype(A))
+        @inbounds for col in 1:$R
+            row = 1
+            @nloops(
+                $N,
+                i,
+                k -> (k == $N ? 1 : i_{k+1}):n,
+                begin
+                    Ktilde[row,col] = one(T)
+                    row += 1
+                end
+            )
+        end
+        return accumulator
+    end
+end
+# function symmetric_kr!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+#     R = size(Ktilde, 2)
+#     if L == 1
+#         return symmetric_self_kr!(Ktilde, A[1], Val(N), Val(R))
+#         # return symmetric_self_kr_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#         # return return symmetric_self_kr_iter_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#     else
+#         r = size(A[1], 2)
+#         groups = unique(S_reduced)
+#         intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
+#         for (buffer_idx, sym_group) in enumerate(groups)
+#             num_repeat = count(S_reduced .== sym_group)
+#             if num_repeat == 1
+#                 intermediate_buffers[buffer_idx] .= A[sym_group]
+#             else
+#                 symmetric_self_kr!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_iter_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#             end
+#         end
+#         return khatrirao!(Ktilde, intermediate_buffers...)
+#     end
+# end
+# function symmetric_kr!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, multinomial_coefs::NTuple{L}, A::Vararg{AbstractMatrix,L}) where {N, L}
+#     R = size(Ktilde, 2)
+#     if L == 1
+#         return symmetric_self_kr!(Ktilde, A[1], multinomial_coefs[1], Val(N), Val(R))
+#         # return symmetric_self_kr_partial_products!(Ktilde, A[1], multinomial_coefs[1], Val(N), Val(R))
+#         # return symmetric_self_kr_iter_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#     else
+#         r = size(A[1], 2)
+#         groups = unique(S_reduced)
+#         intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
+#         for (buffer_idx, sym_group) in enumerate(groups)
+#             num_repeat = count(S_reduced .== sym_group)
+#             if num_repeat == 1
+#                 intermediate_buffers[buffer_idx] .= A[sym_group]
+#             else
+#                 symmetric_self_kr!(intermediate_buffers[buffer_idx], A[sym_group], multinomial_coefs[buffer_idx], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], multinomial_coefs[buffer_idx], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_iter_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#             end
+#         end
+#         return khatrirao!(Ktilde, intermediate_buffers...)
+#     end
+# end
+# function symmetric_kr_lookup!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+#     R = size(Ktilde, 2)
+#     if L == 1
+#         return symmetric_self_kr_lookup!(Ktilde, A[1], Val(N), Val(R))
+#         # return symmetric_self_kr_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#         # return return symmetric_self_kr_iter_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#     else
+#         r = size(A[1], 2)
+#         groups = unique(S_reduced)
+#         intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
+#         for (buffer_idx, sym_group) in enumerate(groups)
+#             num_repeat = count(S_reduced .== sym_group)
+#             if num_repeat == 1
+#                 intermediate_buffers[buffer_idx] .= A[sym_group]
+#             else
+#                 symmetric_self_kr_lookup!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_iter_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#             end
+#         end
+#         return khatrirao!(Ktilde, intermediate_buffers...)
+#     end
+# end
+# function symmetric_kr_partial_products!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+#     R = size(Ktilde, 2)
+#     if L == 1
+#         return symmetric_self_kr_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#         # return return symmetric_self_kr_iter_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#     else
+#         # r = size(A[1], 2)
+#         groups = unique(S_reduced)
+#         intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), size(A[i], 2)) for i in groups]
+#         for (buffer_idx, sym_group) in enumerate(groups)
+#             num_repeat = count(S_reduced .== sym_group)
+#             if num_repeat == 1
+#                 intermediate_buffers[buffer_idx] .= A[sym_group]
+#             else
+#                 symmetric_self_kr_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_iter_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#             end
+#         end
+#         return khatrirao!(Ktilde, intermediate_buffers...)
+#     end
+# end
+# function symmetric_kr_partial_products!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, multinomial_coefs::NTuple{L}, A::Vararg{AbstractMatrix,L}) where {N, L}
+#     R = size(Ktilde, 2)
+#     if L == 1
+#         return symmetric_self_kr_partial_products!(Ktilde, A[1], multinomial_coefs[1], Val(N), Val(R))
+#     else
+#         r = size(A[1], 2)
+#         groups = unique(S_reduced)
+#         intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
+#         for (buffer_idx, sym_group) in enumerate(groups)
+#             num_repeat = count(S_reduced .== sym_group)
+#             if num_repeat == 1
+#                 intermediate_buffers[buffer_idx] .= A[sym_group]
+#             else
+#                 symmetric_self_kr_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], multinomial_coefs[buffer_idx], Val(count(S_reduced .== sym_group)), Val(R))
+#             end
+#         end
+#         return khatrirao!(Ktilde, intermediate_buffers...)
+#     end
+# end
+# function symmetric_kr_partial_products_lookup!(Ktilde::AbstractMatrix, S_reduced::NTuple{N}, A::Vararg{AbstractMatrix,L}) where {N, L}
+#     R = size(Ktilde, 2)
+#     if L == 1
+#         return symmetric_self_kr_partial_products_lookup!(Ktilde, A[1], Val(N), Val(R))
+#         # return return symmetric_self_kr_iter_partial_products!(Ktilde, A[1], Val(N), Val(R))
+#     else
+#         r = size(A[1], 2)
+#         groups = unique(S_reduced)
+#         intermediate_buffers = [similar(A[i], prod(k -> size(A[i],1)+k-1, 1:count(S_reduced .== i))÷factorial(count(S_reduced .== i)), r) for i in groups]
+#         for (buffer_idx, sym_group) in enumerate(groups)
+#             num_repeat = count(S_reduced .== sym_group)
+#             if num_repeat == 1
+#                 intermediate_buffers[buffer_idx] .= A[sym_group]
+#             else
+#                 symmetric_self_kr_partial_products_lookup!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#                 # symmetric_self_kr_iter_partial_products!(intermediate_buffers[buffer_idx], A[sym_group], Val(count(S_reduced .== sym_group)), Val(R))
+#             end
+#         end
+#         return khatrirao!(Ktilde, intermediate_buffers...)
+#     end
+# end
+
 
 """
     symmetric_self_kr!(Ktilde, A, N)
@@ -99,44 +407,111 @@ store the result in Ktilde.
 Implements more efficient direct computation of scaling αs for 
 up to 4th order case, falls back on general form for higher orders.
 """
-@generated function symmetric_self_kr!(Ktilde::AbstractMatrix, A::AbstractMatrix, ::Val{N}) where {N}
-    quote
-        n, r = size(A)
-        if $N > 4
-            α_num = factorial($N)
-        end
-        @inbounds for col in 1:r
-            row = 1
-            @nloops $N i k -> (k == N ? 1 : i_{k+1}):n begin
-                if $N == 2
-                    α = i_1 == i_2 ? 1 : 2
-                elseif $N == 3
-                    α = i_1 == i_2 ? (i_2 == i_3 ? 1 : 3) : (i_2 == i_3 ? 3 : 6)
-                elseif $N == 4
-                    n_equal = (i_1==i_2) + (i_1==i_3) + (i_1==i_4) + (i_2==i_3) + (i_2==i_4) + (i_3==i_4)
-                    α = n_equal == 0 ? 24 : n_equal == 1 ? 12 : n_equal == 2 ? 6 : n_equal == 3 ? 4 : 1
-                else
-                    indices = @ntuple $N i 
-                    α_denom = 1
-                    n_equal = 1
-                    for i in 2:$N
-                        if indices[i] == indices[i-1]
-                            n_equal += 1
-                        else
-                            α_denom *= factorial(n_equal)
-                            n_equal = 1
-                        end
-                    end
-                    α_denom *= factorial(n_equal)
-                    α = α_num / α_denom
-                end
-                Ktilde[row,col] = α * prod(@ntuple $N j -> A[i_j, col])
-                row += 1
-            end
-        end
-        return Ktilde
-    end
-end
+# @generated function symmetric_self_kr!(Ktilde::AbstractMatrix, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {N,R}
+#     quote
+#         n = size(A, 1)
+#         # if $N > 4
+#         #     α_num = factorial($N)
+#         # end
+#         α_num = factorial($N)
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $N i k -> (k == $N ? 1 : i_{k+1}):n begin
+#                 # if $N == 2
+#                 #     α = i_1 == i_2 ? 1.0 : 2.0
+#                 # elseif $N == 3
+#                 #     α = i_1 == i_2 ? (i_2 == i_3 ? 1.0 : 3.0) : (i_2 == i_3 ? 3.0 : 6.0)
+#                 # elseif $N == 4
+#                 #     n_equal = (i_1==i_2) + (i_1==i_3) + (i_1==i_4) + (i_2==i_3) + (i_2==i_4) + (i_3==i_4)
+#                 #     α = n_equal == 0 ? 24.0 : n_equal == 1 ? 12.0 : n_equal == 2 ? 6.0 : n_equal == 3 ? 4.0 : 1.0
+#                 # else
+#                 indices = @ntuple $N i 
+#                 α_denom = 1.0
+#                 n_equal = 1
+#                 for i in 2:$N
+#                     if indices[i] == indices[i-1]
+#                         n_equal += 1
+#                     else
+#                         α_denom *= factorial(n_equal)
+#                         n_equal = 1
+#                     end
+#                 end
+#                 α_denom *= factorial(n_equal)
+#                 α = α_num / α_denom
+#                 # end
+#                 Ktilde[row,col] = α * prod(@ntuple $N j -> A[i_j, col])
+#                 row += 1
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
+# @generated function symmetric_self_kr!(Ktilde::AbstractMatrix, A::AbstractMatrix, multionmial_coefs::Vector, ::Val{N}, ::Val{R}) where {N,R}
+#     quote
+#         n = size(A, 1)
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $N i k -> (k == $N ? 1 : i_{k+1}):n begin
+#                 α = multionmial_coefs[row]
+#                 Ktilde[row,col] = α * prod(@ntuple $N j -> A[i_j, col])
+#                 row += 1
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
+# @generated function symmetric_self_kr_lookup!(Ktilde::AbstractMatrix, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {N,R}
+#     quote
+#         n = size(A, 1)
+#         if $N > 4
+#             α_num = factorial($N)
+#         end
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $N i k -> (k == $N ? 1 : i_{k+1}):n begin
+#                 if $N == 2
+#                     α = i_1 == i_2 ? 1.0 : 2.0
+#                 elseif $N == 3
+#                     α = i_1 == i_2 ? (i_2 == i_3 ? 1.0 : 3.0) : (i_2 == i_3 ? 3.0 : 6.0)
+#                 elseif $N == 4
+#                     n_equal = (i_1==i_2) + (i_1==i_3) + (i_1==i_4) + (i_2==i_3) + (i_2==i_4) + (i_3==i_4)
+#                     α = n_equal == 0 ? 24.0 : n_equal == 1 ? 12.0 : n_equal == 2 ? 6.0 : n_equal == 3 ? 4.0 : 1.0
+#                 else
+#                     indices = @ntuple $N i 
+#                     α_denom = 1.0
+#                     n_equal = 1
+#                     for i in 2:$N
+#                         if indices[i] == indices[i-1]
+#                             n_equal += 1
+#                         else
+#                             α_denom *= factorial(n_equal)
+#                             n_equal = 1
+#                         end
+#                     end
+#                     α_denom *= factorial(n_equal)
+#                     α = α_num / α_denom
+#                 end
+#                 Ktilde[row,col] = α * prod(@ntuple $N j -> A[i_j, col])
+#                 row += 1
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
+# # Version that does not include multinomial coefficients
+# @generated function symmetric_self_kr_unweighted!(Ktilde::AbstractMatrix, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {N,R}
+#     quote
+#         n = size(A, 1)
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $N i k -> (k == $N ? 1 : i_{k+1}):n begin
+#                 Ktilde[row,col] = prod(@ntuple $N j -> A[i_j, col])
+#                 row += 1
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
 # function symmetric_self_kr_iter!(Ktilde::AbstractMatrix, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {N,R}
 #     n = size(A, 1)
 #     if N > 4
@@ -171,50 +546,50 @@ end
 #     end
 #     return Ktilde
 # end
-@generated function symmetric_self_kr_partial_products_v1!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
-    terms = [:(A[$(Symbol("i_$(k-1)")), col]) for k in 2:N]
-    set_partial_product = :(partial_product = *( $(terms...) ))
-    quote
-        n = size(A,1)
-        partial_product = zero(T)
-        if $N > 4
-            α_num = factorial($N)
-        end
-        @inbounds for col in 1:$R
-            row = 1
-            @nloops $(N-1) i k -> (k == $(N-1) ? 1 : i_{k+1}):n begin
-                $set_partial_product
-                for i_0 in i_1:n
-                    if $N == 2
-                        α = i_0 == i_1 ? 1 : 2
-                    elseif $N == 3
-                        α = i_0 == i_1 ? (i_1 == i_2 ? 1 : 3) : (i_1 == i_2 ? 3 : 6)
-                    elseif $N == 4
-                        n_equal = (i_0==i_1) + (i_0==i_2) + (i_0==i_3) + (i_1==i_2) + (i_1==i_3) + (i_2==i_3)
-                        α = n_equal == 0 ? 24 : n_equal == 1 ? 12 : n_equal == 2 ? 6 : n_equal == 3 ? 4 : 1
-                    else
-                        indices = (i_0, (@ntuple $(N-1) i)...)
-                        α_denom = 1
-                        n_equal = 1
-                        for i in 2:$N
-                            if indices[i] == indices[i-1]
-                                n_equal += 1
-                            else
-                                α_denom *= factorial(n_equal)
-                                n_equal = 1
-                            end
-                        end
-                        α_denom *= factorial(n_equal)
-                        α = α_num / α_denom
-                    end
-                    Ktilde[row,col] = α * A[i_0,col] * partial_product
-                    row += 1
-                end
-            end
-        end
-        return Ktilde
-    end
-end
+# @generated function symmetric_self_kr_partial_products_v1!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+#     terms = [:(A[$(Symbol("i_$(k-1)")), col]) for k in 2:N]
+#     set_partial_product = :(partial_product = *( $(terms...) ))
+#     quote
+#         n = size(A,1)
+#         partial_product = zero(T)
+#         if $N > 4
+#             α_num = factorial($N)
+#         end
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $(N-1) i k -> (k == $(N-1) ? 1 : i_{k+1}):n begin
+#                 $set_partial_product
+#                 for i_0 in i_1:n
+#                     if $N == 2
+#                         α = i_0 == i_1 ? 1 : 2
+#                     elseif $N == 3
+#                         α = i_0 == i_1 ? (i_1 == i_2 ? 1 : 3) : (i_1 == i_2 ? 3 : 6)
+#                     elseif $N == 4
+#                         n_equal = (i_0==i_1) + (i_0==i_2) + (i_0==i_3) + (i_1==i_2) + (i_1==i_3) + (i_2==i_3)
+#                         α = n_equal == 0 ? 24 : n_equal == 1 ? 12 : n_equal == 2 ? 6 : n_equal == 3 ? 4 : 1
+#                     else
+#                         indices = (i_0, (@ntuple $(N-1) i)...)
+#                         α_denom = 1
+#                         n_equal = 1
+#                         for i in 2:$N
+#                             if indices[i] == indices[i-1]
+#                                 n_equal += 1
+#                             else
+#                                 α_denom *= factorial(n_equal)
+#                                 n_equal = 1
+#                             end
+#                         end
+#                         α_denom *= factorial(n_equal)
+#                         α = α_num / α_denom
+#                     end
+#                     Ktilde[row,col] = α * A[i_0,col] * partial_product
+#                     row += 1
+#                 end
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
 # function symmetric_self_kr_iter_partial_products_v1!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
 #     n = size(A, 1)
 #     if N > 4
@@ -257,54 +632,301 @@ end
 #     end
 #     return Ktilde
 # end
-@generated function symmetric_self_kr_partial_products_v2!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
-    terms = [:(A[$(Symbol("i_$(k-1)")), col]) for k in 2:N]
-    set_partial_product = map(1:R) do j
-        terms = [:(A[$(Symbol("i_$(k-1)")), $j]) for k in 2:N]
-        :(partial_product[$j] = *( $(terms...) ))
-    end
-    quote
-        n = size(A,1)
-        partial_product = zeros(MVector{$R, T})
-        if $N > 4
-            α_num = factorial($N)
-        end
-        row = 1
-        @inbounds @nloops $(N-1) i k -> (k == $(N-1) ? 1 : i_{k+1}):n begin
-            $(set_partial_product...)
-            for i_0 in i_1:n
-                if $N == 2
-                    α = i_0 == i_1 ? 1 : 2
-                elseif $N == 3
-                    α = i_0 == i_1 ? (i_1 == i_2 ? 1 : 3) : (i_1 == i_2 ? 3 : 6)
-                elseif $N == 4
-                    n_equal = (i_0==i_1) + (i_0==i_2) + (i_0==i_3) + (i_1==i_2) + (i_1==i_3) + (i_2==i_3)
-                    α = n_equal == 0 ? 24 : n_equal == 1 ? 12 : n_equal == 2 ? 6 : n_equal == 3 ? 4 : 1
-                else
-                    indices = (i_0, (@ntuple $(N-1) i)...)
-                    α_denom = 1
-                    n_equal = 1
-                    for i in 2:$N
-                        if indices[i] == indices[i-1]
-                            n_equal += 1
-                        else
-                            α_denom *= factorial(n_equal)
-                            n_equal = 1
-                        end
-                    end
-                    α_denom *= factorial(n_equal)
-                    α = α_num / α_denom
-                end
-                for j in 1:$R
-                    Ktilde[row,j] = α * A[i_0,j] * partial_product[j]
-                end 
-                row += 1
-            end
-        end
-        return Ktilde
-    end
-end
-# function symmetric_self_kr_iter_partial_products_v2!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+# @generated function symmetric_self_kr_partial_products!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+#     # terms = [:(A[$(Symbol("i_$(k-1)")), col]) for k in 2:N]
+#     set_partial_product = map(1:R) do j
+#         terms = [:(A[$(Symbol("i_$(k-1)")), $j]) for k in 2:N]
+#         :(partial_product[$j] = *( $(terms...) ))
+#     end
+#     # set_partial_product = :(partial_product = *( $([:(A[$(Symbol("i_$(k)")), col]) for k in 1:N-1]...)))
+#     quote
+#         n = size(A,1)
+#         partial_product = zeros(MVector{$R, T})
+#         # partial_product = zero(T)
+#         # if $N > 4
+#         #     α_num = factorial($N)
+#         # end
+#         α_num = factorial($N)
+#         row = 1
+#         # @inbounds for col in 1:$R
+#         # row = 1
+#         @inbounds @nloops $(N-1) i k -> (k == $(N-1) ? 1 : i_{k+1}):n begin
+#             $(set_partial_product...)
+#             # $set_partial_product
+#             for i_0 in i_1:n
+#                 # if $N == 2
+#                 #     α = i_0 == i_1 ? 1.0 : 2.0
+#                 # elseif $N == 3
+#                 #     α = i_0 == i_1 ? (i_1 == i_2 ? 1.0 : 3.0) : (i_1 == i_2 ? 3.0 : 6.0)
+#                 # elseif $N == 4
+#                 #     n_equal = (i_0==i_1) + (i_0==i_2) + (i_0==i_3) + (i_1==i_2) + (i_1==i_3) + (i_2==i_3)
+#                 #     α = n_equal == 0 ? 24.0 : n_equal == 1 ? 12.0 : n_equal == 2 ? 6.0 : n_equal == 3 ? 4.0 : 1.0
+#                 # else
+#                 indices = (i_0, (@ntuple $(N-1) i)...)
+#                 α_denom = 1.0
+#                 n_equal = 1
+#                 for i in 2:$N
+#                     if indices[i] == indices[i-1]
+#                         n_equal += 1
+#                     else
+#                         α_denom *= factorial(n_equal)
+#                         n_equal = 1
+#                     end
+#                 end
+#                 α_denom *= factorial(n_equal)
+#                 α = α_num / α_denom
+#                 # end
+#                 for j in 1:$R
+#                     Ktilde[row,j] = α * A[i_0,j] * partial_product[j]
+#                 end 
+#                 # Ktilde[row,col] = α * A[i_0,col] * partial_product
+#                 row += 1
+#             end
+#         end
+#         # end
+#         return Ktilde
+#     end
+# end
+# @generated function symmetric_self_kr_partial_products!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, multionmial_coefs::Vector, ::Val{N}, ::Val{R}) where {T,N,R}
+#     # terms = [:(A[$(Symbol("i_$(k-1)")), j]) for k in 2:N]
+#     # set_partial_product = map(1:R) do j
+#     #     terms = [:(A[$(Symbol("i_$(k-1)")), $j]) for k in 2:N]
+#     #     :(partial_product[$j] = *( $(terms...) ))
+#     # end
+#     set_partial_product = :(partial_product = *( $([:(A[$(Symbol("i_$(k)")), col]) for k in 1:N-1]...)))
+#     quote
+#         n = size(A,1)
+#         # partial_product = zeros(MVector{$R, T})
+#         partial_product = zero(T)
+#         # row = 1
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $(N-1) i k -> (k == $(N-1) ? 1 : i_{k+1}):n begin
+#                 $set_partial_product
+#                 # $(set_partial_product...)
+#                 for i_0 in i_1:n
+#                     α = multionmial_coefs[row]
+#                     # for j in 1:$R
+#                     #     Ktilde[row,j] = α * A[i_0,j] * partial_product[j]
+#                     # end 
+#                     Ktilde[row,col] = α * A[i_0,col] * partial_product
+#                     row += 1
+#                 end
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
+
+# @generated function symmetric_self_kr_partial_products!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+#     quote
+#         n = size(A, 1)
+#         α_num = factorial($N)
+#         Base.Cartesian.@nexprs $N d -> d == 1 ? nothing : (a_d = zeros(MVector{$R, T}))
+#         row = 1
+#         @inbounds @nloops(
+#             $N,
+#             i,
+#             k -> (k == $N ? 1 : i_{k+1}):n,
+#             d -> d == 1 ? nothing : 
+#             d == $N ? 
+#             for c in 1:$R
+#                 a_d[c] = A[i_d, c] 
+#             end : 
+#             for c in 1:$R
+#                 a_d[c] = A[i_d, c] * a_{d+1}[c]
+#             end,
+#             begin
+#                 indices = @ntuple $N i
+#                 α_denom = 1.0
+#                 n_equal = 1
+#                 for i in 2:$N
+#                     if indices[i] == indices[i-1]
+#                         n_equal += 1
+#                     else
+#                         α_denom *= factorial(n_equal)
+#                         n_equal = 1
+#                     end
+#                 end
+#                 α_denom *= factorial(n_equal)
+#                 α = α_num / α_denom
+
+#                 for col in 1:$R
+#                     Ktilde[row,col] = α * A[i_1,col] * a_2[col]
+#                 end
+#                 row += 1
+#             end
+#         )
+#         return Ktilde
+#     end
+# end
+# @generated function symmetric_self_kr_partial_products_lookup!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+#     quote
+#         n = size(A, 1)
+#         if $N > 4
+#             α_num = factorial($N)
+#         end
+#         Base.Cartesian.@nexprs $N d -> d == 1 ? nothing : (a_d = zeros(MVector{$R, T}))
+#         row = 1
+#         @inbounds @nloops(
+#             $N,
+#             i,
+#             k -> (k == $N ? 1 : i_{k+1}):n,
+#             d -> d == 1 ? nothing : 
+#             d == $N ? 
+#             for c in 1:$R
+#                 a_d[c] = A[i_d, c] 
+#             end : 
+#             for c in 1:$R
+#                 a_d[c] = A[i_d, c] * a_{d+1}[c]
+#             end,
+#             begin
+#                 if $N == 2
+#                     α = i_1 == i_2 ? 1.0 : 2.0
+#                 elseif $N == 3
+#                     α = i_1 == i_2 ? (i_2 == i_3 ? 1.0 : 3.0) : (i_2 == i_3 ? 3.0 : 6.0)
+#                 elseif $N == 4
+#                     n_equal = (i_1==i_2) + (i_1==i_3) + (i_1==i_4) + (i_2==i_3) + (i_2==i_4) + (i_3==i_4)
+#                     α = n_equal == 0 ? 24.0 : n_equal == 1 ? 12.0 : n_equal == 2 ? 6.0 : n_equal == 3 ? 4.0 : 1.0
+#                 else
+#                     indices = @ntuple $N i
+#                     α_denom = 1.0
+#                     n_equal = 1
+#                     for i in 2:$N
+#                         if indices[i] == indices[i-1]
+#                             n_equal += 1
+#                         else
+#                             α_denom *= factorial(n_equal)
+#                             n_equal = 1
+#                         end
+#                     end
+#                     α_denom *= factorial(n_equal)
+#                     α = α_num / α_denom
+#                 end
+#                 for col in 1:$R
+#                     Ktilde[row,col] = α * A[i_1,col] * a_2[col]
+#                 end
+#                 row += 1
+#             end
+#         )
+#         return Ktilde
+#     end
+# end
+
+# @generated function symmetric_self_kr_unweighted!(Ktilde::AbstractMatrix, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {N,R}
+#     quote
+#         n = size(A, 1)
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops $N i k -> (k == $N ? 1 : i_{k+1}):n begin
+#                 Ktilde[row,col] = prod(@ntuple $N j -> A[i_j, col])
+#                 row += 1
+#             end
+#         end
+#         return Ktilde
+#     end
+# end
+# @generated function symmetric_self_kr_partial_products_lookup!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+#     quote
+#         n = size(A, 1)
+#         if $N > 4
+#             α_num = factorial($N)
+#         end
+#         @inbounds for col in 1:$R
+#             row = 1
+#             @nloops(
+#                 $N,
+#                 i,
+#                 k -> (k == $N ? 1 : i_{k+1}):n,
+#                 d -> d == 1 ? nothing : d == N ? a_d = A[i_d, col] : a_d = A[i_d, col] * a_{d+1},
+#                 begin
+#                     if $N == 2
+#                         α = i_1 == i_2 ? 1.0 : 2.0
+#                     elseif $N == 3
+#                         α = i_1 == i_2 ? (i_2 == i_3 ? 1.0 : 3.0) : (i_2 == i_3 ? 3.0 : 6.0)
+#                     elseif $N == 4
+#                         n_equal = (i_1==i_2) + (i_1==i_3) + (i_1==i_4) + (i_2==i_3) + (i_2==i_4) + (i_3==i_4)
+#                         α = n_equal == 0 ? 24.0 : n_equal == 1 ? 12.0 : n_equal == 2 ? 6.0 : n_equal == 3 ? 4.0 : 1.0
+#                     else
+#                         indices = @ntuple $N i
+#                         α_denom = 1.0
+#                         n_equal = 1
+#                         for i in 2:$N
+#                             if indices[i] == indices[i-1]
+#                                 n_equal += 1
+#                             else
+#                                 α_denom *= factorial(n_equal)
+#                                 n_equal = 1
+#                             end
+#                         end
+#                         α_denom *= factorial(n_equal)
+#                         α = α_num / α_denom
+#                     end
+
+#                     Ktilde[row,col] = α * A[i_1,col] * a_2
+#                     row += 1
+#                 end
+#             )
+#         end
+#     end
+# end
+
+
+# @generated function symmetric_self_kr_partial_products_lookup!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
+#     # terms = [:(A[$(Symbol("i_$(k-1)")), col]) for k in 2:N]
+#     set_partial_product = map(1:R) do j
+#         terms = [:(A[$(Symbol("i_$(k-1)")), $j]) for k in 2:N]
+#         :(partial_product[$j] = *( $(terms...) ))
+#     end
+#     # set_partial_product = :(partial_product = *( $([:(A[$(Symbol("i_$(k)")), col]) for k in 1:N-1]...)))
+#     quote
+#         n = size(A,1)
+#         partial_product = zeros(MVector{$R, T})
+#         # partial_product = zero(T)
+#         if $N > 4
+#             α_num = factorial($N)
+#         end
+#         row = 1
+#         # @inbounds for col in 1:$R
+#         # row = 1
+#         @inbounds @nloops $(N-1) i k -> (k == $(N-1) ? 1 : i_{k+1}):n begin
+#             $(set_partial_product...)
+#             # $set_partial_product
+#             for i_0 in i_1:n
+#                 if $N == 2
+#                     α = i_0 == i_1 ? 1.0 : 2.0
+#                 elseif $N == 3
+#                     α = i_0 == i_1 ? (i_1 == i_2 ? 1.0 : 3.0) : (i_1 == i_2 ? 3.0 : 6.0)
+#                 elseif $N == 4
+#                     n_equal = (i_0==i_1) + (i_0==i_2) + (i_0==i_3) + (i_1==i_2) + (i_1==i_3) + (i_2==i_3)
+#                     α = n_equal == 0 ? 24.0 : n_equal == 1 ? 12.0 : n_equal == 2 ? 6.0 : n_equal == 3 ? 4.0 : 1.0
+#                 else
+#                     indices = (i_0, (@ntuple $(N-1) i)...)
+#                     α_denom = 1.0
+#                     n_equal = 1
+#                     for i in 2:$N
+#                         if indices[i] == indices[i-1]
+#                             n_equal += 1
+#                         else
+#                             α_denom *= factorial(n_equal)
+#                             n_equal = 1
+#                         end
+#                     end
+#                     α_denom *= factorial(n_equal)
+#                     α = α_num / α_denom
+#                 end
+#                 for j in 1:$R
+#                     Ktilde[row,j] = α * A[i_0,j] * partial_product[j]
+#                 end 
+#                 # Ktilde[row,col] = α * A[i_0,col] * partial_product
+#                 row += 1
+#             end
+#         end
+#         # end
+#         return Ktilde
+#     end
+# end
+# function symmetric_self_kr_iter_partial_products!(Ktilde::AbstractMatrix{T}, A::AbstractMatrix, ::Val{N}, ::Val{R}) where {T,N,R}
 #     n = size(A, 1)
 #     if N > 4
 #         α_num = factorial(N)
